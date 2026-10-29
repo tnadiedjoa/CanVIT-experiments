@@ -1,0 +1,5 @@
+.venv/
+external/
+logs/
+docs/*.pdf
+__pycache__/
