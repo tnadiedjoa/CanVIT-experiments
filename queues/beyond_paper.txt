@@ -1,0 +1,23 @@
+# Long rollouts: 85 glimpses. Pretraining rollouts last 2, 4, 6... glimpses with probability 1/2, 1/4, 1/8..., 4 on average.
+rfs_c64_t85 --policy repeated_full_scene --canvas-grid-size 64 --num-glimpses 85
+c2f_c64_t85_s0 --policy coarse_to_fine --canvas-grid-size 64 --num-glimpses 85 --seed 0
+riid_c64_t85_s0 --policy random --canvas-grid-size 64 --num-glimpses 85 --seed 0
+fiid_c64_t85_s0 --policy full_then_random --canvas-grid-size 64 --num-glimpses 85 --seed 0
+# Anti-aliased glimpse extraction, paired with the bilinear runs of the same seed.
+c2f_c64_t21_s0_aa --policy coarse_to_fine --canvas-grid-size 64 --seed 0 --sampling antialiased
+rfs_c64_t21_aa --policy repeated_full_scene --canvas-grid-size 64 --sampling antialiased
+c2f_c32_t21_s0_aa --policy coarse_to_fine --canvas-grid-size 32 --seed 0 --batch-size 32 --sampling antialiased
+rfs_c32_t21_aa --policy repeated_full_scene --canvas-grid-size 32 --batch-size 32 --sampling antialiased
+# Tile orders within C2F's levels.
+c2f_low_entropy_c64_t21 --policy c2f_low_entropy --canvas-grid-size 64
+c2f_canvas_contrast_c64_t21 --policy c2f_canvas_contrast --canvas-grid-size 64
+c2f_oracle_error_c64_t21 --policy c2f_oracle_error --canvas-grid-size 64
+# Long rollouts on the pretraining canvas grid.
+rfs_c32_t85 --policy repeated_full_scene --canvas-grid-size 32 --num-glimpses 85 --batch-size 32
+c2f_c32_t85_s0 --policy coarse_to_fine --canvas-grid-size 32 --num-glimpses 85 --seed 0 --batch-size 32
+# Scenes without fine detail: do C2F's zooms gain from new pixels, or from looking again at the same ones larger?
+c2f_c64_t21_s0_detail256 --policy coarse_to_fine --canvas-grid-size 64 --seed 0 --scene-detail-px 256
+c2f_c64_t21_s0_detail128 --policy coarse_to_fine --canvas-grid-size 64 --seed 0 --scene-detail-px 128
+# A 128×128 canvas, past the paper's largest grid, read by the 64×64 probe.
+c2f_c128_t21_s0 --policy coarse_to_fine --canvas-grid-size 128 --probe-canvas-grid-size 64 --seed 0 --batch-size 4
+rfs_c128_t21 --policy repeated_full_scene --canvas-grid-size 128 --probe-canvas-grid-size 64 --batch-size 4

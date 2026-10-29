@@ -1,0 +1,18 @@
+# The paper's policies on ADE20K, 21 glimpses; random policies over several seeds.
+egc2f_c64_t21 --policy entropy_coarse_to_fine --canvas-grid-size 64
+c2f_c64_t21_s0 --policy coarse_to_fine --canvas-grid-size 64 --seed 0
+c2f_c64_t21_s1 --policy coarse_to_fine --canvas-grid-size 64 --seed 1
+c2f_c64_t21_s2 --policy coarse_to_fine --canvas-grid-size 64 --seed 2
+c2f_c64_t21_s3 --policy coarse_to_fine --canvas-grid-size 64 --seed 3
+c2f_c64_t21_s4 --policy coarse_to_fine --canvas-grid-size 64 --seed 4
+f2c_c64_t21_s0 --policy fine_to_coarse --canvas-grid-size 64 --seed 0
+f2c_c64_t21_s1 --policy fine_to_coarse --canvas-grid-size 64 --seed 1
+f2c_c64_t21_s2 --policy fine_to_coarse --canvas-grid-size 64 --seed 2
+riid_c64_t21_s0 --policy random --canvas-grid-size 64 --seed 0
+riid_c64_t21_s1 --policy random --canvas-grid-size 64 --seed 1
+riid_c64_t21_s2 --policy random --canvas-grid-size 64 --seed 2
+fiid_c64_t21_s0 --policy full_then_random --canvas-grid-size 64 --seed 0
+fiid_c64_t21_s1 --policy full_then_random --canvas-grid-size 64 --seed 1
+fiid_c64_t21_s2 --policy full_then_random --canvas-grid-size 64 --seed 2
+c2f_c32_t21_s0 --policy coarse_to_fine --canvas-grid-size 32 --seed 0 --batch-size 32
+rfs_c32_t21 --policy repeated_full_scene --canvas-grid-size 32 --batch-size 32
