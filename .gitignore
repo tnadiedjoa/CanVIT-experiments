@@ -4,3 +4,4 @@ logs/
 docs/*.pdf
 __pycache__/
 probes/
+notes/
