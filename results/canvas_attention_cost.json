@@ -1,0 +1,186 @@
+{
+ "device": "NVIDIA GeForce RTX 3090",
+ "precision": "amp-bf16",
+ "rows": [
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 8,
+   "batch_size": 1,
+   "glimpse_gflops": 13.80172416,
+   "read_write_pair_gflops": 0.493223936,
+   "latency_ms_min": 14.568218030035496,
+   "latency_ms_median": 14.679758343845606
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 8,
+   "batch_size": 32,
+   "glimpse_gflops": 13.80172416,
+   "read_write_pair_gflops": 0.493223936,
+   "latency_ms_min": 19.139430485665798,
+   "latency_ms_median": 19.257760141044855
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 16,
+   "batch_size": 1,
+   "glimpse_gflops": 14.136744192,
+   "read_write_pair_gflops": 0.60489728,
+   "latency_ms_min": 14.582956209778786,
+   "latency_ms_median": 14.70041275024414
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 16,
+   "batch_size": 32,
+   "glimpse_gflops": 14.136744192,
+   "read_write_pair_gflops": 0.60489728,
+   "latency_ms_min": 23.01826234906912,
+   "latency_ms_median": 23.167829494923353
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 32,
+   "batch_size": 1,
+   "glimpse_gflops": 15.47682432,
+   "read_write_pair_gflops": 1.051590656,
+   "latency_ms_min": 14.707314781844616,
+   "latency_ms_median": 14.823795296251774
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 32,
+   "batch_size": 32,
+   "glimpse_gflops": 15.47682432,
+   "read_write_pair_gflops": 1.051590656,
+   "latency_ms_min": 38.23941759765148,
+   "latency_ms_median": 38.36015472188592
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 64,
+   "batch_size": 1,
+   "glimpse_gflops": 20.837144832,
+   "read_write_pair_gflops": 2.83836416,
+   "latency_ms_min": 14.616741798818111,
+   "latency_ms_median": 14.739562757313251
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 64,
+   "batch_size": 32,
+   "glimpse_gflops": 20.837144832,
+   "read_write_pair_gflops": 2.83836416,
+   "latency_ms_min": 102.30537597090006,
+   "latency_ms_median": 102.50358749181032
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 128,
+   "batch_size": 1,
+   "glimpse_gflops": 42.27842688,
+   "read_write_pair_gflops": 9.985458176,
+   "latency_ms_min": 16.22011885046959,
+   "latency_ms_median": 16.412499826401472
+  },
+  {
+   "canvas_projections": "asymmetric",
+   "canvas_grid_size": 128,
+   "batch_size": 32,
+   "glimpse_gflops": 42.27842688,
+   "read_write_pair_gflops": 9.985458176,
+   "latency_ms_min": 360.06562132388353,
+   "latency_ms_median": 360.534374602139
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 8,
+   "batch_size": 1,
+   "glimpse_gflops": 15.81499008,
+   "read_write_pair_gflops": 1.164312576,
+   "latency_ms_min": 15.346456319093704,
+   "latency_ms_median": 15.471227001398802
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 8,
+   "batch_size": 32,
+   "glimpse_gflops": 15.81499008,
+   "read_write_pair_gflops": 1.164312576,
+   "latency_ms_min": 20.101473666727543,
+   "latency_ms_median": 20.22042404860258
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 16,
+   "batch_size": 1,
+   "glimpse_gflops": 20.98184832,
+   "read_write_pair_gflops": 2.886598656,
+   "latency_ms_min": 15.53164329379797,
+   "latency_ms_median": 15.659429598599672
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 16,
+   "batch_size": 32,
+   "glimpse_gflops": 20.98184832,
+   "read_write_pair_gflops": 2.886598656,
+   "latency_ms_min": 27.237288653850555,
+   "latency_ms_median": 27.378585189580917
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 32,
+   "batch_size": 1,
+   "glimpse_gflops": 41.64928128,
+   "read_write_pair_gflops": 9.775742976,
+   "latency_ms_min": 15.556531958281994,
+   "latency_ms_median": 15.67695289850235
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 32,
+   "batch_size": 32,
+   "glimpse_gflops": 41.64928128,
+   "read_write_pair_gflops": 9.775742976,
+   "latency_ms_min": 52.17772163450718,
+   "latency_ms_median": 52.34028957784176
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 64,
+   "batch_size": 1,
+   "glimpse_gflops": 124.31901312,
+   "read_write_pair_gflops": 37.332320256,
+   "latency_ms_min": 15.503598377108574,
+   "latency_ms_median": 15.578669495880604
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 64,
+   "batch_size": 32,
+   "glimpse_gflops": 124.31901312,
+   "read_write_pair_gflops": 37.332320256,
+   "latency_ms_min": 157.66254253685474,
+   "latency_ms_median": 158.03081076592207
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 128,
+   "batch_size": 1,
+   "glimpse_gflops": 454.99794048,
+   "read_write_pair_gflops": 147.558629376,
+   "latency_ms_min": 22.975248284637928,
+   "latency_ms_median": 23.06724153459072
+  },
+  {
+   "canvas_projections": "qkvo",
+   "canvas_grid_size": 128,
+   "batch_size": 32,
+   "glimpse_gflops": 454.99794048,
+   "read_write_pair_gflops": 147.558629376,
+   "latency_ms_min": 579.5455696061254,
+   "latency_ms_median": 580.1725634373724
+  }
+ ]
+}

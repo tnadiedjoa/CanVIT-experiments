@@ -35,6 +35,7 @@ from canvit_pytorch.policies import POLICIES, FixedSequence, Policy, PolicyName,
 from canvit_pytorch.policies.entropy import predictive_entropy, tile_masks
 from canvit_pytorch.policies.quadtree import levels_covering, quadtree_level, quadtree_level_z_order, shuffled_levels
 from canvit_pytorch.preprocess import IMAGENET_MEAN, IMAGENET_STD
+from canvit_pytorch.viewpoint import grid_coords
 
 log = logging.getLogger(__name__)
 
@@ -74,6 +75,10 @@ class Experiment:
     write_scale: float = 1.0
     """Factor on every Canvas Attention Write residual from the second glimpse on; 1 is the released model. Below 1,
     later glimpses change the canvas less: a training-free probe of the trade-off between keeping and updating."""
+    finer_seen_write_exponent: float | None = None
+    """When set, a glimpse's Write residual in each canvas cell inside its crop is multiplied by
+    min(1, finest scale already seen at that cell / glimpse scale) ** exponent: coarse glimpses barely overwrite cells
+    already seen in more detail. Changes nothing for policies that only go from coarse to fine (C2F)."""
     scene_detail_px: int | None = None
     """When set, each scene is downsampled to this size with antialiasing and upsampled back before the rollout, so no
     glimpse sees detail finer than this resolution; labels keep the full scene size."""
@@ -239,6 +244,44 @@ def c2f_then(continuation: Continuation, *, batch_size: int, device: torch.devic
                                          num_glimpses=num_glimpses))
 
 
+class FinerSeenWriteGate:
+    """Damps Writes into the canvas cells already seen at a finer scale than the current glimpse's
+    (Experiment.finer_seen_write_exponent)."""
+
+    def __init__(self, seg: CanViTForSemanticSegmentation, *, exponent: float, batch_size: int, canvas_grid_size: int,
+                 device: torch.device) -> None:
+        self.exponent = exponent
+        self.num_registers = seg.canvit.config.num_canvas_registers
+        self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
+        self.finest = torch.full((batch_size, canvas_grid_size, canvas_grid_size), math.inf, device=device)
+        self.factor: Tensor | None = None  # [B, num_registers + G*G, 1] for the glimpse being taken
+        self.handles = [write.register_forward_hook(self.hook) for write in seg.canvit.canvas_writes]
+
+    def inside(self, viewpoint: Viewpoint) -> Tensor:
+        """[B, G, G]: the cells whose centers lie in each viewpoint's crop."""
+        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
+        return (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1)
+
+    def before_glimpse(self, viewpoint: Viewpoint) -> None:
+        inside = self.inside(viewpoint)
+        ratio = (self.finest / viewpoint.scales.view(-1, 1, 1)).clamp(max=1) ** self.exponent
+        cells = torch.where(inside, ratio, torch.ones_like(ratio)).flatten(1)
+        registers = torch.ones(cells.shape[0], self.num_registers, device=cells.device)
+        self.factor = torch.cat([registers, cells], dim=1).unsqueeze(-1)
+
+    def after_glimpse(self, viewpoint: Viewpoint) -> None:
+        scales = viewpoint.scales.view(-1, 1, 1).expand_as(self.finest)
+        self.finest = torch.where(self.inside(viewpoint), torch.minimum(self.finest, scales), self.finest)
+
+    def hook(self, module, args, output: Tensor) -> Tensor:
+        assert self.factor is not None
+        return output * self.factor
+
+    def remove(self) -> None:
+        for handle in self.handles:
+            handle.remove()
+
+
 def build_policy(exp: Experiment, seg: CanViTForSemanticSegmentation, *, labels: Tensor, device: torch.device) -> Policy:
     batch_size = labels.shape[0]
     if exp.policy in get_args(PolicyName):
@@ -298,12 +341,19 @@ def main(exp: Experiment) -> None:
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
             policy = build_policy(exp, seg, labels=labels, device=device)
             state = seg.init_state(batch_size=batch_size, canvas_grid_size=exp.canvas_grid_size)
+            gate = (FinerSeenWriteGate(seg, exponent=exp.finer_seen_write_exponent, batch_size=batch_size,
+                                       canvas_grid_size=exp.canvas_grid_size, device=device)
+                    if exp.finer_seen_write_exponent is not None else None)
             previous = layer_normalized_patches(seg, state.canvas)
             for t in range(num_glimpses):
                 viewpoint = policy.step(t, state)
                 scaled_writes.active = t >= 1
                 glimpse = sample(spatial=images, viewpoint=viewpoint, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
+                if gate is not None:
+                    gate.before_glimpse(viewpoint)
                 state = seg.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
+                if gate is not None:
+                    gate.after_glimpse(viewpoint)
                 logits = seg.logits(state.canvas)
                 mious[t].update(predicted_labels(logits, size_px=scene_px), labels)
                 current = layer_normalized_patches(seg, state.canvas)
@@ -313,6 +363,8 @@ def main(exp: Experiment) -> None:
                 sums["entropy"][t] += predictive_entropy(logits).mean(dim=(1, 2)).sum().double()
                 scales[t] += viewpoint.scales.double().sum().cpu()
                 previous = current
+            if gate is not None:
+                gate.remove()
         log.info("%d/%d scenes", first + batch_size, len(images_u8))
 
     n = len(images_u8)

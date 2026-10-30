@@ -195,7 +195,7 @@ def level3_controls() -> None:
                 ax.plot(result.mean(key), color=color, label=label)
         ax.axvline(20.5, color=MUTED, linewidth=1, linestyle=":")
         ax.set(xlabel="glimpse t", ylabel=ylabel)
-    axes[0].set_title("Canvas 64×64, same first 21 glimpses (seed 0)", fontsize=9, loc="left")
+    axes[0].set_title("Canvas 64×64; glimpses 0-20 are C2F's levels 0-2 in every run", fontsize=9, loc="left")
     axes[0].legend(fontsize=7, loc="lower right")
     save(fig, "ade20k_level3_controls.png")
 

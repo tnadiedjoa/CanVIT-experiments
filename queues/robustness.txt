@@ -1,0 +1,12 @@
+# Do the tile-order results hold on the 32×32 canvas? Random C2F over more seeds for the reference.
+c2f_c32_t21_s1 --policy coarse_to_fine --canvas-grid-size 32 --seed 1 --batch-size 32
+c2f_c32_t21_s2 --policy coarse_to_fine --canvas-grid-size 32 --seed 2 --batch-size 32
+c2f_c32_t21_s3 --policy coarse_to_fine --canvas-grid-size 32 --seed 3 --batch-size 32
+c2f_c32_t21_s4 --policy coarse_to_fine --canvas-grid-size 32 --seed 4 --batch-size 32
+egc2f_c32_t21 --policy entropy_coarse_to_fine --canvas-grid-size 32 --batch-size 32
+c2f_canvas_contrast_c32_t21 --policy c2f_canvas_contrast --canvas-grid-size 32 --batch-size 32
+c2f_oracle_error_c32_t21 --policy c2f_oracle_error --canvas-grid-size 32 --batch-size 32
+c2f_low_entropy_c32_t21 --policy c2f_low_entropy --canvas-grid-size 32 --batch-size 32
+# Halved Write residuals after the first glimpse: does the drift under repetition slow, and what does it cost C2F?
+rfs_c64_t85_write0.5 --policy repeated_full_scene --canvas-grid-size 64 --num-glimpses 85 --write-scale 0.5
+c2f_c64_t21_s0_write0.5 --policy coarse_to_fine --canvas-grid-size 64 --seed 0 --write-scale 0.5

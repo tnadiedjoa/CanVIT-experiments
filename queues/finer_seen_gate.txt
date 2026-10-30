@@ -1,0 +1,16 @@
+# Damping Writes into cells already seen at a finer scale, exponent 1. C2F only goes coarse to fine, so its run must
+# match c2f_c64_t21_s0 exactly. The other runs pair with the ungated runs of the same seed (same viewpoints).
+c2f_c64_t21_s0_gate1 --policy coarse_to_fine --canvas-grid-size 64 --seed 0 --finer-seen-write-exponent 1
+f2c_c64_t21_s0_gate1 --policy fine_to_coarse --canvas-grid-size 64 --seed 0 --finer-seen-write-exponent 1
+f2c_c64_t21_s1_gate1 --policy fine_to_coarse --canvas-grid-size 64 --seed 1 --finer-seen-write-exponent 1
+f2c_c64_t21_s2_gate1 --policy fine_to_coarse --canvas-grid-size 64 --seed 2 --finer-seen-write-exponent 1
+fiid_c64_t21_s0_gate1 --policy full_then_random --canvas-grid-size 64 --seed 0 --finer-seen-write-exponent 1
+fiid_c64_t21_s1_gate1 --policy full_then_random --canvas-grid-size 64 --seed 1 --finer-seen-write-exponent 1
+fiid_c64_t21_s2_gate1 --policy full_then_random --canvas-grid-size 64 --seed 2 --finer-seen-write-exponent 1
+riid_c64_t21_s0_gate1 --policy random --canvas-grid-size 64 --seed 0 --finer-seen-write-exponent 1
+riid_c64_t21_s1_gate1 --policy random --canvas-grid-size 64 --seed 1 --finer-seen-write-exponent 1
+riid_c64_t21_s2_gate1 --policy random --canvas-grid-size 64 --seed 2 --finer-seen-write-exponent 1
+c2f_then_full_scene_c64_t85_s0_gate1 --policy c2f_then_full_scene --canvas-grid-size 64 --num-glimpses 85 --seed 0 --finer-seen-write-exponent 1
+# Dose: weaker and stronger damping on F2C.
+f2c_c64_t21_s0_gate0.5 --policy fine_to_coarse --canvas-grid-size 64 --seed 0 --finer-seen-write-exponent 0.5
+f2c_c64_t21_s0_gate2 --policy fine_to_coarse --canvas-grid-size 64 --seed 0 --finer-seen-write-exponent 2
