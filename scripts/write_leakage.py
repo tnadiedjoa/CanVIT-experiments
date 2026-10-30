@@ -6,6 +6,8 @@ cells it did not see. Per glimpse, the residual a cell receives is the sum of th
 reports its mean L2 norm in the cells inside and outside the crop, per C2F level. Over level 3 (64 tiles, each seen
 once), it also sums each cell's residuals from the 63 glimpses of other tiles and from the glimpse of its own tile,
 and reports the mean norm of both sums: the net leaked change, after cancellations, against the cell's own update.
+Two more statistics say where the leak goes: the residual norm outside the crop by distance from it, in tile widths,
+and the share of the leaked sum's energy in its mean over the canvas, i.e. in one vector added to every cell.
 
     .venv/bin/python -P scripts/write_leakage.py --output results/write_leakage.json
 """
@@ -30,6 +32,8 @@ log = logging.getLogger(__name__)
 
 LEVEL_STARTS = (0, 1, 5, 21)
 """First glimpse of each C2F level (1, 4, 16 and 64 tiles)."""
+DISTANCE_BINS = (0, 0.5, 1, 2, 4, 8)
+"""Edges of the bins of distance from the crop to an outside cell's center (Chebyshev), in widths of the crop."""
 
 
 @dataclass(frozen=True)
@@ -61,7 +65,10 @@ def main(m: Measurement) -> None:
     num_glimpses, num_levels = LEVEL_STARTS[-1] + 4 ** (len(LEVEL_STARTS) - 1), len(LEVEL_STARTS)
     inside_norm, outside_norm = torch.zeros(num_levels, dtype=torch.float64), torch.zeros(num_levels, dtype=torch.float64)
     glimpse_counts = torch.zeros(num_levels, dtype=torch.float64)
-    leaked_sum_norm = own_sum_norm = canvas_norm = 0.0
+    edges = torch.tensor(DISTANCE_BINS, device=device)
+    by_distance = torch.zeros(num_levels, len(DISTANCE_BINS) - 1, dtype=torch.float64, device=device)
+    cells_by_distance = torch.zeros_like(by_distance)
+    leaked_sum_norm = own_sum_norm = canvas_norm = common_fraction = 0.0
     with torch.inference_mode(), torch.autocast(device_type=device.type, dtype=torch.bfloat16):
         for first in range(0, m.num_scenes, m.batch_size):
             images = imagenet_normalize(scenes[first:first + m.batch_size].to(device).float() / 255)
@@ -80,16 +87,23 @@ def main(m: Measurement) -> None:
                 offsets = (cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
                 inside = (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)  # [B, G*G]
                 norms = residual.norm(dim=-1)
+                gap = (offsets - viewpoint.scales.view(-1, 1, 1, 1)).amax(dim=-1).flatten(1) / (2 * viewpoint.scales.view(-1, 1))
+                distance_bin = torch.bucketize(gap, edges, right=True) - 1  # -1 inside the crop, beyond the last edge too
                 level = sum(t >= start for start in LEVEL_STARTS) - 1
                 inside_norm[level] += norms[inside].mean().double().cpu() * batch_size
                 if (~inside).any():
                     outside_norm[level] += norms[~inside].mean().double().cpu() * batch_size
                 glimpse_counts[level] += batch_size
+                for b in range(len(DISTANCE_BINS) - 1):
+                    in_bin = (distance_bin == b) & ~inside
+                    by_distance[level, b] += norms[in_bin].double().sum()
+                    cells_by_distance[level, b] += in_bin.sum()
                 if level == num_levels - 1:
                     leaked += residual * (~inside).unsqueeze(-1)
                     own += residual * inside.unsqueeze(-1)
             leaked_sum_norm += leaked.norm(dim=-1).mean(dim=1).sum().item()
             own_sum_norm += own.norm(dim=-1).mean(dim=1).sum().item()
+            common_fraction += (leaked.mean(dim=1).square().sum(dim=-1) / leaked.square().sum(dim=-1).mean(dim=1)).sum().item()
             canvas_norm += state.canvas[:, num_registers:].float().norm(dim=-1).mean(dim=1).sum().item()
             log.info("%d/%d scenes", first + batch_size, m.num_scenes)
     for handle in handles:
@@ -98,7 +112,12 @@ def main(m: Measurement) -> None:
     levels = [{"level": level, "first_glimpse": LEVEL_STARTS[level], "glimpses": 4 ** level,
                "residual_norm_inside": (inside_norm[level] / glimpse_counts[level]).item(),
                "residual_norm_outside": (outside_norm[level] / glimpse_counts[level]).item() if level else None,
-               "outside_over_inside": (outside_norm[level] / inside_norm[level]).item() if level else None}
+               "outside_over_inside": (outside_norm[level] / inside_norm[level]).item() if level else None,
+               "outside_by_distance": [{"crop_widths": [lo, hi], "cells": int(cells_by_distance[level, b].item()),
+                                        "outside_over_inside": (by_distance[level, b] / cells_by_distance[level, b]).item()
+                                        / (inside_norm[level] / glimpse_counts[level]).item()}
+                                       for b, (lo, hi) in enumerate(zip(DISTANCE_BINS, DISTANCE_BINS[1:]))
+                                       if cells_by_distance[level, b] > 0]}
               for level in range(num_levels)]
     result = {
         "measurement": {k: str(v) if isinstance(v, Path) else v for k, v in asdict(m).items()},
@@ -107,6 +126,7 @@ def main(m: Measurement) -> None:
         "level3_leaked_sum_norm": leaked_sum_norm / m.num_scenes,
         "level3_own_sum_norm": own_sum_norm / m.num_scenes,
         "level3_leaked_over_own": leaked_sum_norm / own_sum_norm,
+        "level3_leaked_common_fraction": common_fraction / m.num_scenes,
         "final_canvas_patch_norm": canvas_norm / m.num_scenes,
     }
     m.output.parent.mkdir(parents=True, exist_ok=True)
@@ -114,9 +134,11 @@ def main(m: Measurement) -> None:
     for level in levels[1:]:
         log.info("level %d: residual norm per cell inside %.0f, outside %.0f (ratio %.3f)", level["level"],
                  level["residual_norm_inside"], level["residual_norm_outside"], level["outside_over_inside"])
-    log.info("level 3, summed per cell: leaked %.0f, own %.0f (ratio %.2f); final canvas patch norm %.0f",
-             result["level3_leaked_sum_norm"], result["level3_own_sum_norm"], result["level3_leaked_over_own"],
-             result["final_canvas_patch_norm"])
+        log.info("  by distance from the crop: %s", ", ".join(
+            f"{d['crop_widths'][0]}-{d['crop_widths'][1]} widths {d['outside_over_inside']:.3f}" for d in level["outside_by_distance"]))
+    log.info("level 3, summed per cell: leaked %.0f, own %.0f (ratio %.2f), %.0f%% of the leak's energy in its canvas "
+             "mean; final canvas patch norm %.0f", result["level3_leaked_sum_norm"], result["level3_own_sum_norm"],
+             result["level3_leaked_over_own"], 100 * result["level3_leaked_common_fraction"], result["final_canvas_patch_norm"])
 
 
 if __name__ == "__main__":

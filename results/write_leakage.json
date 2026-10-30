@@ -16,7 +16,8 @@
    "glimpses": 1,
    "residual_norm_inside": 6584.779571533203,
    "residual_norm_outside": null,
-   "outside_over_inside": null
+   "outside_over_inside": null,
+   "outside_by_distance": []
   },
   {
    "level": 1,
@@ -24,7 +25,25 @@
    "glimpses": 4,
    "residual_norm_inside": 5352.471588134766,
    "residual_norm_outside": 1506.9918403625488,
-   "outside_over_inside": 0.2815506473127692
+   "outside_over_inside": 0.2815506473127692,
+   "outside_by_distance": [
+    {
+     "crop_widths": [
+      0,
+      0.5
+     ],
+     "cells": 1310720,
+     "outside_over_inside": 0.3965700463814398
+    },
+    {
+     "crop_widths": [
+      0.5,
+      1
+     ],
+     "cells": 1835008,
+     "outside_over_inside": 0.1993939254674228
+    }
+   ]
   },
   {
    "level": 2,
@@ -32,7 +51,41 @@
    "glimpses": 16,
    "residual_norm_inside": 5150.342836380005,
    "residual_norm_outside": 906.382538318634,
-   "outside_over_inside": 0.17598489403779158
+   "outside_over_inside": 0.17598489403779158,
+   "outside_by_distance": [
+    {
+     "crop_widths": [
+      0,
+      0.5
+     ],
+     "cells": 2162688,
+     "outside_over_inside": 0.4479745248325117
+    },
+    {
+     "crop_widths": [
+      0.5,
+      1
+     ],
+     "cells": 3342336,
+     "outside_over_inside": 0.1760486648019931
+    },
+    {
+     "crop_widths": [
+      1,
+      2
+     ],
+     "cells": 6291456,
+     "outside_over_inside": 0.12644884424868674
+    },
+    {
+     "crop_widths": [
+      2,
+      4
+     ],
+     "cells": 3932160,
+     "outside_over_inside": 0.10559403547043354
+    }
+   ]
   },
   {
    "level": 3,
@@ -40,11 +93,54 @@
    "glimpses": 64,
    "residual_norm_inside": 3933.7624769210815,
    "residual_norm_outside": 637.3015260100365,
-   "outside_over_inside": 0.16200813591288468
+   "outside_over_inside": 0.16200813591288468,
+   "outside_by_distance": [
+    {
+     "crop_widths": [
+      0,
+      0.5
+     ],
+     "cells": 2637824,
+     "outside_over_inside": 0.6131167247680835
+    },
+    {
+     "crop_widths": [
+      0.5,
+      1
+     ],
+     "cells": 4243456,
+     "outside_over_inside": 0.2847850883681023
+    },
+    {
+     "crop_widths": [
+      1,
+      2
+     ],
+     "cells": 11010048,
+     "outside_over_inside": 0.1607159367281048
+    },
+    {
+     "crop_widths": [
+      2,
+      4
+     ],
+     "cells": 25362432,
+     "outside_over_inside": 0.13072897332313463
+    },
+    {
+     "crop_widths": [
+      4,
+      8
+     ],
+     "cells": 22806528,
+     "outside_over_inside": 0.12239660677364934
+    }
+   ]
   }
  ],
  "level3_leaked_sum_norm": 32680.137084960938,
  "level3_own_sum_norm": 3933.762481689453,
  "level3_leaked_over_own": 8.307603023079734,
+ "level3_leaked_common_fraction": 0.8779716119170189,
  "final_canvas_patch_norm": 58339.92529296875
 }

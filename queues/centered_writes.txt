@@ -1,0 +1,5 @@
+# ADE20K: Writes outside the glimpse's crop centered instead of dropped. scripts/write_leakage.py finds that most of
+# what leaks over C2F's level 3 is one vector added to every unseen cell; centering removes that vector and keeps the
+# rest of the leak, which local Writes from glimpse 1 show to help in C2F's first levels on ADE20K.
+c2f_c64_t85_s0_center1 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --outside-writes center
+c2f_c64_t85_s0_center21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21 --outside-writes center

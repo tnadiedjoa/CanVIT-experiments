@@ -53,6 +53,10 @@ finer, upsampled level 3: the level-2 tiles again, each pass in a new random ord
 PolicyChoice = PolicyName | Literal[
     "c2f_low_entropy", "c2f_canvas_contrast", "c2f_oracle_error", "c2f_then_level2_revisits", "c2f_then_full_scene",
 ]
+OutsideWrites = Literal["drop", "center"]
+"""What local Writes do with the residuals into the canvas cells outside the glimpse's crop: drop them, or subtract
+their mean over those cells, which removes the one vector the glimpse adds to every cell it did not see and keeps how
+the residual varies across them."""
 Sampling = Literal["bilinear", "antialiased"]
 """bilinear: the official extraction (grid_sample, used in pretraining too); antialiased: the crop at its native
 resolution, then downsampled with an anti-aliasing filter when it covers more pixels than the glimpse."""
@@ -83,6 +87,8 @@ class Experiment:
     """When set, from this glimpse on, the Write residuals into the canvas cells outside the glimpse's crop are dropped
     (the canvas registers keep theirs), so that a glimpse changes only the part of the canvas it saw. The released
     model writes into every cell."""
+    outside_writes: OutsideWrites = "drop"
+    """With local_writes_from: what happens to the Write residuals outside the crop (OutsideWrites)."""
     scene_detail_px: int | None = None
     """When set, each scene is downsampled to this size with antialiasing and upsampled back before the rollout, so no
     glimpse sees detail finer than this resolution; labels keep the full scene size."""
@@ -287,10 +293,12 @@ class FinerSeenWriteGate:
 
 
 class LocalWrites:
-    """Drops the Canvas Attention Write residuals into the canvas cells whose centers lie outside the current
-    glimpse's crop (Experiment.local_writes_from)."""
+    """Drops, or centers, the Canvas Attention Write residuals into the canvas cells whose centers lie outside the
+    current glimpse's crop (Experiment.local_writes_from, Experiment.outside_writes)."""
 
-    def __init__(self, seg: CanViTForSemanticSegmentation, *, canvas_grid_size: int, device: torch.device) -> None:
+    def __init__(self, seg: CanViTForSemanticSegmentation, *, canvas_grid_size: int, device: torch.device,
+                 outside: OutsideWrites = "drop") -> None:
+        self.outside = outside
         self.num_registers = seg.canvit.config.num_canvas_registers
         self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
         self.mask: Tensor | None = None  # [B, num_registers + G*G, 1] for the glimpse being taken
@@ -307,7 +315,13 @@ class LocalWrites:
         self.mask = torch.cat([registers, inside], dim=1).unsqueeze(-1)
 
     def hook(self, module, args, output: Tensor) -> Tensor | None:
-        return None if self.mask is None else output * self.mask
+        if self.mask is None:
+            return None
+        if self.outside == "drop":
+            return output * self.mask
+        outside = (~self.mask).float()
+        mean = (output.float() * outside).sum(dim=1, keepdim=True) / outside.sum(dim=1, keepdim=True).clamp(min=1)
+        return output - (outside * mean).to(output.dtype)
 
 
 def build_policy(exp: Experiment, seg: CanViTForSemanticSegmentation, *, labels: Tensor, device: torch.device) -> Policy:
@@ -355,7 +369,7 @@ def main(exp: Experiment) -> None:
     images_u8, labels_u8 = load_validation_scenes(exp.cache, size_px=scene_px)
     sample = sampler(exp.sampling)
     scaled_writes = ScaledWrites(seg, exp.write_scale)
-    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device)
+    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device, outside=exp.outside_writes)
                     if exp.local_writes_from is not None else None)
 
     mious = [ade20k.MeanIoU(device=device) for _ in range(num_glimpses)]

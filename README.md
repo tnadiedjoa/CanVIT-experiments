@@ -89,8 +89,13 @@ it did not see. [`scripts/write_leakage.py`](scripts/write_leakage.py) measures 
 |---|---|---|---|
 | outside / inside | 0.28 | 0.18 | 0.16 |
 
-Over level 3, a cell receives the leaked residuals of the 63 glimpses of other tiles. They mostly point the same way:
-their sum is 8.3 times the residual from the cell's own glimpse.
+The leak is strongest next to the crop. At level 3, it is 0.61 within half a tile width of the crop and 0.12 beyond
+four tile widths.
+
+Over level 3, a cell receives the leaked residuals of the 63 glimpses of other tiles:
+
+- They mostly point the same way: their sum is 8.3 times the residual from the cell's own glimpse.
+- That sum is mostly one vector added to every cell: its mean over the canvas carries 88% of its energy.
 
 Dropping the Write residuals outside the crop removes this. It is a forward hook with no retraining, and the canvas
 registers keep their residuals. Applied from glimpse 21 on, it turns the level-3 drop into a gain (C2F, seed 0):

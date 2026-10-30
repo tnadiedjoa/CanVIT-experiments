@@ -62,6 +62,10 @@ SCALE_JITTER_RANGE = (0.5, 2.0)
 
 Split = Literal["train", "val"]
 Features = Literal["canvas", "dinov3_vitb16", "dinov3_vits16"]
+OutsideWrites = Literal["drop", "center"]
+"""What local Writes do with the residuals into the canvas cells outside the glimpse's crop: drop them, or subtract
+their mean over those cells, which removes the one vector the glimpse adds to every cell it did not see and keeps how
+the residual varies across them."""
 Detail = Literal["s512", "s512_then_native", "native"]
 """Where each glimpse is sampled from, for a 1024 px scene:
 
@@ -358,16 +362,20 @@ class Rollouts:
     """When set, from this glimpse on, the Write residuals into the canvas cells outside the glimpse's crop are dropped
     (the canvas registers keep theirs), so that a glimpse changes only the part of the canvas it saw; 21 restricts
     C2F's level 3. The released model writes into every cell."""
+    outside_writes: OutsideWrites = "drop"
+    """With local_writes_from: what happens to the Write residuals outside the crop (OutsideWrites)."""
     seed: int = 0
     batch_size: int = 8
     device: str = "cuda"
 
 
 class LocalWrites:
-    """Drops the Canvas Attention Write residuals into the canvas cells whose centers lie outside the current
-    glimpse's crop (Rollouts.local_writes_from)."""
+    """Drops, or centers, the Canvas Attention Write residuals into the canvas cells whose centers lie outside the
+    current glimpse's crop (Rollouts.local_writes_from, Rollouts.outside_writes)."""
 
-    def __init__(self, seg: CanViTForSemanticSegmentation, *, canvas_grid_size: int, device: torch.device) -> None:
+    def __init__(self, seg: CanViTForSemanticSegmentation, *, canvas_grid_size: int, device: torch.device,
+                 outside: OutsideWrites = "drop") -> None:
+        self.outside = outside
         self.num_registers = seg.canvit.config.num_canvas_registers
         self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
         self.mask: Tensor | None = None  # [B, num_registers + G*G, 1] for the glimpse being taken
@@ -384,7 +392,13 @@ class LocalWrites:
         self.mask = torch.cat([registers, inside], dim=1).unsqueeze(-1)
 
     def hook(self, module, args, output: Tensor) -> Tensor | None:
-        return None if self.mask is None else output * self.mask
+        if self.mask is None:
+            return None
+        if self.outside == "drop":
+            return output * self.mask
+        outside = (~self.mask).float()
+        mean = (output.float() * outside).sum(dim=1, keepdim=True) / outside.sum(dim=1, keepdim=True).clamp(min=1)
+        return output - (outside * mean).to(output.dtype)
 
 
 def sample(scene_1024: Tensor, scene_512: Tensor, viewpoint: Viewpoint, detail: Detail) -> Tensor:
@@ -415,7 +429,7 @@ def rollouts(exp: Rollouts) -> None:
     assert record["config"]["features"] == "canvas", exp.probe
     canvit = CanViTForPretraining.from_pretrained(record["config"]["pretrained_repo"]).canvit
     seg = CanViTForSemanticSegmentation(canvit=canvit, probe=probe).to(device).eval()
-    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device)
+    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device, outside=exp.outside_writes)
                     if exp.local_writes_from is not None else None)
     images, labels = load_split("val")
     num_scenes = 2 * len(images)

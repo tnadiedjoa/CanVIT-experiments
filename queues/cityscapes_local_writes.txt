@@ -14,3 +14,5 @@ results/cityscapes/c2f_c64_t85_s512_then_native_s0_local5.json scripts/cityscape
 # The 1024 px experimental model with local Writes (needs its probe, from queues/cityscapes.txt).
 results/cityscapes/s1024exp_c2f_c64_t85_s512_then_native_s0_local21.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail s512_then_native --local-writes-from 21
 results/cityscapes/s1024exp_c2f_c64_t85_s512_then_native_s0_local1.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail s512_then_native --local-writes-from 1
+# Writes outside the crop centered instead of dropped (see queues/centered_writes.txt).
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_center1.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --local-writes-from 1 --outside-writes center
