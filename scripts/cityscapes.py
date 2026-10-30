@@ -37,6 +37,7 @@ from torch import Tensor
 from canvit_pytorch import Viewpoint, sample_at_viewpoint
 from canvit_pytorch.benchmarks.ade20k import MeanIoU
 from canvit_pytorch.evaluate.tasks.ade20k_segmentation import predicted_labels
+from canvit_pytorch.flops import dinov3_flops, glimpse_flops
 from canvit_pytorch.hub.repos import FLAGSHIP, RELEASED_GLIMPSE_SIZE_PX
 from canvit_pytorch.model import CanViT, CanViTForPretraining, CanViTForSemanticSegmentation
 from canvit_pytorch.policies import POLICIES, PolicyName, make_policy
@@ -410,6 +411,8 @@ def rollouts(exp: Rollouts) -> None:
         "probe_config": record["config"], "probe_selected_step": record["selected_step"],
         "paper_name": POLICIES[exp.policy].paper_name,
         **iou_record(ious), "mean_scale": (scales / num_scenes).tolist(),
+        "glimpse_gflops": glimpse_flops(seg.canvit.config, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX,
+                                        canvas_grid_size=exp.canvas_grid_size) / 1e9,
         "n_scenes": num_scenes, "wall_time_seconds": time.monotonic() - start,
     })
 
@@ -445,7 +448,8 @@ def passive(exp: Passive) -> None:
     write_result(exp.output, {
         "experiment": {k: str(v) if isinstance(v, Path) else v for k, v in asdict(exp).items()},
         "probe_config": record["config"], "probe_selected_step": record["selected_step"],
-        **iou_record([iou]), "n_scenes": num_scenes, "wall_time_seconds": time.monotonic() - start,
+        **iou_record([iou]), "gflops": dinov3_flops(dinov3.model.config, input_size_px=input_px) / 1e9,
+        "n_scenes": num_scenes, "wall_time_seconds": time.monotonic() - start,
     })
 
 

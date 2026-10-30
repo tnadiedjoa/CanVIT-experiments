@@ -8,13 +8,30 @@ probes/cityscapes_canvas_s512_c64.pt scripts/cityscapes.py train-probe --feature
 results/cityscapes/c2f_c64_t85_s512_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512
 results/cityscapes/c2f_c64_t85_s512_then_native_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native
 results/cityscapes/c2f_c64_t85_native_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail native
+# EG-C2F: within each level, the tile of highest probe entropy first, so the curve over level 3 shows how many of
+# its 64 glimpses capture the gain of real detail.
+results/cityscapes/egc2f_c64_t85_s512_then_native.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --policy entropy_coarse_to_fine
+results/cityscapes/egc2f_c64_t85_s512.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512 --policy entropy_coarse_to_fine
+# The same for the experimental CanViT-B fine-tuned on 1024 px SA-1B scenes (Hub: canvit/canvitb16-add-vpe-pretrain-
+# g128px-s1024px-sa1b-dv3b16-experimental, converted from the 0.1 format by scripts/convert_legacy_checkpoint.py),
+# with a probe trained on 1024 px scenes, its pretraining scene size.
+probes/cityscapes_canvas_s1024exp_s1024_c64.pt scripts/cityscapes.py train-probe --features canvas --pretrained-repo /tmp/canvit-nadiedjoa-24/converted/canvitb16-s1024px-sa1b-experimental --scene-size-px 1024 --canvas-grid-size 64
+results/cityscapes/s1024exp_c2f_c64_t85_s512_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail s512
+results/cityscapes/s1024exp_c2f_c64_t85_s512_then_native_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail s512_then_native
+results/cityscapes/s1024exp_c2f_c64_t85_native_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native
+results/cityscapes/s1024exp_egc2f_c64_t85_s512_then_native.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail s512_then_native --policy entropy_coarse_to_fine
 # DINOv3 ViT-B/16, one passive view of the scene at each input size, each with its own probe.
 probes/cityscapes_dinov3_vitb16_512px.pt scripts/cityscapes.py train-probe --features dinov3_vitb16 --scene-size-px 512
 results/cityscapes/dv3b_512px.json scripts/cityscapes.py passive --probe probes/cityscapes_dinov3_vitb16_512px.pt
-probes/cityscapes_dinov3_vitb16_768px.pt scripts/cityscapes.py train-probe --features dinov3_vitb16 --scene-size-px 768
-results/cityscapes/dv3b_768px.json scripts/cityscapes.py passive --probe probes/cityscapes_dinov3_vitb16_768px.pt
 probes/cityscapes_dinov3_vitb16_1024px.pt scripts/cityscapes.py train-probe --features dinov3_vitb16 --scene-size-px 1024
 results/cityscapes/dv3b_1024px.json scripts/cityscapes.py passive --probe probes/cityscapes_dinov3_vitb16_1024px.pt
+probes/cityscapes_dinov3_vitb16_768px.pt scripts/cityscapes.py train-probe --features dinov3_vitb16 --scene-size-px 768
+results/cityscapes/dv3b_768px.json scripts/cityscapes.py passive --probe probes/cityscapes_dinov3_vitb16_768px.pt
+# The flagship with a probe trained on 1024 px scenes, as for the 1024 px model: separates the model from the probe.
+probes/cityscapes_canvas_s1024_c64.pt scripts/cityscapes.py train-probe --features canvas --scene-size-px 1024 --canvas-grid-size 64
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_probe1024.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024_c64.pt --detail s512_then_native
+results/cityscapes/c2f_c64_t85_s512_s0_probe1024.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024_c64.pt --detail s512
+results/cityscapes/c2f_c64_t85_native_s0_probe1024.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024_c64.pt --detail native
 # A 128×128 canvas (8 px cells at 1024 px, half the 16 px patch of a level-3 glimpse) read by the 64×64 probe.
 results/cityscapes/c2f_c128_t85_s512_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512 --canvas-grid-size 128 --batch-size 4
 results/cityscapes/c2f_c128_t85_s512_then_native_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --canvas-grid-size 128 --batch-size 4

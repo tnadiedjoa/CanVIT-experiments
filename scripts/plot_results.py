@@ -294,6 +294,86 @@ def reconstruction() -> None:
     save(fig, "ade20k_reconstruction.png")
 
 
+CITYSCAPES = RESULTS / "cityscapes"
+DETAIL_STYLES = {  # one blue ramp, darker for more detail; dashed for glimpses all taken from the 1024 px scene
+    "s512": ("all glimpses from the 512 px scene", "#9ec5f4", "-"),
+    "s512_then_native": ("level 3 from the 1024 px scene", "#104281", "-"),
+    "native": ("all glimpses from the 1024 px scene", "#3987e5", "--"),
+}
+
+
+def cityscapes_run(name: str) -> dict | None:
+    path = CITYSCAPES / f"{name}.json"
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def cityscapes_detail() -> None:
+    models = [("CanViT-B (512 px pretraining), probe on 512 px scenes", "c2f_c64_t85_{}_s0"),
+              ("CanViT-B fine-tuned on 1024 px scenes (experimental), probe on 1024 px scenes", "s1024exp_c2f_c64_t85_{}_s0")]
+    models = [(title, pattern) for title, pattern in models if cityscapes_run(pattern.format("s512"))]
+    if not models:
+        return
+    fig, axes = plt.subplots(1, len(models), figsize=(6.5 * len(models), 4), sharey=True, squeeze=False)
+    for ax, (title, pattern) in zip(axes[0], models, strict=True):
+        for detail, (label, color, style) in DETAIL_STYLES.items():
+            if run := cityscapes_run(pattern.format(detail)):
+                ax.plot(run["miou"], style, color=color, label=f"C2F, {label}")
+        eg = cityscapes_run(pattern.replace("c2f", "egc2f").removesuffix("_s0").format("s512_then_native"))
+        if eg:
+            ax.plot(eg["miou"], color=COLORS["EG-C2F"], label="EG-C2F, level 3 from the 1024 px scene")
+        for boundary in (1, 5, 21):
+            ax.axvline(boundary - 0.5, color=GRID, linewidth=1, linestyle=":", zorder=0)
+        ax.set(xlabel="glimpse t", title=title)
+        ax.title.set_fontsize(8)
+        ax.legend(fontsize=7, loc="lower right")
+    axes[0][0].set_ylabel("Cityscapes val mIoU at 1024 px (%)")
+    save(fig, "cityscapes_detail.png")
+
+
+def cityscapes_classes() -> None:
+    low, high = cityscapes_run("c2f_c64_t85_s512_s0"), cityscapes_run("c2f_c64_t85_s512_then_native_s0")
+    if low is None or high is None:
+        return
+    names = low["class_names"]
+    gain = 100 * (np.array(high["per_class_iou"][-1]) - np.array(low["per_class_iou"][-1]))
+    order = np.argsort(gain)
+    fig, ax = plt.subplots(figsize=(6.5, 5))
+    ax.barh(np.arange(len(names)), gain[order], color=COLORS["C2F"], height=0.7)
+    ax.set_yticks(np.arange(len(names)), [names[i] for i in order])
+    ax.axvline(0, color=MUTED, linewidth=1)
+    ax.grid(axis="y", visible=False)
+    t = len(low["miou"]) - 1
+    ax.set(xlabel=f"IoU at t = {t}: level 3 from the 1024 px scene − from the 512 px scene (points)",
+           title="Which classes gain from real detail (C2F, CanViT-B, canvas 64×64)")
+    ax.title.set_fontsize(9)
+    save(fig, "cityscapes_classes.png")
+
+
+def cityscapes_cost() -> None:
+    dinov3 = sorted((run for px in (512, 768, 1024) if (run := cityscapes_run(f"dv3b_{px}px"))),
+                    key=lambda run: run["gflops"])
+    canvit = [(label, run, color, style) for label, name, color, style in [
+        ("CanViT-B, C2F", "c2f_c64_t85_s512_then_native_s0", COLORS["C2F"], "-"),
+        ("CanViT-B, EG-C2F", "egc2f_c64_t85_s512_then_native", COLORS["EG-C2F"], "-"),
+        ("CanViT-B fine-tuned on 1024 px, C2F", "s1024exp_c2f_c64_t85_s512_then_native_s0", COLORS["C2F"], "--"),
+    ] if (run := cityscapes_run(name))]
+    if not dinov3 or not canvit:
+        return
+    fig, ax = plt.subplots(figsize=(7.5, 4.4))
+    for label, run, color, style in canvit:
+        gflops = run["glimpse_gflops"] * np.arange(1, len(run["miou"]) + 1)
+        ax.plot(gflops, run["miou"], style, color=color, label=f"{label} (glimpses 1-{len(run['miou'])})")
+    ax.plot([run["gflops"] for run in dinov3], [run["miou"][0] for run in dinov3], color="#52514e", marker="s",
+            markersize=4, linewidth=1.5, label="DINOv3 ViT-B/16, one view")
+    for run in dinov3:
+        ax.annotate(f"{run['probe_config']['scene_size_px']} px", (run["gflops"], run["miou"][0]), xytext=(0, 7),
+                    textcoords="offset points", ha="center", fontsize=7, color=MUTED)
+    ax.set(xscale="log", xlabel="forward GFLOPs per 1024 px scene (CanViT: cumulative over glimpses)",
+           ylabel="Cityscapes val mIoU at 1024 px (%)", title="Accuracy against compute on 1024 px scenes")
+    ax.legend(fontsize=8, loc="lower right")
+    save(fig, "cityscapes_cost_frontier.png")
+
+
 def save(fig: plt.Figure, name: str) -> None:
     for ax in fig.axes:
         if ax.get_xlabel() == "glimpse t":
@@ -331,4 +411,7 @@ if __name__ == "__main__":
     canvas_grids()
     cost_frontier()
     reconstruction()
+    cityscapes_detail()
+    cityscapes_classes()
+    cityscapes_cost()
     summary_table()
