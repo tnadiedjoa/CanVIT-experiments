@@ -22,6 +22,7 @@ import logging
 import math
 import multiprocessing
 import os
+import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -44,7 +45,9 @@ from canvit_pytorch.policies import POLICIES, PolicyName, make_policy
 from canvit_pytorch.preprocess import imagenet_normalize
 from canvit_pytorch.probes import SegmentationProbe
 from canvit_pytorch.teacher import DINOV3_REPOS, DINOv3Teacher, load_teacher
-from canvit_pytorch.viewpoint import grid_coords
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
+from local_writes import LocalWrites, OutsideWrites  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -62,10 +65,6 @@ SCALE_JITTER_RANGE = (0.5, 2.0)
 
 Split = Literal["train", "val"]
 Features = Literal["canvas", "dinov3_vitb16", "dinov3_vits16"]
-OutsideWrites = Literal["drop", "center"]
-"""What local Writes do with the residuals into the canvas cells outside the glimpse's crop: drop them, or subtract
-their mean over those cells, which removes the one vector the glimpse adds to every cell it did not see and keeps how
-the residual varies across them."""
 Detail = Literal["s512", "s512_then_native", "native"]
 """Where each glimpse is sampled from, for a 1024 px scene:
 
@@ -372,40 +371,6 @@ class Rollouts:
     device: str = "cuda"
 
 
-class LocalWrites:
-    """Drops, or centers, the Canvas Attention Write residuals into the canvas cells whose centers lie outside the
-    current glimpse's crop (Rollouts.local_writes_from, Rollouts.outside_writes)."""
-
-    def __init__(self, seg: CanViTForSemanticSegmentation, *, canvas_grid_size: int, device: torch.device,
-                 outside: OutsideWrites = "drop", max_scale: float | None = None) -> None:
-        self.outside, self.max_scale = outside, max_scale
-        self.num_registers = seg.canvit.config.num_canvas_registers
-        self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
-        self.mask: Tensor | None = None  # [B, num_registers + G*G, 1] for the glimpse being taken
-        self.handles = [write.register_forward_hook(self.hook) for write in seg.canvit.canvas_writes]
-
-    def restrict_to(self, viewpoint: Viewpoint | None) -> None:
-        """Restricts the next glimpse's Writes to its crop, or leaves them unchanged when viewpoint is None."""
-        if viewpoint is None:
-            self.mask = None
-            return
-        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
-        inside = (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)
-        if self.max_scale is not None:
-            inside |= (viewpoint.scales > self.max_scale).view(-1, 1)
-        registers = inside.new_ones(inside.shape[0], self.num_registers)
-        self.mask = torch.cat([registers, inside], dim=1).unsqueeze(-1)
-
-    def hook(self, module, args, output: Tensor) -> Tensor | None:
-        if self.mask is None:
-            return None
-        if self.outside == "drop":
-            return output * self.mask
-        outside = (~self.mask).float()
-        mean = (output.float() * outside).sum(dim=1, keepdim=True) / outside.sum(dim=1, keepdim=True).clamp(min=1)
-        return output - (outside * mean).to(output.dtype)
-
-
 def sample(scene_1024: Tensor, scene_512: Tensor, viewpoint: Viewpoint, detail: Detail) -> Tensor:
     match detail:
         case "s512":
@@ -434,8 +399,8 @@ def rollouts(exp: Rollouts) -> None:
     assert record["config"]["features"] == "canvas", exp.probe
     canvit = CanViTForPretraining.from_pretrained(record["config"]["pretrained_repo"]).canvit
     seg = CanViTForSemanticSegmentation(canvit=canvit, probe=probe).to(device).eval()
-    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device, outside=exp.outside_writes,
-                                max_scale=exp.local_writes_max_scale)
+    local_writes = (LocalWrites(seg.canvit, canvas_grid_size=exp.canvas_grid_size, device=device,
+                                outside=exp.outside_writes, max_scale=exp.local_writes_max_scale)
                     if exp.local_writes_from is not None else None)
     images, labels = load_split("val")
     num_scenes = 2 * len(images)

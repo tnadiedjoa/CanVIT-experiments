@@ -111,7 +111,8 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 
 - With seed 1, the first two rows end at 43.64 and 46.31 at t = 84.
 - Level-3 tiles hold no new pixels on 512 px scenes. With local Writes, level 3 still adds 0.47 points.
-- On the 32×32 canvas of pretraining, local Writes from glimpse 1 end at 43.81 at t = 84 (released: 41.05).
+- On the 32×32 canvas of pretraining, C2F ends at 41.05 at t = 84 with released Writes. Local Writes end at 44.48
+  from level 3 and at 43.81 from glimpse 1.
 - Over level 3, the mean canvas patch norm doubles with released Writes (27.5k to 58.2k). With local Writes, it grows
   by 12% (to 30.7k).
 - From glimpse 1, local Writes cost 0.4 points at t = 20 (−0.46, −0.48 and −0.34 for seeds 0-2), from the first
@@ -129,6 +130,8 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
     are small (R-IID, F2C).
   - F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84). If only its glimpses of scale ≤ 1/4
     keep their Writes in the crop, it reaches 45.38. For C2F, that rule is the same as local Writes from level 2.
+  - With the same rule, F-IID keeps its early mIoU (44.15 over t = 1-20; released: 44.11) and ends at 45.38 at
+    t = 84 (released: 44.88; local Writes from glimpse 1: 45.79).
   - EG-C2F loses 0.45 points on average over t = 1-20.
 - **Removing only the shared vector is not enough.** The last two rows subtract, outside the crop, the mean of the
   Write residuals over those cells, and keep the rest of the leak.
@@ -298,7 +301,9 @@ DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
 | --- | --- |
 | `scripts/c2f_rollout.py` | One scene under C2F: numbered viewpoints, the canvas after each glimpse (the paper's PCA protocol) and the per-glimpse canvas change. |
 | `scripts/ade20k_rollouts.py` | ADE20K validation mIoU after every glimpse, with canvas statistics, for the paper's policies and for variants: other tile orders within C2F's levels, C2F continued past level 2 by revisits, anti-aliased glimpses, scenes without fine detail, a probe read on a larger canvas, scaled Write residuals, Writes damped where the canvas was already seen at a finer scale, Writes kept in the glimpse's crop. Uses the official model, probe, transform and metric. |
-| `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level. |
+| `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level, and how much of it comes from the glimpse's prefix tokens. |
+| `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share. |
+| `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
 | `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released or local Writes), and of DINOv3 at several input sizes. |
 | `scripts/convert_legacy_checkpoint.py` | Converts a checkpoint in the canvit-pytorch 0.1 format (the Hub's experimental 1024 px CanViT-B) to the current format. |
 | `scripts/run_queue.sh`, `scripts/run_official_queue.sh`, `scripts/run_commands.sh`, `queues/` | Run a list of experiments one after another, skipping finished ones: `ade20k_rollouts.py` runs, official `canvit_pytorch.evaluate` runs, and any Python command. |

@@ -1,0 +1,7 @@
+# ADE20K, first 500 validation images: glimpses of 256 px (16×16 patches) against the 128 px of pretraining. A 256 px
+# glimpse sees C2F's level-1 tiles at the scene's native resolution; DINOv3 ViT-B/16 gains 11.8 points from 128 to
+# 256 px. RFS at t = 0 is one view of the whole scene.
+rfs_c64_t5_n500 --policy repeated_full_scene --num-glimpses 5 --canvas-grid-size 64 --num-images 500
+rfs_c64_t5_n500_g256 --policy repeated_full_scene --num-glimpses 5 --canvas-grid-size 64 --num-images 500 --glimpse-size-px 256
+c2f_c64_t21_s0_n500 --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 64 --num-images 500
+c2f_c64_t21_s0_n500_g256 --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 64 --num-images 500 --glimpse-size-px 256

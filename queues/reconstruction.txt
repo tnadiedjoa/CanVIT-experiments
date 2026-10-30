@@ -1,0 +1,10 @@
+# The paper's reconstruction metric (DINOv3 teacher features from a 32×32 canvas, ADE20K validation), which needs no
+# task probe, with released and local Writes (scripts/reconstruction_rollouts.py). RFS checks the script against the
+# official CLI (results/official.json), value for value.
+results/reconstruction/rfs_c32_t21.json scripts/reconstruction_rollouts.py --policy repeated_full_scene --num-glimpses 21
+results/reconstruction/c2f_c32_t85_s0.json scripts/reconstruction_rollouts.py --policy coarse_to_fine
+results/reconstruction/c2f_c32_t85_s0_local21.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --local-writes-from 21
+results/reconstruction/c2f_c32_t85_s0_local5.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --local-writes-from 5
+results/reconstruction/c2f_c32_t85_s0_local1.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --local-writes-from 1
+results/reconstruction/fiid_c32_t85_s0_localmax0.25.json scripts/reconstruction_rollouts.py --policy full_then_random --local-writes-from 1 --local-writes-max-scale 0.25
+results/reconstruction/fiid_c32_t85_s0.json scripts/reconstruction_rollouts.py --policy full_then_random

@@ -1,0 +1,5 @@
+# ADE20K, first 500 validation images: C2F over 85 glimpses with the official bfloat16 autocast and in float32. Under
+# autocast, a Write's attention differs from float32 by ~13%; does the level-3 drop depend on it?
+c2f_c64_t85_s0_n500 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --num-images 500
+c2f_c64_t85_s0_n500_fp32 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --num-images 500 --no-autocast
+c2f_c64_t85_s0_n500_fp32_local21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --num-images 500 --no-autocast --local-writes-from 21

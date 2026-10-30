@@ -12,6 +12,7 @@ same policy. The validation scenes are decoded once and kept as uint8 in a cache
 import json
 import logging
 import math
+import sys
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -37,6 +38,9 @@ from canvit_pytorch.policies.quadtree import levels_covering, quadtree_level, qu
 from canvit_pytorch.preprocess import IMAGENET_MEAN, IMAGENET_STD
 from canvit_pytorch.viewpoint import grid_coords
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
+from local_writes import LocalWrites, OutsideWrites  # noqa: E402
+
 log = logging.getLogger(__name__)
 
 TileOrder = Literal["low_entropy", "canvas_contrast", "oracle_error"]
@@ -53,10 +57,6 @@ finer, upsampled level 3: the level-2 tiles again, each pass in a new random ord
 PolicyChoice = PolicyName | Literal[
     "c2f_low_entropy", "c2f_canvas_contrast", "c2f_oracle_error", "c2f_then_level2_revisits", "c2f_then_full_scene",
 ]
-OutsideWrites = Literal["drop", "center"]
-"""What local Writes do with the residuals into the canvas cells outside the glimpse's crop: drop them, or subtract
-their mean over those cells, which removes the one vector the glimpse adds to every cell it did not see and keeps how
-the residual varies across them."""
 Sampling = Literal["bilinear", "antialiased"]
 """bilinear: the official extraction (grid_sample, used in pretraining too); antialiased: the crop at its native
 resolution, then downsampled with an anti-aliasing filter when it covers more pixels than the glimpse."""
@@ -101,6 +101,12 @@ class Experiment:
     """Scenes per batch; 8 fit a 64×64 canvas in 24 GB, as in the official evaluation docs."""
     cache: Path = Path("/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt")
     """uint8 validation scenes and decoded labels at the released scene size; built from $ADE20K_ROOT if missing."""
+    glimpse_size_px: int = RELEASED_GLIMPSE_SIZE_PX
+    """Side of each glimpse: 128 px (8×8 patches) in pretraining and in the paper."""
+    num_images: int | None = None
+    """When set, only the first validation images, for quick checks."""
+    autocast: bool = True
+    """bfloat16 autocast, as in the official evaluation; False runs in float32."""
     device: str = "cuda"
 
 
@@ -295,40 +301,6 @@ class FinerSeenWriteGate:
             handle.remove()
 
 
-class LocalWrites:
-    """Drops, or centers, the Canvas Attention Write residuals into the canvas cells whose centers lie outside the
-    current glimpse's crop (Experiment.local_writes_from, Experiment.outside_writes)."""
-
-    def __init__(self, seg: CanViTForSemanticSegmentation, *, canvas_grid_size: int, device: torch.device,
-                 outside: OutsideWrites = "drop", max_scale: float | None = None) -> None:
-        self.outside, self.max_scale = outside, max_scale
-        self.num_registers = seg.canvit.config.num_canvas_registers
-        self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
-        self.mask: Tensor | None = None  # [B, num_registers + G*G, 1] for the glimpse being taken
-        self.handles = [write.register_forward_hook(self.hook) for write in seg.canvit.canvas_writes]
-
-    def restrict_to(self, viewpoint: Viewpoint | None) -> None:
-        """Restricts the next glimpse's Writes to its crop, or leaves them unchanged when viewpoint is None."""
-        if viewpoint is None:
-            self.mask = None
-            return
-        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
-        inside = (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)
-        if self.max_scale is not None:
-            inside |= (viewpoint.scales > self.max_scale).view(-1, 1)
-        registers = inside.new_ones(inside.shape[0], self.num_registers)
-        self.mask = torch.cat([registers, inside], dim=1).unsqueeze(-1)
-
-    def hook(self, module, args, output: Tensor) -> Tensor | None:
-        if self.mask is None:
-            return None
-        if self.outside == "drop":
-            return output * self.mask
-        outside = (~self.mask).float()
-        mean = (output.float() * outside).sum(dim=1, keepdim=True) / outside.sum(dim=1, keepdim=True).clamp(min=1)
-        return output - (outside * mean).to(output.dtype)
-
-
 def build_policy(exp: Experiment, seg: CanViTForSemanticSegmentation, *, labels: Tensor, device: torch.device) -> Policy:
     batch_size = labels.shape[0]
     if exp.policy in get_args(PolicyName):
@@ -372,10 +344,11 @@ def main(exp: Experiment) -> None:
     seg = CanViTForSemanticSegmentation.from_pretrained_with_probe(pretrained_repo=FLAGSHIP, probe_repo=probe_repo)
     seg = seg.to(device).eval()
     images_u8, labels_u8 = load_validation_scenes(exp.cache, size_px=scene_px)
+    images_u8, labels_u8 = images_u8[:exp.num_images], labels_u8[:exp.num_images]
     sample = sampler(exp.sampling)
     scaled_writes = ScaledWrites(seg, exp.write_scale)
-    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device, outside=exp.outside_writes,
-                                max_scale=exp.local_writes_max_scale)
+    local_writes = (LocalWrites(seg.canvit, canvas_grid_size=exp.canvas_grid_size, device=device,
+                                outside=exp.outside_writes, max_scale=exp.local_writes_max_scale)
                     if exp.local_writes_from is not None else None)
 
     mious = [ade20k.MeanIoU(device=device) for _ in range(num_glimpses)]
@@ -388,7 +361,7 @@ def main(exp: Experiment) -> None:
             images = remove_detail(images, detail_px=exp.scene_detail_px)
         labels = labels_u8[first:first + exp.batch_size].to(device).long()
         batch_size = images.shape[0]
-        with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
+        with torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=exp.autocast):
             policy = build_policy(exp, seg, labels=labels, device=device)
             state = seg.init_state(batch_size=batch_size, canvas_grid_size=exp.canvas_grid_size)
             gate = (FinerSeenWriteGate(seg, exponent=exp.finer_seen_write_exponent, batch_size=batch_size,
@@ -398,7 +371,7 @@ def main(exp: Experiment) -> None:
             for t in range(num_glimpses):
                 viewpoint = policy.step(t, state)
                 scaled_writes.active = t >= 1
-                glimpse = sample(spatial=images, viewpoint=viewpoint, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
+                glimpse = sample(spatial=images, viewpoint=viewpoint, glimpse_size_px=exp.glimpse_size_px)
                 if gate is not None:
                     gate.before_glimpse(viewpoint)
                 if local_writes is not None:
