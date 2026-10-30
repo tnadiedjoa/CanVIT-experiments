@@ -244,6 +244,56 @@ def canvas_grids() -> None:
     save(fig, "ade20k_canvas_grids.png")
 
 
+def official() -> dict | None:
+    """The official CLI's runs, collected by scripts/export_official.py."""
+    path = RESULTS / "official.json"
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def cost_frontier() -> None:
+    exported = official()
+    c2f = {grid: runs(f"c2f_c{grid}_t21") for grid in (32, 64)}
+    if exported is None or not exported["dinov3_ade20k"] or not all(c2f.values()):
+        return
+    fig, ax = plt.subplots(figsize=(7.5, 4.4))
+    for grid, style in ((64, "-"), (32, "--")):
+        result = c2f[grid]
+        assert result is not None
+        miou = result.mean("miou")
+        gflops = exported["canvit_glimpse_gflops"][str(grid)] * np.arange(1, len(miou) + 1)
+        ax.plot(gflops, miou, style, color=COLORS["C2F"], marker="o", markersize=3,
+                label=f"CanViT-B, C2F, canvas {grid}×{grid} (glimpses 1-{len(miou)})")
+    for variant, color, marker, name in (("vitb16", "#52514e", "s", "DINOv3 ViT-B/16"),
+                                         ("vits16", "#a3a29d", "D", "DINOv3 ViT-S/16")):
+        points = sorted((r for r in exported["dinov3_ade20k"] if r["variant"] == variant), key=lambda r: r["input_size_px"])
+        ax.plot([r["gflops"] for r in points], [r["miou"] for r in points], color=color, marker=marker, markersize=4,
+                linewidth=1.5, label=f"{name}, one view at 128-512 px")
+        for r, offset, align in ((points[0], (4, -10), "left"), (points[-1], (0, 7), "center")):
+            ax.annotate(f"{r['input_size_px']} px", (r["gflops"], r["miou"]), xytext=offset, textcoords="offset points",
+                        ha=align, fontsize=7, color=MUTED)
+    ax.set(xscale="log", xlabel="forward GFLOPs per scene (CanViT: cumulative over glimpses)", ylabel="ADE20K val mIoU (%)",
+           title="Accuracy against compute, released probes")
+    ax.legend(fontsize=8, loc="lower right")
+    save(fig, "ade20k_cost_frontier.png")
+
+
+def reconstruction() -> None:
+    exported = official()
+    if exported is None or not exported["reconstruction"]:
+        return
+    fig, ax = plt.subplots(figsize=(7.5, 3.8))
+    for run in sorted(exported["reconstruction"], key=lambda r: list(POLICY_LABELS).index(r["policy"])):
+        label = POLICY_LABELS[run["policy"]]
+        ax.plot([p["t"] for p in run["per_timestep"]], [p["scene_cos_norm"] for p in run["per_timestep"]],
+                color=COLORS[label], label=label)
+    ax.axvline(20.5, color=MUTED, linewidth=1, linestyle=":")
+    (grid,) = {run["canvas_grid_size"] for run in exported["reconstruction"]}
+    ax.set(xlabel="glimpse t", ylabel="cosine similarity to DINOv3 (standardized)",
+           title=f"Prediction of the teacher's scene features from the canvas ({grid}×{grid} canvas)")
+    ax.legend(fontsize=8, loc="lower right")
+    save(fig, "ade20k_reconstruction.png")
+
+
 def save(fig: plt.Figure, name: str) -> None:
     for ax in fig.axes:
         if ax.get_xlabel() == "glimpse t":
@@ -279,4 +329,6 @@ if __name__ == "__main__":
     level3_controls()
     scene_detail()
     canvas_grids()
+    cost_frontier()
+    reconstruction()
     summary_table()

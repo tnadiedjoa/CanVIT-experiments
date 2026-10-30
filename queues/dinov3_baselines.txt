@@ -14,12 +14,9 @@ dv3s_256px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 256
 dv3s_384px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 384
 dv3s_512px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 512
 # Reconstruction of the DINOv3 teacher's features (cosine similarity) after every glimpse, ADE20K validation.
-# Probe-free: whether the drift seen in mIoU under repetition is in the canvas itself.
+# Probe-free: whether the drift seen in mIoU under repetition is in the canvas itself. 32×32 canvas only: the
+# released model predicts a 32×32 grid of teacher features, and the task requires the canvas grid to match.
 recon_c2f_c32_t85 reconstruction --episode.policy coarse_to_fine --episode.num-glimpses 85 --episode.canvas-grid-size 32
 recon_fiid_c32_t85 reconstruction --episode.policy full_then_random --episode.num-glimpses 85 --episode.canvas-grid-size 32
 recon_riid_c32_t85 reconstruction --episode.policy random --episode.num-glimpses 85 --episode.canvas-grid-size 32
 recon_rfs_c32_t85 reconstruction --episode.policy repeated_full_scene --episode.num-glimpses 85 --episode.canvas-grid-size 32
-recon_c2f_c64_t85 reconstruction --episode.policy coarse_to_fine --episode.num-glimpses 85 --episode.canvas-grid-size 64 --batch-size 8
-recon_fiid_c64_t85 reconstruction --episode.policy full_then_random --episode.num-glimpses 85 --episode.canvas-grid-size 64 --batch-size 8
-recon_riid_c64_t85 reconstruction --episode.policy random --episode.num-glimpses 85 --episode.canvas-grid-size 64 --batch-size 8
-recon_rfs_c64_t85 reconstruction --episode.policy repeated_full_scene --episode.num-glimpses 85 --episode.canvas-grid-size 64 --batch-size 8
