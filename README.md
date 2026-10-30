@@ -109,7 +109,9 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 | outside the crop, only their mean removed, from level 3 | 41.10 | 45.93 | 44.19 |
 | outside the crop, only their mean removed, from glimpse 1 | 40.98 | 42.18 | 34.69 |
 
+- With seed 1, the first two rows end at 43.64 and 46.31 at t = 84.
 - Level-3 tiles hold no new pixels on 512 px scenes. With local Writes, level 3 still adds 0.47 points.
+- On the 32×32 canvas of pretraining, local Writes from glimpse 1 end at 43.81 at t = 84 (released: 41.05).
 - Over level 3, the mean canvas patch norm doubles with released Writes (27.5k to 58.2k). With local Writes, it grows
   by 12% (to 30.7k).
 - From glimpse 1, local Writes cost 0.4 points at t = 20 (−0.46, −0.48 and −0.34 for seeds 0-2), from the first
@@ -125,7 +127,8 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 
   - With local Writes, a cell that no glimpse has covered receives nothing. That costs most when the first glimpses
     are small (R-IID, F2C).
-  - F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84).
+  - F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84). If only its glimpses of scale ≤ 1/4
+    keep their Writes in the crop, it reaches 45.38. For C2F, that rule is the same as local Writes from level 2.
   - EG-C2F loses 0.45 points on average over t = 1-20.
 - **Removing only the shared vector is not enough.** The last two rows subtract, outside the crop, the mean of the
   Write residuals over those cells, and keep the rest of the leak.
