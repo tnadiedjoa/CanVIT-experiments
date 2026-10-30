@@ -1,0 +1,4 @@
+# A second seed for the 85-glimpse rollouts of the random policies and C2F.
+riid_c64_t85_s1 --policy random --canvas-grid-size 64 --num-glimpses 85 --seed 1
+fiid_c64_t85_s1 --policy full_then_random --canvas-grid-size 64 --num-glimpses 85 --seed 1
+c2f_c64_t85_s1 --policy coarse_to_fine --canvas-grid-size 64 --num-glimpses 85 --seed 1
