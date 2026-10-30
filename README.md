@@ -3,11 +3,11 @@
 Experiments with the released [CanViT](https://github.com/m2b3/CanViT) (Canvas Vision Transformer,
 arXiv:2603.22570) active-vision model: reproducing its ADE20K results and testing it in settings the paper does not
 cover. Everything here uses the published `canvit-pytorch` package and the released checkpoints from the Hugging
-Face Hub; nothing is retrained.
+Face Hub. CanViT is never retrained; only linear probes are trained, where none is released (Cityscapes).
 
 ## Results
 
-ADE20K validation (2,000 images, 512 px scenes), with the released CanViT-B
+Unless a section says otherwise: ADE20K validation (2,000 images, 512 px scenes), with the released CanViT-B
 (`canvitb16-add-vpe-pretrain-g128px-s512px-in21k-dv3b16-2026-02-02`) and its released linear probes, all frozen.
 mIoU is in %, and glimpses are counted from t = 0. Runs use bfloat16 autocast on one RTX 3090. Every condition is in
 [`results/summary.md`](results/summary.md).
@@ -57,7 +57,7 @@ Pretraining rollouts average four glimpses. The table follows four policies over
 - **Repeating the full view does.** RFS falls from 41.12 at t = 2 to 37.55. Meanwhile the raw canvas norm grows
   linearly, because Writes add unnormalized residuals.
 - **C2F peaks at the end of level 2 (t = 20).** It then loses 2.3 points over level 3, whose tiles are upsampled 2×
-  from the 512 px scene.
+  from the 512 px scene. The next section traces this loss to Writes that land outside the glimpse.
 
 Three controls continue the same 21 C2F glimpses differently (seed 0). Change in mIoU from t = 20 to t = 84:
 
@@ -78,6 +78,38 @@ The canvas norm, the change per glimpse and the probe entropy for these rollouts
 [`outputs/ade20k_long_rollouts.png`](outputs/ade20k_long_rollouts.png).
 
 ![Reconstruction of the teacher's features over 85 glimpses](outputs/ade20k_reconstruction.png)
+
+### Writes outside the glimpse cause C2F's level-3 drop
+
+A Canvas Attention Write lets every canvas cell attend to the glimpse's tokens, so a glimpse also changes the cells
+it did not see. [`scripts/write_leakage.py`](scripts/write_leakage.py) measures this along C2F on 256 ADE20K scenes
+(64×64 canvas). Mean norm of the summed Write residual in a cell outside the crop, relative to a cell inside:
+
+| C2F level (tiles) | 1 (4) | 2 (16) | 3 (64) |
+|---|---|---|---|
+| outside / inside | 0.28 | 0.18 | 0.16 |
+
+Over level 3, a cell receives the leaked residuals of the 63 glimpses of other tiles. They mostly point the same way:
+their sum is 8.3 times the residual from the cell's own glimpse.
+
+Dropping the Write residuals outside the crop removes this. It is a forward hook with no retraining, and the canvas
+registers keep their residuals. Applied from glimpse 21 on, it turns the level-3 drop into a gain (C2F, seed 0):
+
+| Writes | t = 1 | t = 20 | t = 84 |
+|---|---|---|---|
+| released | 41.10 | 45.93 | 43.65 |
+| kept in the crop from level 3 (t ≥ 21) | 41.10 | 45.93 | 46.40 |
+| kept in the crop from glimpse 1 | 40.56 | 45.47 | 45.63 |
+
+- Level-3 tiles hold no new pixels on 512 px scenes. With local Writes, level 3 still adds 0.47 points.
+- Over level 3, the mean canvas patch norm doubles with released Writes (27.5k to 58.2k). With local Writes, it grows
+  by 12% (to 30.7k).
+- From glimpse 1, local Writes cost 0.4 points at t = 20 (−0.46, −0.48 and −0.34 for seeds 0-2), from the first
+  level-1 glimpse on. In C2F's first levels, the writes outside the crop help on ADE20K.
+- RFS, and the full scene repeated after C2F, are unchanged: their glimpse covers the whole canvas. Their decline
+  does not come from writes outside the crop.
+
+![Local Writes on ADE20K](outputs/ade20k_local_writes.png)
 
 ### Most of C2F's gain does not need new pixels
 
@@ -134,6 +166,46 @@ layer-normalized patch to its four neighbours, and a tile's score is the mean ov
   - It halves the loss from repeating the full scene after C2F (43.10 vs 40.17 at t = 84), which again points at
     repetition rather than coarseness.
 
+### Cityscapes at 1024 px: past the pretraining resolution
+
+Each Cityscapes validation image (1024×2048) is split into two 1024 px scenes, for 1,000 scenes. mIoU is over the 19
+classes, at 1024 px. No Cityscapes probe is released, so [`scripts/cityscapes.py`](scripts/cityscapes.py) trains a
+linear probe on the frozen 64×64 canvas, as the paper does for ADE20K:
+
+- 512 px training scenes, 10 R-IID glimpses each, 8,000 steps;
+- step selected on the validation split, with F-IID glimpses.
+
+C2F to level 3 takes 85 glimpses. A level-3 tile spans 128 px of the 1024 px scene, so a glimpse can show it at full
+resolution. Pretraining used 512 px scenes, where glimpses this small are always upsampled 2×.
+
+| Writes | t = 20 | t = 84, level 3 upsampled from 512 px | t = 84, level 3 from 1024 px |
+|---|---|---|---|
+| released | 61.80 | 58.91 | 59.20 |
+| kept in the crop from level 3 | 61.80 | 63.17 | 63.57 |
+| kept in the crop from glimpse 1 | 63.26 | 64.08 | 64.49 |
+
+Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51.
+
+- **Real detail adds little.** Over level 3, glimpses from the 1024 px scene beat upsampled ones by 0.29 to 0.41
+  points at t = 84.
+- **Keeping the Writes in the crop adds 4.4 points** at t = 84 (59.20 to 63.57).
+- **Reading levels 0-2 from the 1024 px scene as well** changes the mIoU by at most 0.24 points.
+- **Small classes suffer most from writes outside the crop.** With released Writes, from t = 20 to t = 84:
+  - truck −9.6, traffic sign −9.3, pole −7.5, rider −7.2;
+  - road +0.1, car +0.2.
+
+  With Writes kept in the crop from level 3, every class gains, small ones most: traffic sign +4.7, traffic light
+  +4.2.
+- **Unlike on ADE20K, local Writes from glimpse 1 help before level 3:** +1.46 points at t = 20.
+- **EG-C2F:**
+  - With released Writes, it gains 0.86 points in its first 10 level-3 glimpses (62.70 at t = 30), then loses them.
+  - With Writes kept in the crop from glimpse 1, it reaches 64.40 at t = 36. C2F needs 84 glimpses for the same
+    level (64.49).
+
+![C2F and EG-C2F to level 3 on Cityscapes](outputs/cityscapes_level3.png)
+
+![Per-class IoU change over level 3](outputs/cityscapes_classes.png)
+
 ### Cost of the asymmetric Canvas Attention
 
 The released model has no learned projections on the canvas side; the QKVO ablation has projections on both sides.
@@ -148,10 +220,11 @@ size 1, both variants take 15-23 ms, a time bounded by kernel launches.
 
 ### Limits
 
-- One dataset.
+- Two datasets. On Cityscapes, the probe is trained here and every run uses one seed.
 - Deterministic policies (RFS, EG-C2F and the scored tile orders) ran once; the others ran over the seeds shown.
   Variants of C2F use seed 0.
-- Nothing is retrained, so the conclusions hold for the released model.
+- Nothing in CanViT is retrained, so the conclusions hold for the released model. Local Writes are a change at
+  inference only; a model pretrained with them may behave differently.
 
 ## Setup
 
@@ -170,8 +243,10 @@ DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
 | Path | What it does |
 | --- | --- |
 | `scripts/c2f_rollout.py` | One scene under C2F: numbered viewpoints, the canvas after each glimpse (the paper's PCA protocol) and the per-glimpse canvas change. |
-| `scripts/ade20k_rollouts.py` | ADE20K validation mIoU after every glimpse, with canvas statistics, for the paper's policies and for variants: other tile orders within C2F's levels, C2F continued past level 2 by revisits, anti-aliased glimpses, scenes without fine detail, a probe read on a larger canvas, scaled Write residuals, Writes damped where the canvas was already seen at a finer scale. Uses the official model, probe, transform and metric. |
-| `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining, and of DINOv3 at several input sizes. |
+| `scripts/ade20k_rollouts.py` | ADE20K validation mIoU after every glimpse, with canvas statistics, for the paper's policies and for variants: other tile orders within C2F's levels, C2F continued past level 2 by revisits, anti-aliased glimpses, scenes without fine detail, a probe read on a larger canvas, scaled Write residuals, Writes damped where the canvas was already seen at a finer scale, Writes kept in the glimpse's crop. Uses the official model, probe, transform and metric. |
+| `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level. |
+| `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released or local Writes), and of DINOv3 at several input sizes. |
+| `scripts/convert_legacy_checkpoint.py` | Converts a checkpoint in the canvit-pytorch 0.1 format (the Hub's experimental 1024 px CanViT-B) to the current format. |
 | `scripts/run_queue.sh`, `scripts/run_official_queue.sh`, `scripts/run_commands.sh`, `queues/` | Run a list of experiments one after another, skipping finished ones: `ade20k_rollouts.py` runs, official `canvit_pytorch.evaluate` runs, and any Python command. |
 | `scripts/plot_results.py` | Figures in `outputs/` and the table `results/summary.md` from the saved results. |
 | `scripts/canvas_attention_cost.py` | FLOPs and GPU latency of a glimpse with asymmetric and QKVO Canvas Attention. |

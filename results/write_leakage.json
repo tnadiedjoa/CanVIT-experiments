@@ -1,0 +1,50 @@
+{
+ "measurement": {
+  "output": "results/write_leakage.json",
+  "num_scenes": 256,
+  "canvas_grid_size": 64,
+  "seed": 0,
+  "batch_size": 16,
+  "cache": "/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt",
+  "device": "cuda"
+ },
+ "pretrained_repo": "canvit/canvitb16-add-vpe-pretrain-g128px-s512px-in21k-dv3b16-2026-02-02",
+ "levels": [
+  {
+   "level": 0,
+   "first_glimpse": 0,
+   "glimpses": 1,
+   "residual_norm_inside": 6584.779571533203,
+   "residual_norm_outside": null,
+   "outside_over_inside": null
+  },
+  {
+   "level": 1,
+   "first_glimpse": 1,
+   "glimpses": 4,
+   "residual_norm_inside": 5352.471588134766,
+   "residual_norm_outside": 1506.9918403625488,
+   "outside_over_inside": 0.2815506473127692
+  },
+  {
+   "level": 2,
+   "first_glimpse": 5,
+   "glimpses": 16,
+   "residual_norm_inside": 5150.342836380005,
+   "residual_norm_outside": 906.382538318634,
+   "outside_over_inside": 0.17598489403779158
+  },
+  {
+   "level": 3,
+   "first_glimpse": 21,
+   "glimpses": 64,
+   "residual_norm_inside": 3933.7624769210815,
+   "residual_norm_outside": 637.3015260100365,
+   "outside_over_inside": 0.16200813591288468
+  }
+ ],
+ "level3_leaked_sum_norm": 32680.137084960938,
+ "level3_own_sum_norm": 3933.762481689453,
+ "level3_leaked_over_own": 8.307603023079734,
+ "final_canvas_patch_norm": 58339.92529296875
+}

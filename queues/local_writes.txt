@@ -10,3 +10,9 @@ riid_c64_t85_s0_local1 --policy random --num-glimpses 85 --canvas-grid-size 64 -
 f2c_c64_t21_s0_local1 --policy fine_to_coarse --num-glimpses 21 --canvas-grid-size 64 --local-writes-from 1
 c2f_then_level2_revisits_c64_t85_s0_local21 --policy c2f_then_level2_revisits --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21
 c2f_c32_t85_s0_local1 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 32 --batch-size 32 --local-writes-from 1
+# Follow-ups, 2026-10-30 16:30. On ADE20K, local Writes from glimpse 1 cost ~0.45 points at t = 20 (3 seeds), most of
+# it at level 1, while local Writes from level 3 turn the level-3 drop into a gain. Second seed of the latter, local
+# Writes from level 2 (glimpse 5), and the 32×32 canvas of pretraining.
+c2f_c64_t85_s1_local21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21 --seed 1
+c2f_c64_t85_s0_local5 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 5
+c2f_c32_t85_s0_local21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 32 --batch-size 32 --local-writes-from 21

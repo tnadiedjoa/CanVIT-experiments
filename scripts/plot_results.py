@@ -364,6 +364,31 @@ def cityscapes_classes() -> None:
     save(fig, "cityscapes_classes.png")
 
 
+def local_writes() -> None:
+    series = [(WRITE_MODES[suffix], result) for suffix, result in [
+        ("", runs("c2f_c64_t85")),
+        ("_local21", runs(*(f"c2f_c64_t85_s{seed}_local21" for seed in range(5)))),
+        ("_local1", runs(*(f"c2f_c64_t85_s{seed}_local1" for seed in range(5)))),
+    ]]
+    if any(result is None for _, result in series):
+        return
+    fig, (miou_ax, norm_ax) = plt.subplots(1, 2, figsize=(11, 3.8))
+    for (mode, color), result in series:
+        assert result is not None
+        seeds = f"{len(result.runs)} seed{'s' if len(result.runs) > 1 else ''}"
+        miou_ax.plot(result.mean("miou"), color=color, label=f"{mode} ({seeds})")
+        norm_ax.plot(result.mean("canvas_patch_norm") / 1e3, color=color, label=mode)
+    for ax in (miou_ax, norm_ax):
+        level_boundaries(ax)
+        ax.set_xlabel("glimpse t")
+    miou_ax.set(ylabel="ADE20K val mIoU (%)", title="C2F, canvas 64×64 (level 3 upsampled 2× from 512 px)")
+    norm_ax.set(ylabel="raw canvas patch L2 norm (thousands)", title="Mean norm of a canvas patch")
+    for ax in (miou_ax, norm_ax):
+        ax.title.set_fontsize(9)
+    miou_ax.legend(fontsize=7, loc="lower right")
+    save(fig, "ade20k_local_writes.png")
+
+
 def cityscapes_cost() -> None:
     dinov3 = sorted((run for px in (512, 768, 1024) if (run := cityscapes_run(f"dv3b_{px}px"))),
                     key=lambda run: run["gflops"])
@@ -426,6 +451,7 @@ if __name__ == "__main__":
     canvas_grids()
     cost_frontier()
     reconstruction()
+    local_writes()
     cityscapes_level3()
     cityscapes_classes()
     cityscapes_cost()
