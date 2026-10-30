@@ -113,6 +113,9 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
   by 12% (to 30.7k).
 - On the 32×32 canvas of pretraining, C2F ends at 41.05 at t = 84 with released Writes. Local Writes end at 44.48
   from level 3 and at 43.81 from glimpse 1.
+- **The paper's reconstruction metric agrees, without any probe.** It measures how well the 32×32 canvas predicts
+  DINOv3's features of the scene (cosine similarity). For C2F with released Writes, it falls from 0.837 at t = 20
+  to 0.803 at t = 84. With Writes kept in the crop from level 3, it keeps rising, to 0.839 at t = 84.
 - The drop is not a bfloat16 artifact. On the first 500 images, C2F ends at 40.48 at t = 84 both in float32 and under
   the official bfloat16 autocast. In float32, local Writes from level 3 raise it to 42.86.
 - From glimpse 1, local Writes cost 0.4 points at t = 20 (−0.46, −0.48 and −0.34 for seeds 0-2), from the first
@@ -134,7 +137,8 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 - With local Writes, a cell that no glimpse has covered receives nothing. That costs most when the first glimpses
   are small (R-IID, F2C).
 - F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84).
-- EG-C2F loses 0.45 points on average over t = 1-20.
+- EG-C2F loses 0.45 points on average over t = 1-20. Over 85 glimpses with released Writes, EG-C2F drops like C2F:
+  45.75 at t = 20, 43.53 at t = 84.
 
 **Local Writes for small glimpses only.** Glimpses of scale ≤ 1/4 keep their Writes in the crop, and larger ones
 write everywhere; for C2F, this is local Writes from level 2. On C2F, F-IID and R-IID, the rule costs at most 0.06
@@ -299,6 +303,9 @@ from the 1024 px scene, as above:
   - level-3 tiles upsampled from the 512 px scene give 63.37 (−0.28);
   - every glimpse from the 1024 px scene, its pretraining scene size, gives 63.89 (+0.24).
 - **EG-C2F with released Writes** peaks at 66.02 (t = 30), then falls to 64.25.
+- **With every glimpse from the 1024 px scene and Writes kept in the crop from level 2**, C2F reaches 67.16 at
+  t = 84 and EG-C2F 67.57 (t = 77). After 8 glimpses (167 GFLOPs), EG-C2F already scores 63.78 or more.
+  DINOv3 ViT-B/16 scores 63.78 with one 512 px view (215 GFLOPs), with its own probe trained the same way.
 - The two models' probes are trained on different scene sizes (1024 and 512 px). The 3.16 points between them at
   t = 20 therefore mix model and probe; a flagship probe trained on 1024 px scenes is queued.
 
