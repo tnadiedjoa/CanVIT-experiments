@@ -31,9 +31,9 @@ from canvit_pytorch.evaluate.tasks.ade20k_segmentation import predicted_labels
 from canvit_pytorch.hub.repos import FLAGSHIP, RELEASED_GLIMPSE_SIZE_PX, RELEASED_SCENE_SIZE_PX, released_ade20k_probe
 from canvit_pytorch.model import CanViTForSemanticSegmentation
 from canvit_pytorch.model.canvit import RecurrentState
-from canvit_pytorch.policies import POLICIES, Policy, PolicyName, make_policy
+from canvit_pytorch.policies import POLICIES, FixedSequence, Policy, PolicyName, make_policy
 from canvit_pytorch.policies.entropy import predictive_entropy, tile_masks
-from canvit_pytorch.policies.quadtree import levels_covering, quadtree_level
+from canvit_pytorch.policies.quadtree import levels_covering, quadtree_level, quadtree_level_z_order, shuffled_levels
 from canvit_pytorch.preprocess import IMAGENET_MEAN, IMAGENET_STD
 
 log = logging.getLogger(__name__)
@@ -46,7 +46,12 @@ TileOrder = Literal["low_entropy", "canvas_contrast", "oracle_error"]
 - oracle_error: the tile whose pixels the current segmentation gets wrong most often, read from the ground truth;
   an upper reference, not a policy.
 """
-PolicyChoice = PolicyName | Literal["c2f_low_entropy", "c2f_canvas_contrast", "c2f_oracle_error"]
+Continuation = Literal["level2_revisits", "full_scene"]
+"""What follows C2F's first three levels (21 glimpses, down to tiles at the scene's native resolution) in place of the
+finer, upsampled level 3: the level-2 tiles again, each pass in a new random order, or the full scene repeated."""
+PolicyChoice = PolicyName | Literal[
+    "c2f_low_entropy", "c2f_canvas_contrast", "c2f_oracle_error", "c2f_then_level2_revisits", "c2f_then_full_scene",
+]
 Sampling = Literal["bilinear", "antialiased"]
 """bilinear: the official extraction (grid_sample, used in pretraining too); antialiased: the crop at its native
 resolution, then downsampled with an anti-aliasing filter when it covers more pixels than the glimpse."""
@@ -219,11 +224,29 @@ class ScaledWrites:
         return output * self.factor if self.active else None
 
 
+def c2f_then(continuation: Continuation, *, batch_size: int, device: torch.device, num_glimpses: int) -> FixedSequence:
+    """C2F's levels 0 to 2, enumerated as C2F enumerates them, then the continuation up to num_glimpses."""
+    c2f = [quadtree_level_z_order(level) for level in range(3)]
+    match continuation:
+        case "level2_revisits":
+            extra = quadtree_level(2)
+        case "full_scene":
+            extra = quadtree_level(0)
+        case _:
+            assert_never(continuation)
+    passes = math.ceil(max(0, num_glimpses - 21) / len(extra))
+    return FixedSequence(shuffled_levels(c2f + [extra] * passes, batch_size=batch_size, device=device,
+                                         num_glimpses=num_glimpses))
+
+
 def build_policy(exp: Experiment, seg: CanViTForSemanticSegmentation, *, labels: Tensor, device: torch.device) -> Policy:
     batch_size = labels.shape[0]
     if exp.policy in get_args(PolicyName):
         return make_policy(exp.policy, batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses,
                            canvas_grid_size=exp.canvas_grid_size, canvas_logits=seg.logits)
+    if exp.policy in ("c2f_then_level2_revisits", "c2f_then_full_scene"):
+        continuation: Continuation = exp.policy.removeprefix("c2f_then_")  # type: ignore[assignment]
+        return c2f_then(continuation, batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses)
     order: TileOrder = exp.policy.removeprefix("c2f_")  # type: ignore[assignment]
     match order:
         case "low_entropy":

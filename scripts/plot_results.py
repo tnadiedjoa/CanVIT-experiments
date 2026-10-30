@@ -57,7 +57,7 @@ def runs(*names: str) -> Runs | None:
     for name in names:
         seeded = sorted(p for p in RESULTS.glob(f"{name}_s*.json") if re.fullmatch(rf"{re.escape(name)}_s\d+", p.stem))
         paths = [RESULTS / f"{name}.json"] if (RESULTS / f"{name}.json").exists() else seeded
-        found += [json.loads(p.read_text()) for p in paths]
+        found += [result for p in paths if "miou" in (result := json.loads(p.read_text()))]
     return Runs(found) if found else None
 
 
@@ -112,7 +112,7 @@ def drift() -> None:
         return
     panels = [("miou", "mIoU (%)", "linear"), ("canvas_patch_norm", "canvas patch norm (raw)", "linear"),
               ("delta_previous", "Δ to previous canvas", "log"), ("entropy", "probe entropy (nats)", "linear")]
-    fig, axes = plt.subplots(1, 4, figsize=(15, 3.6))
+    fig, axes = plt.subplots(1, 4, figsize=(16, 3.6), gridspec_kw={"wspace": 0.4})
     for ax, (key, ylabel, yscale) in zip(axes, panels, strict=True):
         for label, result, style in series:
             values = result.mean(key)
@@ -179,6 +179,71 @@ def tile_orders() -> None:
     save(fig, "ade20k_tile_orders.png")
 
 
+def level3_controls() -> None:
+    series = [(label, runs(name), color) for label, name, color in [
+        ("C2F: level 3 (zoom past native resolution)", "c2f_c64_t85", COLORS["C2F"]),
+        ("C2F to level 2, then level-2 tiles again", "c2f_then_level2_revisits_c64_t85", "#6250d6"),
+        ("C2F to level 2, then the full scene again", "c2f_then_full_scene_c64_t85", "#e34948"),
+        ("RFS", "rfs_c64_t85", COLORS["RFS"]),
+    ]]
+    if sum(result is not None for _, result, _ in series) < 3:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8))
+    for ax, (key, ylabel) in zip(axes, [("miou", "mIoU (%)"), ("entropy", "probe entropy (nats)")], strict=True):
+        for label, result, color in series:
+            if result is not None:
+                ax.plot(result.mean(key), color=color, label=label)
+        ax.axvline(20.5, color=MUTED, linewidth=1, linestyle=":")
+        ax.set(xlabel="glimpse t", ylabel=ylabel)
+    axes[0].set_title("Canvas 64×64, same first 21 glimpses (seed 0)", fontsize=9, loc="left")
+    axes[0].legend(fontsize=7, loc="lower right")
+    save(fig, "ade20k_level3_controls.png")
+
+
+def scene_detail() -> None:
+    # One blue ramp, darker for more detail.
+    series = [(label, runs(name), color) for label, name, color in [
+        ("native 512 px", "c2f_c64_t21_s0", "#104281"), ("detail of 256 px", "c2f_c64_t21_s0_detail256", "#3987e5"),
+        ("detail of 128 px", "c2f_c64_t21_s0_detail128", "#9ec5f4"),
+    ]]
+    if any(result is None for _, result, _ in series):
+        return
+    native = series[0][1].mean("miou")  # type: ignore[union-attr]
+    fig, (curves_ax, diff_ax) = plt.subplots(1, 2, figsize=(11, 3.8))
+    for label, result, color in series:
+        miou = result.mean("miou")  # type: ignore[union-attr]
+        curves_ax.plot(miou, color=color, label=label)
+        diff_ax.plot(miou - native, color=color, label=label)
+    for ax in (curves_ax, diff_ax):
+        for boundary in (1, 5):
+            ax.axvline(boundary - 0.5, color=GRID, linewidth=1, linestyle=":", zorder=0)
+        ax.set_xlabel("glimpse t")
+    curves_ax.set(ylabel="mIoU (%)", title="C2F on scenes with the fine detail removed (seed 0, canvas 64×64)")
+    diff_ax.axhline(0, color=MUTED, linewidth=1)
+    diff_ax.set(ylabel="mIoU − native, points", title="Loss from the missing detail")
+    curves_ax.legend(fontsize=8, loc="lower right")
+    save(fig, "ade20k_scene_detail.png")
+
+
+def canvas_grids() -> None:
+    policies = [("C2F, seed 0", ["c2f_c32_t21_s0", "c2f_c64_t21_s0", "c2f_c128_t21_s0"]),
+                ("RFS", ["rfs_c32_t21", "rfs_c64_t21", "rfs_c128_t21"])]
+    if not all(runs(name) for _, names in policies for name in names):
+        return
+    ramp = ["#9ec5f4", "#3987e5", "#104281"]  # one blue ramp, darker for a finer canvas
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), sharey=True)
+    for ax, (policy, names) in zip(axes, policies, strict=True):
+        for name, color, grid in zip(names, ramp, (32, 64, 128), strict=True):
+            result = runs(name)
+            assert result is not None
+            probe = " (64×64 probe)" if grid == 128 else ""
+            ax.plot(result.mean("miou"), color=color, label=f"canvas {grid}×{grid}{probe}")
+        ax.set(xlabel="glimpse t", title=policy)
+    axes[0].set_ylabel("mIoU (%)")
+    axes[0].legend(fontsize=8, loc="lower right")
+    save(fig, "ade20k_canvas_grids.png")
+
+
 def save(fig: plt.Figure, name: str) -> None:
     for ax in fig.axes:
         if ax.get_xlabel() == "glimpse t":
@@ -211,4 +276,7 @@ if __name__ == "__main__":
     drift()
     antialiasing()
     tile_orders()
+    level3_controls()
+    scene_detail()
+    canvas_grids()
     summary_table()

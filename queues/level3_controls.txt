@@ -1,0 +1,4 @@
+# Does C2F lose accuracy past glimpse 20 because level 3 zooms beyond the scene's native resolution, or because the
+# rollout gets long? Same seed as c2f_c64_t85_s0, so the first 21 glimpses are the same.
+c2f_then_level2_revisits_c64_t85_s0 --policy c2f_then_level2_revisits --canvas-grid-size 64 --num-glimpses 85 --seed 0
+c2f_then_full_scene_c64_t85_s0 --policy c2f_then_full_scene --canvas-grid-size 64 --num-glimpses 85 --seed 0
