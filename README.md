@@ -360,5 +360,7 @@ DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
 - On RFS with a 64×64 canvas, `scripts/ade20k_rollouts.py` gives the same mIoU after each of the 21 glimpses as
   `python -m canvit_pytorch.evaluate ade20k-segmentation-canvit`.
 - Its tile-ordered C2F with the probe's entropy as score chooses the same viewpoints as the official EG-C2F.
+- On RFS (21 glimpses), `scripts/reconstruction_rollouts.py` gives the same four reconstruction metrics after each
+  glimpse as `python -m canvit_pytorch.evaluate reconstruction` (difference 0).
 
 Results are in `results/` (one JSON file per run, with its configuration) and summarized in `results/summary.md`.

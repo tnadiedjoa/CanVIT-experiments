@@ -4,3 +4,5 @@ results/cityscapes/egc2f_c64_t85_s512_then_native_local5.json scripts/cityscapes
 results/cityscapes/s1024exp_c2f_c64_t85_native_s0_local5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --local-writes-from 5
 results/cityscapes/s1024exp_egc2f_c64_t85_native_local5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --policy entropy_coarse_to_fine --local-writes-from 5
 results/cityscapes/c2f_c64_t85_native_s0_local5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail native --local-writes-from 5
+# A 128×128 canvas (8 px cells at 1024 px) read by the 64×64 probe, with local Writes from level 2.
+results/cityscapes/c2f_c128_t85_s512_then_native_s0_local5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --canvas-grid-size 128 --batch-size 4 --local-writes-from 5

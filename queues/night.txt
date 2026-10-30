@@ -1,0 +1,8 @@
+# ADE20K, 85 glimpses: the tile orders that beat random C2F over levels 0-2 (EG-C2F, and canvas contrast, which needs
+# no probe), with released Writes and with local Writes from level 2, the best rule so far; then the last part of the
+# leak split (only the part from the patch tokens kept outside the crop).
+egc2f_c64_t85 --policy entropy_coarse_to_fine --num-glimpses 85 --canvas-grid-size 64
+egc2f_c64_t85_local5 --policy entropy_coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 5
+c2f_canvas_contrast_c64_t85 --policy c2f_canvas_contrast --num-glimpses 85 --canvas-grid-size 64
+c2f_canvas_contrast_c64_t85_local5 --policy c2f_canvas_contrast --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 5
+c2f_c64_t85_s0_keeppatches1 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --outside-writes keep_patches

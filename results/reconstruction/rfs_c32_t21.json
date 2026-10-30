@@ -1,0 +1,166 @@
+{
+ "experiment": {
+  "output": "results/reconstruction/rfs_c32_t21.json",
+  "policy": "repeated_full_scene",
+  "num_glimpses": 21,
+  "local_writes_from": null,
+  "outside_writes": "drop",
+  "local_writes_max_scale": null,
+  "seed": 0,
+  "batch_size": 16,
+  "num_images": null,
+  "device": "cuda"
+ },
+ "pretrained_repo": "canvit/canvitb16-add-vpe-pretrain-g128px-s512px-in21k-dv3b16-2026-02-02",
+ "per_timestep": [
+  {
+   "t": 0,
+   "scene_cos_raw": 0.8943166437149048,
+   "cls_cos_raw": 0.7873197236061096,
+   "scene_cos_norm": 0.7937732300758362,
+   "cls_cos_norm": 0.7927212333679199
+  },
+  {
+   "t": 1,
+   "scene_cos_raw": 0.8974561061859131,
+   "cls_cos_raw": 0.8019284262657166,
+   "scene_cos_norm": 0.7998067669868469,
+   "cls_cos_norm": 0.8064735207557678
+  },
+  {
+   "t": 2,
+   "scene_cos_raw": 0.8964791631698609,
+   "cls_cos_raw": 0.8011570916175842,
+   "scene_cos_norm": 0.7978977069854737,
+   "cls_cos_norm": 0.8056131753921508
+  },
+  {
+   "t": 3,
+   "scene_cos_raw": 0.895148841381073,
+   "cls_cos_raw": 0.7987662615776062,
+   "scene_cos_norm": 0.7952969069480896,
+   "cls_cos_norm": 0.8032065505981445
+  },
+  {
+   "t": 4,
+   "scene_cos_raw": 0.8938598504066467,
+   "cls_cos_raw": 0.7961408829689026,
+   "scene_cos_norm": 0.7927716097831726,
+   "cls_cos_norm": 0.8005778198242187
+  },
+  {
+   "t": 5,
+   "scene_cos_raw": 0.8926723170280456,
+   "cls_cos_raw": 0.7935745310783386,
+   "scene_cos_norm": 0.7904411277770996,
+   "cls_cos_norm": 0.7980121235847473
+  },
+  {
+   "t": 6,
+   "scene_cos_raw": 0.8915935235023499,
+   "cls_cos_raw": 0.7911428422927856,
+   "scene_cos_norm": 0.7883234930038452,
+   "cls_cos_norm": 0.7955820755958557
+  },
+  {
+   "t": 7,
+   "scene_cos_raw": 0.8906150755882263,
+   "cls_cos_raw": 0.7888407258987427,
+   "scene_cos_norm": 0.7864031410217285,
+   "cls_cos_norm": 0.7932820043563843
+  },
+  {
+   "t": 8,
+   "scene_cos_raw": 0.8897251563072205,
+   "cls_cos_raw": 0.7866668033599854,
+   "scene_cos_norm": 0.7846577677726746,
+   "cls_cos_norm": 0.7911087794303894
+  },
+  {
+   "t": 9,
+   "scene_cos_raw": 0.8889120540618897,
+   "cls_cos_raw": 0.7846021561622619,
+   "scene_cos_norm": 0.7830646657943725,
+   "cls_cos_norm": 0.789042245388031
+  },
+  {
+   "t": 10,
+   "scene_cos_raw": 0.8881663708686829,
+   "cls_cos_raw": 0.7826421003341675,
+   "scene_cos_norm": 0.7816050834655762,
+   "cls_cos_norm": 0.7870780067443848
+  },
+  {
+   "t": 11,
+   "scene_cos_raw": 0.8874795422554016,
+   "cls_cos_raw": 0.7807682328224183,
+   "scene_cos_norm": 0.780262309551239,
+   "cls_cos_norm": 0.7851993446350097
+  },
+  {
+   "t": 12,
+   "scene_cos_raw": 0.886844473361969,
+   "cls_cos_raw": 0.7789773707389831,
+   "scene_cos_norm": 0.7790221285820007,
+   "cls_cos_norm": 0.7834001026153564
+  },
+  {
+   "t": 13,
+   "scene_cos_raw": 0.8862543840408326,
+   "cls_cos_raw": 0.7772599411010742,
+   "scene_cos_norm": 0.7778711156845093,
+   "cls_cos_norm": 0.7816734027862549
+  },
+  {
+   "t": 14,
+   "scene_cos_raw": 0.8857042140960694,
+   "cls_cos_raw": 0.7756123023033142,
+   "scene_cos_norm": 0.7767992758750916,
+   "cls_cos_norm": 0.7800157999992371
+  },
+  {
+   "t": 15,
+   "scene_cos_raw": 0.8851902618408203,
+   "cls_cos_raw": 0.7740283207893371,
+   "scene_cos_norm": 0.7757989277839661,
+   "cls_cos_norm": 0.7784188446998597
+  },
+  {
+   "t": 16,
+   "scene_cos_raw": 0.8847078070640564,
+   "cls_cos_raw": 0.7724974675178528,
+   "scene_cos_norm": 0.7748608794212342,
+   "cls_cos_norm": 0.7768749003410339
+  },
+  {
+   "t": 17,
+   "scene_cos_raw": 0.8842541589736939,
+   "cls_cos_raw": 0.7710274114608765,
+   "scene_cos_norm": 0.7739797224998474,
+   "cls_cos_norm": 0.775390555858612
+  },
+  {
+   "t": 18,
+   "scene_cos_raw": 0.8838261847496033,
+   "cls_cos_raw": 0.769603075504303,
+   "scene_cos_norm": 0.7731490435600281,
+   "cls_cos_norm": 0.7739506692886352
+  },
+  {
+   "t": 19,
+   "scene_cos_raw": 0.8834214053153991,
+   "cls_cos_raw": 0.768224862575531,
+   "scene_cos_norm": 0.7723642926216125,
+   "cls_cos_norm": 0.7725562462806702
+  },
+  {
+   "t": 20,
+   "scene_cos_raw": 0.8830383849143982,
+   "cls_cos_raw": 0.7668915615081787,
+   "scene_cos_norm": 0.771621985912323,
+   "cls_cos_norm": 0.7712063007354736
+  }
+ ],
+ "n_images": 2000,
+ "wall_time_seconds": 444.3096559960395
+}

@@ -3,5 +3,7 @@
 # vector in every cell. keep_prefix keeps it and drops the part from the patch tokens; keep_patches the converse.
 c2f_c64_t85_s0_keepprefix1 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --outside-writes keep_prefix
 c2f_c64_t85_s0_keepprefix21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21 --outside-writes keep_prefix
-riid_c64_t85_s0_keepprefix1 --policy random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --outside-writes keep_prefix
-c2f_c64_t85_s0_keeppatches1 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --outside-writes keep_patches
+# Not run: keeping only the prefix part collapsed C2F (c2f_c64_t85_s0_keepprefix1).
+# riid_c64_t85_s0_keepprefix1 --policy random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --outside-writes keep_prefix
+# Moved to queues/night.txt.
+# c2f_c64_t85_s0_keeppatches1 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --outside-writes keep_patches
