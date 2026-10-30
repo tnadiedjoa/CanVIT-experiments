@@ -1,0 +1,25 @@
+# DINOv3 baselines on ADE20K with the released probes: one passive pass at each input size the paper reports.
+dv3b_128px ade20k-segmentation-dinov3 --variant vitb16 --input-size-px 128
+dv3b_144px ade20k-segmentation-dinov3 --variant vitb16 --input-size-px 144
+dv3b_160px ade20k-segmentation-dinov3 --variant vitb16 --input-size-px 160
+dv3b_192px ade20k-segmentation-dinov3 --variant vitb16 --input-size-px 192
+dv3b_256px ade20k-segmentation-dinov3 --variant vitb16 --input-size-px 256
+dv3b_384px ade20k-segmentation-dinov3 --variant vitb16 --input-size-px 384
+dv3b_512px ade20k-segmentation-dinov3 --variant vitb16 --input-size-px 512
+dv3s_128px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 128
+dv3s_144px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 144
+dv3s_160px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 160
+dv3s_192px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 192
+dv3s_256px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 256
+dv3s_384px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 384
+dv3s_512px ade20k-segmentation-dinov3 --variant vits16 --input-size-px 512
+# Reconstruction of the DINOv3 teacher's features (cosine similarity) after every glimpse, ADE20K validation.
+# Probe-free: whether the drift seen in mIoU under repetition is in the canvas itself.
+recon_c2f_c32_t85 reconstruction --episode.policy coarse_to_fine --episode.num-glimpses 85 --episode.canvas-grid-size 32
+recon_fiid_c32_t85 reconstruction --episode.policy full_then_random --episode.num-glimpses 85 --episode.canvas-grid-size 32
+recon_riid_c32_t85 reconstruction --episode.policy random --episode.num-glimpses 85 --episode.canvas-grid-size 32
+recon_rfs_c32_t85 reconstruction --episode.policy repeated_full_scene --episode.num-glimpses 85 --episode.canvas-grid-size 32
+recon_c2f_c64_t85 reconstruction --episode.policy coarse_to_fine --episode.num-glimpses 85 --episode.canvas-grid-size 64 --batch-size 8
+recon_fiid_c64_t85 reconstruction --episode.policy full_then_random --episode.num-glimpses 85 --episode.canvas-grid-size 64 --batch-size 8
+recon_riid_c64_t85 reconstruction --episode.policy random --episode.num-glimpses 85 --episode.canvas-grid-size 64 --batch-size 8
+recon_rfs_c64_t85 reconstruction --episode.policy repeated_full_scene --episode.num-glimpses 85 --episode.canvas-grid-size 64 --batch-size 8

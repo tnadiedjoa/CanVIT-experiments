@@ -1,0 +1,20 @@
+# Cityscapes at its native resolution (scripts/cityscapes.py): linear probes trained on the training split, then
+# mIoU on the 1000 validation half-images at 1024 px.
+#
+# Canvas probe with the paper's protocol (512 px scenes, 64×64 canvas, 10 R-IID glimpses), then C2F down to level 3
+# (85 glimpses) with glimpses from the 512 px scene, from the 1024 px scene for level 3 only, and from the 1024 px
+# scene throughout. The first two share their first 21 glimpses exactly (same seed, same tile order).
+probes/cityscapes_canvas_s512_c64.pt scripts/cityscapes.py train-probe --features canvas --scene-size-px 512 --canvas-grid-size 64
+results/cityscapes/c2f_c64_t85_s512_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512
+results/cityscapes/c2f_c64_t85_s512_then_native_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native
+results/cityscapes/c2f_c64_t85_native_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail native
+# DINOv3 ViT-B/16, one passive view of the scene at each input size, each with its own probe.
+probes/cityscapes_dinov3_vitb16_512px.pt scripts/cityscapes.py train-probe --features dinov3_vitb16 --scene-size-px 512
+results/cityscapes/dv3b_512px.json scripts/cityscapes.py passive --probe probes/cityscapes_dinov3_vitb16_512px.pt
+probes/cityscapes_dinov3_vitb16_768px.pt scripts/cityscapes.py train-probe --features dinov3_vitb16 --scene-size-px 768
+results/cityscapes/dv3b_768px.json scripts/cityscapes.py passive --probe probes/cityscapes_dinov3_vitb16_768px.pt
+probes/cityscapes_dinov3_vitb16_1024px.pt scripts/cityscapes.py train-probe --features dinov3_vitb16 --scene-size-px 1024
+results/cityscapes/dv3b_1024px.json scripts/cityscapes.py passive --probe probes/cityscapes_dinov3_vitb16_1024px.pt
+# A 128×128 canvas (8 px cells at 1024 px, half the 16 px patch of a level-3 glimpse) read by the 64×64 probe.
+results/cityscapes/c2f_c128_t85_s512_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512 --canvas-grid-size 128 --batch-size 4
+results/cityscapes/c2f_c128_t85_s512_then_native_s0.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --canvas-grid-size 128 --batch-size 4

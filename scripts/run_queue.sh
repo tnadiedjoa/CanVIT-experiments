@@ -6,6 +6,8 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export HF_HOME=${HF_HOME:-/tmp/canvit-nadiedjoa-24/hf}
+# `hf auth login` stores the token under the default HF_HOME, not the one above (DINOv3 is gated).
+export HF_TOKEN_PATH=${HF_TOKEN_PATH:-$HOME/.cache/huggingface/token}
 export ADE20K_ROOT=${ADE20K_ROOT:-/tmp/canvit-nadiedjoa-24/data/ade20k/ADEChallengeData2016}
 mkdir -p results logs
 
