@@ -364,6 +364,9 @@ class Rollouts:
     C2F's level 3. The released model writes into every cell."""
     outside_writes: OutsideWrites = "drop"
     """With local_writes_from: what happens to the Write residuals outside the crop (OutsideWrites)."""
+    local_writes_max_scale: float | None = None
+    """With local_writes_from: only glimpses of at most this scale keep their Writes in their crop, and larger ones
+    write into every cell, as released; 0.25 is C2F's levels 2 and 3."""
     seed: int = 0
     batch_size: int = 8
     device: str = "cuda"
@@ -374,8 +377,8 @@ class LocalWrites:
     current glimpse's crop (Rollouts.local_writes_from, Rollouts.outside_writes)."""
 
     def __init__(self, seg: CanViTForSemanticSegmentation, *, canvas_grid_size: int, device: torch.device,
-                 outside: OutsideWrites = "drop") -> None:
-        self.outside = outside
+                 outside: OutsideWrites = "drop", max_scale: float | None = None) -> None:
+        self.outside, self.max_scale = outside, max_scale
         self.num_registers = seg.canvit.config.num_canvas_registers
         self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
         self.mask: Tensor | None = None  # [B, num_registers + G*G, 1] for the glimpse being taken
@@ -388,6 +391,8 @@ class LocalWrites:
             return
         offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
         inside = (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)
+        if self.max_scale is not None:
+            inside |= (viewpoint.scales > self.max_scale).view(-1, 1)
         registers = inside.new_ones(inside.shape[0], self.num_registers)
         self.mask = torch.cat([registers, inside], dim=1).unsqueeze(-1)
 
@@ -429,7 +434,8 @@ def rollouts(exp: Rollouts) -> None:
     assert record["config"]["features"] == "canvas", exp.probe
     canvit = CanViTForPretraining.from_pretrained(record["config"]["pretrained_repo"]).canvit
     seg = CanViTForSemanticSegmentation(canvit=canvit, probe=probe).to(device).eval()
-    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device, outside=exp.outside_writes)
+    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device, outside=exp.outside_writes,
+                                max_scale=exp.local_writes_max_scale)
                     if exp.local_writes_from is not None else None)
     images, labels = load_split("val")
     num_scenes = 2 * len(images)

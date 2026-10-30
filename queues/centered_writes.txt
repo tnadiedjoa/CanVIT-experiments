@@ -7,3 +7,9 @@ c2f_c64_t85_s0_center21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-
 # seed of local Writes from level 3.
 c2f_c64_t85_s0_local5 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 5
 c2f_c64_t85_s1_local21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21 --seed 1
+# Local Writes for small glimpses only (scale ≤ 1/4; larger glimpses write everywhere, as released). For C2F this is
+# local Writes from level 2 (c2f_c64_t85_s0_local5). Local Writes from glimpse 1 cost R-IID and F2C several points
+# early, when small glimpses leave most of the canvas unseen, and F-IID and C2F ~0.5 point at their large glimpses.
+f2c_c64_t21_s0_localmax0.25 --policy fine_to_coarse --num-glimpses 21 --canvas-grid-size 64 --local-writes-from 1 --local-writes-max-scale 0.25
+fiid_c64_t85_s0_localmax0.25 --policy full_then_random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-max-scale 0.25
+riid_c64_t85_s0_localmax0.25 --policy random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-max-scale 0.25

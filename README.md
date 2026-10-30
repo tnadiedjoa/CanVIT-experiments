@@ -104,6 +104,7 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 |---|---|---|---|
 | released | 41.10 | 45.93 | 43.65 |
 | kept in the crop from level 3 (t ≥ 21) | 41.10 | 45.93 | 46.40 |
+| kept in the crop from level 2 (t ≥ 5) | 41.10 | 45.94 | 46.18 |
 | kept in the crop from glimpse 1 | 40.56 | 45.47 | 45.63 |
 | outside the crop, only their mean removed, from level 3 | 41.10 | 45.93 | 44.19 |
 | outside the crop, only their mean removed, from glimpse 1 | 40.98 | 42.18 | 34.69 |
@@ -112,7 +113,20 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 - Over level 3, the mean canvas patch norm doubles with released Writes (27.5k to 58.2k). With local Writes, it grows
   by 12% (to 30.7k).
 - From glimpse 1, local Writes cost 0.4 points at t = 20 (−0.46, −0.48 and −0.34 for seeds 0-2), from the first
-  level-1 glimpse on. In C2F's first levels, the writes outside the crop help on ADE20K.
+  level-1 glimpse on. From level 2, they cost nothing up to t = 20. On ADE20K, the writes outside the crop help only
+  during level 1, whose glimpses each cover a quarter of the scene.
+- Other policies, Writes kept in the crop from glimpse 1 (seed 0), against released Writes:
+
+  | Policy | t = 1 | t = 20 | t = 84 |
+  |---|---|---|---|
+  | R-IID | −3.66 | −1.81 | −0.16 |
+  | F2C (21 glimpses, finest tiles first) | −4.97 | +1.72 | |
+  | F-IID | −0.82 | +0.12 | +0.91 |
+
+  - With local Writes, a cell that no glimpse has covered receives nothing. That costs most when the first glimpses
+    are small (R-IID, F2C).
+  - F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84).
+  - EG-C2F loses 0.45 points on average over t = 1-20.
 - **Removing only the shared vector is not enough.** The last two rows subtract, outside the crop, the mean of the
   Write residuals over those cells, and keep the rest of the leak.
   - From level 3, the mIoU peaks at 46.22 (t = 29), then ends at 44.19.
@@ -212,6 +226,8 @@ Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51.
 - **Unlike on ADE20K, local Writes from glimpse 1 help before level 3:** +1.46 points at t = 20. Of that gain, 1.24
   points remain when Writes are kept in the crop from level 2 only. Keeping them in the crop from level 2 gives the
   best t = 84 (64.70).
+- **Subtracting only the mean of the residuals outside the crop** (from glimpse 1, level 3 from the 1024 px scene)
+  fails here too: 59.50 at t = 20, 52.48 at t = 84.
 - **EG-C2F:**
   - With released Writes, it gains 0.86 points in its first 10 level-3 glimpses (62.70 at t = 30), then loses them.
   - With Writes kept in the crop from glimpse 1, it reaches 64.40 at t = 36. C2F needs 84 glimpses for the same
@@ -227,9 +243,13 @@ from the 1024 px scene, as above:
 |---|---|---|---|
 | released | 51.57 | 64.96 | 63.65 |
 | kept in the crop from level 3 | 51.57 | 64.96 | 66.49 |
+| kept in the crop from glimpse 1 | 51.57 | 65.88 | 66.63 |
 
 - Its level-3 drop is half the flagship's (−1.31 points). Local Writes turn it into a gain of 1.53 points.
-- Real detail still adds little: level-3 tiles upsampled from the 512 px scene give 63.37 at t = 84 (−0.28).
+- **Real detail still adds little.** At t = 84:
+  - level-3 tiles upsampled from the 512 px scene give 63.37 (−0.28);
+  - every glimpse from the 1024 px scene, its pretraining scene size, gives 63.89 (+0.24).
+- **EG-C2F with released Writes** peaks at 66.02 (t = 30), then falls to 64.25.
 - The two models' probes are trained on different scene sizes (1024 and 512 px). The 3.16 points between them at
   t = 20 therefore mix model and probe; a flagship probe trained on 1024 px scenes is queued.
 
