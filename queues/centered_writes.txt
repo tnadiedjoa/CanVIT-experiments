@@ -17,7 +17,9 @@ riid_c64_t85_s0_localmax0.25 --policy random --num-glimpses 85 --canvas-grid-siz
 # value is not zero. Removing that register's part of every Write, in every cell, needs no viewpoint.
 c2f_c64_t85_s0_nosink1 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --dropped-write-token 5
 c2f_c64_t85_s0_nosink21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --dropped-write-token 5 --dropped-write-token-from 21
-riid_c64_t85_s0_nosink1 --policy random --num-glimpses 85 --canvas-grid-size 64 --dropped-write-token 5
+# Not run: removing the sink register hurt C2F at every glimpse (c2f_c64_t85_s0_nosink1).
+# riid_c64_t85_s0_nosink1 --policy random --num-glimpses 85 --canvas-grid-size 64 --dropped-write-token 5
 # RFS has no writes outside the crop (its glimpse is the whole scene), yet declines over 85 glimpses; cells inside the
 # crop also put ~40% of their attention on the sink register. Does removing it slow the decline?
-rfs_c64_t85_nosink1 --policy repeated_full_scene --num-glimpses 85 --canvas-grid-size 64 --dropped-write-token 5
+# Not run: removing the sink register hurt C2F at every glimpse (c2f_c64_t85_s0_nosink1).
+# rfs_c64_t85_nosink1 --policy repeated_full_scene --num-glimpses 85 --canvas-grid-size 64 --dropped-write-token 5

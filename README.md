@@ -176,6 +176,11 @@ Removing only part of the leak is worse than keeping all of it (C2F, seed 0):
 
 With the mean removed from level 3 on, the mIoU first peaks at 46.22 (t = 29).
 
+Removing register 3's part from every Write, in every cell, needs no viewpoint, but it does not help either:
+44.39 at t = 20 and 43.17 at t = 84 (from glimpse 1). The canvas norm then grows even more: 64.0k at t = 84, against
+58.2k with the released Writes. The sink shows where the outside cells' attention goes, but its value alone is not
+the cause.
+
 ### Most of C2F's gain does not need new pixels
 
 This test removes the detail finer than 128 px from the scenes (antialiased downsampling, then bilinear upsampling),
