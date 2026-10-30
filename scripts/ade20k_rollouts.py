@@ -39,7 +39,7 @@ from canvit_pytorch.preprocess import IMAGENET_MEAN, IMAGENET_STD
 from canvit_pytorch.viewpoint import grid_coords
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import LocalWrites, OutsideWrites  # noqa: E402
+from local_writes import DroppedWriteToken, LocalWrites, OutsideWrites  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -101,6 +101,11 @@ class Experiment:
     """Scenes per batch; 8 fit a 64×64 canvas in 24 GB, as in the official evaluation docs."""
     cache: Path = Path("/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt")
     """uint8 validation scenes and decoded labels at the released scene size; built from $ADE20K_ROOT if missing."""
+    dropped_write_token: int | None = None
+    """When set, from glimpse dropped_write_token_from on, every Write residual loses the part that comes from this
+    key token of the glimpse (an index into local_writes.PREFIX_TOKENS; 5 is backbone register 3, the attention sink
+    of the canvas cells far from the glimpse)."""
+    dropped_write_token_from: int = 1
     glimpse_size_px: int = RELEASED_GLIMPSE_SIZE_PX
     """Side of each glimpse: 128 px (8×8 patches) in pretraining and in the paper."""
     num_images: int | None = None
@@ -350,6 +355,8 @@ def main(exp: Experiment) -> None:
     local_writes = (LocalWrites(seg.canvit, canvas_grid_size=exp.canvas_grid_size, device=device,
                                 outside=exp.outside_writes, max_scale=exp.local_writes_max_scale)
                     if exp.local_writes_from is not None else None)
+    dropped_token = (DroppedWriteToken(seg.canvit, token=exp.dropped_write_token)
+                     if exp.dropped_write_token is not None else None)
 
     mious = [ade20k.MeanIoU(device=device) for _ in range(num_glimpses)]
     sums = {name: torch.zeros(num_glimpses, dtype=torch.float64, device=device) for name in STATISTICS}
@@ -377,6 +384,8 @@ def main(exp: Experiment) -> None:
                 if local_writes is not None:
                     assert exp.local_writes_from is not None
                     local_writes.restrict_to(viewpoint if t >= exp.local_writes_from else None)
+                if dropped_token is not None:
+                    dropped_token.active = t >= exp.dropped_write_token_from
                 state = seg.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 if gate is not None:
                     gate.after_glimpse(viewpoint)

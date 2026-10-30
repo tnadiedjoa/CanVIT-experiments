@@ -390,25 +390,31 @@ def local_writes() -> None:
 def cityscapes_cost() -> None:
     dinov3 = sorted((run for px in (512, 768, 1024) if (run := cityscapes_run(f"dv3b_{px}px"))),
                     key=lambda run: run["gflops"])
+    # Color: the Write mode (WRITE_MODES) or EG-C2F; line style: the model (dashed for the one pretrained on 1024 px).
+    released, local5 = WRITE_MODES[""], WRITE_MODES["_local5"]
     canvit = [(label, run, color, style) for label, name, color, style in [
-        ("CanViT-B, C2F", "c2f_c64_t85_s512_then_native_s0", COLORS["C2F"], "-"),
-        ("CanViT-B, EG-C2F", "egc2f_c64_t85_s512_then_native", COLORS["EG-C2F"], "-"),
-        ("CanViT-B fine-tuned on 1024 px, C2F", "s1024exp_c2f_c64_t85_s512_then_native_s0", COLORS["C2F"], "--"),
+        (f"CanViT-B, C2F, {released[0]}", "c2f_c64_t85_s512_then_native_s0", released[1], "-"),
+        (f"CanViT-B, C2F, {local5[0]}", "c2f_c64_t85_s512_then_native_s0_local5", local5[1], "-"),
+        (f"CanViT-B, EG-C2F, {local5[0]}", "egc2f_c64_t85_s512_then_native_local5", COLORS["EG-C2F"], "-"),
+        (f"CanViT-B pretrained on 1024 px, C2F, {released[0]}", "s1024exp_c2f_c64_t85_native_s0", released[1], "--"),
+        (f"CanViT-B pretrained on 1024 px, C2F, {local5[0]}", "s1024exp_c2f_c64_t85_native_s0_local5", local5[1], "--"),
     ] if (run := cityscapes_run(name))]
     if not dinov3 or not canvit:
         return
-    fig, ax = plt.subplots(figsize=(7.5, 4.4))
+    fig, ax = plt.subplots(figsize=(8.5, 5))
     for label, run, color, style in canvit:
         gflops = run["glimpse_gflops"] * np.arange(1, len(run["miou"]) + 1)
-        ax.plot(gflops, run["miou"], style, color=color, label=f"{label} (glimpses 1-{len(run['miou'])})")
+        ax.plot(gflops, run["miou"], style, color=color, label=label)
     ax.plot([run["gflops"] for run in dinov3], [run["miou"][0] for run in dinov3], color="#52514e", marker="s",
             markersize=4, linewidth=1.5, label="DINOv3 ViT-B/16, one view")
     for run in dinov3:
         ax.annotate(f"{run['probe_config']['scene_size_px']} px", (run["gflops"], run["miou"][0]), xytext=(0, 7),
                     textcoords="offset points", ha="center", fontsize=7, color=MUTED)
     ax.set(xscale="log", xlabel="forward GFLOPs per 1024 px scene (CanViT: cumulative over glimpses)",
-           ylabel="Cityscapes val mIoU at 1024 px (%)", title="Accuracy against compute on 1024 px scenes")
-    ax.legend(fontsize=8, loc="lower right")
+           ylabel="Cityscapes val mIoU at 1024 px (%)",
+           title="Accuracy against compute on 1024 px scenes (CanViT: glimpses 1-85, canvas 64×64)")
+    ax.title.set_fontsize(9)
+    ax.legend(fontsize=7, loc="lower right")
     save(fig, "cityscapes_cost_frontier.png")
 
 

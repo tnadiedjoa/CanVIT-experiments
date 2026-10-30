@@ -11,7 +11,7 @@ and the share of the leaked sum's energy in its mean over the canvas, i.e. in on
 
 Each Write's residual is also split by key (scripts/local_writes.py, write_parts): the part from the glimpse's prefix
 tokens (VPE, recurrent CLS, registers), whose keys carry no position, and the part from its patch tokens; the script
-reports the attention weight on the prefix and the norm of both parts, inside and outside the crop.
+reports the attention weight on each prefix token and the norm of both parts, inside and outside the crop.
 
     .venv/bin/python -P scripts/write_leakage.py --output results/write_leakage.json
 """
@@ -35,7 +35,7 @@ from canvit_pytorch.preprocess import imagenet_normalize
 from canvit_pytorch.viewpoint import grid_coords
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import write_parts  # noqa: E402
+from local_writes import PREFIX_TOKENS, write_parts  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -84,6 +84,7 @@ def main(m: Measurement) -> None:
     cells_by_distance = torch.zeros_like(by_distance)
     split = defaultdict(lambda: torch.zeros(num_levels, dtype=torch.float64))  # "<quantity>_<inside|outside>"
     per_write = torch.zeros(2, num_levels, len(canvit.canvas_writes), dtype=torch.float64)  # inside, outside norms
+    token_weight = torch.zeros(2, num_levels, len(PREFIX_TOKENS), dtype=torch.float64)  # inside, outside
     leaked_sum_norm = own_sum_norm = canvas_norm = common_fraction = 0.0
     leaked_parts_norm, leaked_parts_common = torch.zeros(2, dtype=torch.float64), torch.zeros(2, dtype=torch.float64)
     with torch.inference_mode(), torch.autocast(device_type=device.type, dtype=torch.bfloat16):
@@ -114,8 +115,12 @@ def main(m: Measurement) -> None:
                     outside_norm[level] += norms[~inside].mean().double().cpu() * batch_size
                 glimpse_counts[level] += batch_size
                 prefix, patches = sum(p[0] for p in parts), sum(p[1] for p in parts)
-                prefix_weight = sum(p[2] for p in parts) / len(parts)
-                for name, values in (("prefix_weight", prefix_weight), ("prefix_norm", prefix.norm(dim=-1)),
+                token_weights = sum(p[2] for p in parts) / len(parts)  # [B, G*G, prefix tokens], mean over Writes
+                assert token_weights.shape[-1] == len(PREFIX_TOKENS), token_weights.shape
+                token_weight[0, level] += token_weights[inside].mean(dim=0).double().cpu() * batch_size
+                if (~inside).any():
+                    token_weight[1, level] += token_weights[~inside].mean(dim=0).double().cpu() * batch_size
+                for name, values in (("prefix_weight", token_weights.sum(dim=-1)), ("prefix_norm", prefix.norm(dim=-1)),
                                      ("patch_norm", patches.norm(dim=-1))):
                     split[f"{name}_inside"][level] += values[inside].mean().double().cpu() * batch_size
                     if (~inside).any():
@@ -156,6 +161,9 @@ def main(m: Measurement) -> None:
                                        if cells_by_distance[level, b] > 0],
                **{name: (values[level] / glimpse_counts[level]).item() for name, values in sorted(split.items())
                   if level or name.endswith("_inside")},
+               "prefix_token_weight_inside": dict(zip(PREFIX_TOKENS, (token_weight[0, level] / glimpse_counts[level]).tolist())),
+               "prefix_token_weight_outside": (dict(zip(PREFIX_TOKENS, (token_weight[1, level] / glimpse_counts[level]).tolist()))
+                                               if level else None),
                "per_write_outside_over_inside": (per_write[1, level] / per_write[0, level]).tolist() if level else None}
               for level in range(num_levels)]
     result = {
@@ -184,6 +192,8 @@ def main(m: Measurement) -> None:
                  level["prefix_weight_outside"], level["prefix_norm_inside"], level["prefix_norm_outside"],
                  level["patch_norm_inside"], level["patch_norm_outside"],
                  " ".join(f"{r:.3f}" for r in level["per_write_outside_over_inside"]))
+        log.info("  attention per prefix token, outside: %s", ", ".join(
+            f"{name} {weight:.2f}" for name, weight in level["prefix_token_weight_outside"].items()))
     log.info("level 3, summed per cell: leaked %.0f, own %.0f (ratio %.2f), %.0f%% of the leak's energy in its canvas "
              "mean; final canvas patch norm %.0f", result["level3_leaked_sum_norm"], result["level3_own_sum_norm"],
              result["level3_leaked_over_own"], 100 * result["level3_leaked_common_fraction"], result["final_canvas_patch_norm"])

@@ -128,10 +128,18 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 
   - With local Writes, a cell that no glimpse has covered receives nothing. That costs most when the first glimpses
     are small (R-IID, F2C).
-  - F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84). If only its glimpses of scale ≤ 1/4
-    keep their Writes in the crop, it reaches 45.38. For C2F, that rule is the same as local Writes from level 2.
-  - With the same rule, F-IID keeps its early mIoU (44.15 over t = 1-20; released: 44.11) and ends at 45.38 at
-    t = 84 (released: 44.88; local Writes from glimpse 1: 45.79).
+  - F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84).
+- **Local Writes for small glimpses only** (scale ≤ 1/4; larger glimpses write everywhere) cost at most 0.06 points
+  on average over t = 1-20 and gain by t = 84, on C2F, F-IID and R-IID. For C2F, this rule is the same as local Writes from level 2.
+
+  | Policy (seed 0) | mean over t = 1-20, released / rule | t = 84, released / rule |
+  |---|---|---|
+  | C2F | 44.89 / 44.83 | 43.65 / 46.18 |
+  | F-IID | 44.11 / 44.15 | 44.88 / 45.38 |
+  | R-IID | 39.60 / 39.59 | 45.19 / 45.50 |
+
+  F2C, whose first 16 glimpses are small, still loses early with it (30.90 against 34.58 over t = 1-20).
+  It ends higher, though: 45.38 at t = 20, against 42.84.
   - EG-C2F loses 0.45 points on average over t = 1-20.
 - **Removing only the shared vector is not enough.** The last two rows subtract, outside the crop, the mean of the
   Write residuals over those cells, and keep the rest of the leak.

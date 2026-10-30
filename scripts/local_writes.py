@@ -3,7 +3,9 @@
 A Write lets every canvas cell attend to the glimpse's tokens, so a glimpse also changes the cells it did not see
 (scripts/write_leakage.py measures how much). LocalWrites hooks the Writes and changes the residual of the cells
 outside the crop; write_parts splits a Write's residual into the part from the glimpse's prefix tokens (VPE, recurrent
-CLS, registers), whose keys carry no position, and the part from its patch tokens.
+CLS, registers), whose keys carry no position, and the part from its patch tokens. DroppedWriteToken removes, in every
+cell, the part that comes from one key token: canvas cells far from the glimpse attend almost only to backbone
+register 3, which works as an attention sink whose value is not zero.
 """
 
 import math
@@ -33,7 +35,8 @@ OutsideWrites = Literal["drop", "center", "keep_prefix", "keep_patches"]
 def write_parts(write: CanvasAttention, *, query: Tensor, kv: Tensor, query_rope: RoPE,
                 kv_rope: RoPE) -> tuple[Tensor, Tensor, Tensor]:
     """A Write's residual [B, N_query, D] split by key, in float32: (part from the prefix tokens, part from the patch
-    tokens, attention weight on the prefix tokens averaged over heads [B, N_query]). The two parts sum to the output."""
+    tokens, attention weight on each prefix token averaged over heads [B, N_query, n_prefix]). The two parts sum to
+    the output."""
     heads = write.num_heads
     q = apply_2d_rope(to_multihead(write.q_map(write.ln_q(query)), heads), query_rope).float()
     kv = write.ln_kv(kv)
@@ -43,7 +46,23 @@ def write_parts(write: CanvasAttention, *, query: Tensor, kv: Tensor, query_rope
     n_prefix = k.shape[2] - kv_rope.sin.shape[2]
     prefix = write.o_map(from_multihead(weights[..., :n_prefix] @ v[:, :, :n_prefix]))
     patches = write.o_map(from_multihead(weights[..., n_prefix:] @ v[:, :, n_prefix:]))
-    return prefix, patches, weights[..., :n_prefix].sum(dim=-1).mean(dim=1)
+    return prefix, patches, weights[..., :n_prefix].mean(dim=1)
+
+
+PREFIX_TOKENS = ("VPE", "recurrent CLS", *(f"backbone register {i}" for i in range(5)))
+"""The glimpse's prefix tokens, in their order among a Write's keys."""
+
+
+def token_part(write: CanvasAttention, token: int, *, query: Tensor, kv: Tensor, query_rope: RoPE,
+               kv_rope: RoPE) -> Tensor:
+    """The part [B, N_query, D] of a Write's residual that comes from key token `token`, in float32."""
+    heads = write.num_heads
+    q = apply_2d_rope(to_multihead(write.q_map(write.ln_q(query)), heads), query_rope).float()
+    kv = write.ln_kv(kv)
+    k = apply_2d_rope(to_multihead(write.k_map(kv), heads), kv_rope).float()
+    v = to_multihead(write.v_map(kv[:, token:token + 1]), heads).float()
+    weights = torch.softmax(q @ k.transpose(-1, -2) / math.sqrt(q.shape[-1]), dim=-1)[..., token:token + 1]
+    return write.o_map(from_multihead(weights @ v))
 
 
 class LocalWrites:
@@ -87,6 +106,24 @@ class LocalWrites:
                 prefix, patches = write_parts(module, **kwargs)[:2]
                 kept = prefix if self.outside == "keep_prefix" else patches
                 return (output * self.mask + outside * kept).to(output.dtype)
+
+    def remove(self) -> None:
+        for handle in self.handles:
+            handle.remove()
+
+
+class DroppedWriteToken:
+    """Removes from every Write residual, in every canvas cell, the part that comes from one key token of the glimpse
+    (an index into PREFIX_TOKENS), while active. It needs no viewpoint, unlike LocalWrites."""
+
+    def __init__(self, canvit: CanViT, *, token: int) -> None:
+        self.token, self.active = token, False
+        self.handles = [write.register_forward_hook(self.hook, with_kwargs=True) for write in canvit.canvas_writes]
+
+    def hook(self, module: CanvasAttention, args, kwargs: dict, output: Tensor) -> Tensor | None:
+        if not self.active:
+            return None
+        return (output.float() - token_part(module, self.token, **kwargs)).to(output.dtype)
 
     def remove(self) -> None:
         for handle in self.handles:
