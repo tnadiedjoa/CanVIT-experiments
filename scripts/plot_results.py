@@ -295,10 +295,10 @@ def reconstruction() -> None:
 
 
 CITYSCAPES = RESULTS / "cityscapes"
-DETAIL_STYLES = {  # one blue ramp, darker for more detail; dashed for glimpses all taken from the 1024 px scene
-    "s512": ("all glimpses from the 512 px scene", "#9ec5f4", "-"),
-    "s512_then_native": ("level 3 from the 1024 px scene", "#104281", "-"),
-    "native": ("all glimpses from the 1024 px scene", "#3987e5", "--"),
+WRITE_MODES = {  # an entity per Write mode, the same in every Cityscapes figure
+    "": ("released Writes", "#2a78d6"),
+    "_local21": ("Writes kept in the crop from level 3", "#6250d6"),
+    "_local1": ("Writes kept in the crop from glimpse 1", "#1baf7a"),
 }
 
 
@@ -307,45 +307,60 @@ def cityscapes_run(name: str) -> dict | None:
     return json.loads(path.read_text()) if path.exists() else None
 
 
-def cityscapes_detail() -> None:
-    models = [("CanViT-B (512 px pretraining), probe on 512 px scenes", "c2f_c64_t85_{}_s0"),
-              ("CanViT-B fine-tuned on 1024 px scenes (experimental), probe on 1024 px scenes", "s1024exp_c2f_c64_t85_{}_s0")]
-    models = [(title, pattern) for title, pattern in models if cityscapes_run(pattern.format("s512"))]
-    if not models:
+def level_boundaries(ax: plt.Axes) -> None:
+    for boundary in (1, 5, 21):
+        ax.axvline(boundary - 0.5, color=GRID, linewidth=1, linestyle=":", zorder=0)
+
+
+def cityscapes_level3() -> None:
+    if cityscapes_run("c2f_c64_t85_s512_then_native_s0_local1") is None:
         return
-    fig, axes = plt.subplots(1, len(models), figsize=(6.5 * len(models), 4), sharey=True, squeeze=False)
-    for ax, (title, pattern) in zip(axes[0], models, strict=True):
-        for detail, (label, color, style) in DETAIL_STYLES.items():
-            if run := cityscapes_run(pattern.format(detail)):
-                ax.plot(run["miou"], style, color=color, label=f"C2F, {label}")
-        eg = cityscapes_run(pattern.replace("c2f", "egc2f").removesuffix("_s0").format("s512_then_native"))
-        if eg:
-            ax.plot(eg["miou"], color=COLORS["EG-C2F"], label="EG-C2F, level 3 from the 1024 px scene")
-        for boundary in (1, 5, 21):
-            ax.axvline(boundary - 0.5, color=GRID, linewidth=1, linestyle=":", zorder=0)
-        ax.set(xlabel="glimpse t", title=title)
-        ax.title.set_fontsize(8)
+    fig, (c2f_ax, eg_ax) = plt.subplots(1, 2, figsize=(13, 4.4), sharey=True)
+    for suffix, (mode, color) in WRITE_MODES.items():
+        for detail, style, what in (("s512_then_native", "-", "level 3 from the 1024 px scene"),
+                                    ("s512", "--", "level 3 upsampled from the 512 px scene")):
+            if run := cityscapes_run(f"c2f_c64_t85_{detail}_s0{suffix}"):
+                c2f_ax.plot(run["miou"], style, color=color, linewidth=2 if style == "-" else 1.4, label=f"{mode}, {what}")
+    for name, label, color, style in [
+        ("egc2f_c64_t85_s512_then_native", "EG-C2F, released Writes", COLORS["EG-C2F"], "--"),
+        ("egc2f_c64_t85_s512_then_native_local1", "EG-C2F, Writes kept in the crop from glimpse 1", COLORS["EG-C2F"], "-"),
+        ("c2f_c64_t85_s512_then_native_s0_local1", "C2F, Writes kept in the crop from glimpse 1", WRITE_MODES["_local1"][1], "-"),
+        ("c2f_c64_t85_s512_then_native_s0", "C2F, released Writes", WRITE_MODES[""][1], "-"),
+    ]:
+        if run := cityscapes_run(name):
+            eg_ax.plot(run["miou"], style, color=color, linewidth=2 if style == "-" else 1.4, label=label)
+    for ax in (c2f_ax, eg_ax):
+        level_boundaries(ax)
+        ax.set_xlabel("glimpse t")
         ax.legend(fontsize=7, loc="lower right")
-    axes[0][0].set_ylabel("Cityscapes val mIoU at 1024 px (%)")
-    save(fig, "cityscapes_detail.png")
+    c2f_ax.set(ylabel="Cityscapes val mIoU at 1024 px (%)",
+               title="C2F to level 3 (tiles of 128 px at 1024 px), CanViT-B, canvas 64×64")
+    eg_ax.set(title="Tile order: EG-C2F against C2F (level 3 from the 1024 px scene)")
+    for ax in (c2f_ax, eg_ax):
+        ax.title.set_fontsize(9)
+    save(fig, "cityscapes_level3.png")
 
 
 def cityscapes_classes() -> None:
-    low, high = cityscapes_run("c2f_c64_t85_s512_s0"), cityscapes_run("c2f_c64_t85_s512_then_native_s0")
-    if low is None or high is None:
+    runs_by_mode = {suffix: cityscapes_run(f"c2f_c64_t85_s512_then_native_s0{suffix}") for suffix in ("", "_local21")}
+    if any(run is None for run in runs_by_mode.values()):
         return
-    names = low["class_names"]
-    gain = 100 * (np.array(high["per_class_iou"][-1]) - np.array(low["per_class_iou"][-1]))
-    order = np.argsort(gain)
-    fig, ax = plt.subplots(figsize=(6.5, 5))
-    ax.barh(np.arange(len(names)), gain[order], color=COLORS["C2F"], height=0.7)
-    ax.set_yticks(np.arange(len(names)), [names[i] for i in order])
+    names = runs_by_mode[""]["class_names"]  # type: ignore[index]
+    change = {suffix: 100 * (np.array(run["per_class_iou"][-1]) - np.array(run["per_class_iou"][20]))  # type: ignore[index]
+              for suffix, run in runs_by_mode.items()}
+    order = np.argsort(change[""])
+    y = np.arange(len(names))
+    fig, ax = plt.subplots(figsize=(7, 6))
+    for offset, suffix in ((0.2, ""), (-0.2, "_local21")):
+        mode, color = WRITE_MODES[suffix]
+        ax.barh(y + offset, change[suffix][order], height=0.38, color=color, label=mode)
+    ax.set_yticks(y, [names[i] for i in order])
     ax.axvline(0, color=MUTED, linewidth=1)
     ax.grid(axis="y", visible=False)
-    t = len(low["miou"]) - 1
-    ax.set(xlabel=f"IoU at t = {t}: level 3 from the 1024 px scene − from the 512 px scene (points)",
-           title="Which classes gain from real detail (C2F, CanViT-B, canvas 64×64)")
+    ax.set(xlabel="IoU change over C2F's level 3, t = 20 to t = 84 (points)",
+           title="Per class, level 3 from the 1024 px scene (CanViT-B, canvas 64×64)")
     ax.title.set_fontsize(9)
+    ax.legend(fontsize=8, loc="upper left")
     save(fig, "cityscapes_classes.png")
 
 
@@ -411,7 +426,7 @@ if __name__ == "__main__":
     canvas_grids()
     cost_frontier()
     reconstruction()
-    cityscapes_detail()
+    cityscapes_level3()
     cityscapes_classes()
     cityscapes_cost()
     summary_table()
