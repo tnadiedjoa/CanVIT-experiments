@@ -1,0 +1,5 @@
+# C2F with level 3 from the 1024 px scene, with every glimpse's Writes restricted to its crop: from level 3 on
+# (glimpse 21), and from the second glimpse on. The released model writes into every canvas cell; during level 3, a
+# cell receives the residuals of 63 glimpses of other tiles for one of its own.
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_local21.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --local-writes-from 21
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_local1.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --local-writes-from 1
