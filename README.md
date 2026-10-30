@@ -106,50 +106,75 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 | kept in the crop from level 3 (t ≥ 21) | 41.10 | 45.93 | 46.40 |
 | kept in the crop from level 2 (t ≥ 5) | 41.10 | 45.94 | 46.18 |
 | kept in the crop from glimpse 1 | 40.56 | 45.47 | 45.63 |
-| outside the crop, only their mean removed, from level 3 | 41.10 | 45.93 | 44.19 |
-| outside the crop, only their mean removed, from glimpse 1 | 40.98 | 42.18 | 34.69 |
 
 - With seed 1, the first two rows end at 43.64 and 46.31 at t = 84.
 - Level-3 tiles hold no new pixels on 512 px scenes. With local Writes, level 3 still adds 0.47 points.
-- On the 32×32 canvas of pretraining, C2F ends at 41.05 at t = 84 with released Writes. Local Writes end at 44.48
-  from level 3 and at 43.81 from glimpse 1.
 - Over level 3, the mean canvas patch norm doubles with released Writes (27.5k to 58.2k). With local Writes, it grows
   by 12% (to 30.7k).
+- On the 32×32 canvas of pretraining, C2F ends at 41.05 at t = 84 with released Writes. Local Writes end at 44.48
+  from level 3 and at 43.81 from glimpse 1.
+- The drop is not a bfloat16 artifact. On the first 500 images, C2F ends at 40.48 at t = 84 both in float32 and under
+  the official bfloat16 autocast. In float32, local Writes from level 3 raise it to 42.86.
 - From glimpse 1, local Writes cost 0.4 points at t = 20 (−0.46, −0.48 and −0.34 for seeds 0-2), from the first
   level-1 glimpse on. From level 2, they cost nothing up to t = 20. On ADE20K, the writes outside the crop help only
   during level 1, whose glimpses each cover a quarter of the scene.
-- Other policies, Writes kept in the crop from glimpse 1 (seed 0), against released Writes:
-
-  | Policy | t = 1 | t = 20 | t = 84 |
-  |---|---|---|---|
-  | R-IID | −3.66 | −1.81 | −0.16 |
-  | F2C (21 glimpses, finest tiles first) | −4.97 | +1.72 | |
-  | F-IID | −0.82 | +0.12 | +0.91 |
-
-  - With local Writes, a cell that no glimpse has covered receives nothing. That costs most when the first glimpses
-    are small (R-IID, F2C).
-  - F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84).
-- **Local Writes for small glimpses only** (scale ≤ 1/4; larger glimpses write everywhere) cost at most 0.06 points
-  on average over t = 1-20 and gain by t = 84, on C2F, F-IID and R-IID. For C2F, this rule is the same as local Writes from level 2.
-
-  | Policy (seed 0) | mean over t = 1-20, released / rule | t = 84, released / rule |
-  |---|---|---|
-  | C2F | 44.89 / 44.83 | 43.65 / 46.18 |
-  | F-IID | 44.11 / 44.15 | 44.88 / 45.38 |
-  | R-IID | 39.60 / 39.59 | 45.19 / 45.50 |
-
-  F2C, whose first 16 glimpses are small, still loses early with it (30.90 against 34.58 over t = 1-20).
-  It ends higher, though: 45.38 at t = 20, against 42.84.
-  - EG-C2F loses 0.45 points on average over t = 1-20.
-- **Removing only the shared vector is not enough.** The last two rows subtract, outside the crop, the mean of the
-  Write residuals over those cells, and keep the rest of the leak.
-  - From level 3, the mIoU peaks at 46.22 (t = 29), then ends at 44.19.
-  - From glimpse 1, it costs 3.75 points by t = 20.
-  - So the spatially varying part of the leak also degrades the canvas over level 3.
 - RFS, and the full scene repeated after C2F, are unchanged: their glimpse covers the whole canvas. Their decline
   does not come from writes outside the crop.
 
 ![Local Writes on ADE20K](outputs/ade20k_local_writes.png)
+
+**Other policies.** Writes kept in the crop from glimpse 1 (seed 0), change against released Writes:
+
+| Policy | t = 1 | t = 20 | t = 84 |
+|---|---|---|---|
+| R-IID | −3.66 | −1.81 | −0.16 |
+| F2C (21 glimpses, finest tiles first) | −4.97 | +1.72 | |
+| F-IID | −0.82 | +0.12 | +0.91 |
+
+- With local Writes, a cell that no glimpse has covered receives nothing. That costs most when the first glimpses
+  are small (R-IID, F2C).
+- F2C ends with the full scene and reaches 44.56 at t = 20 (released: 42.84).
+- EG-C2F loses 0.45 points on average over t = 1-20.
+
+**Local Writes for small glimpses only.** Glimpses of scale ≤ 1/4 keep their Writes in the crop, and larger ones
+write everywhere; for C2F, this is local Writes from level 2. On C2F, F-IID and R-IID, the rule costs at most 0.06
+points on average over t = 1-20 and gains by t = 84:
+
+| Policy (seed 0) | mean over t = 1-20, released / rule | t = 84, released / rule |
+|---|---|---|
+| C2F | 44.89 / 44.83 | 43.65 / 46.18 |
+| F-IID | 44.11 / 44.15 | 44.88 / 45.38 |
+| R-IID | 39.60 / 39.59 | 45.19 / 45.50 |
+
+F2C, whose first 16 glimpses are small, still loses early with it (30.90 against 34.58 over t = 1-20). It ends
+higher, though: 45.38 at t = 20, against 42.84.
+
+**The leak goes through an attention sink.** A Write's keys and values are all the glimpse's tokens. They include 7
+prefix tokens (VPE, recurrent CLS, 5 backbone registers) that SR-RoPE leaves unrotated, so every canvas cell sees
+them the same way, wherever it is. Attention of the canvas cells, mean over the three Writes (256 scenes):
+
+| C2F level | 1 | 2 | 3 |
+|---|---|---|---|
+| on the prefix, cells inside the crop | 0.31 | 0.34 | 0.46 |
+| on the prefix, cells outside the crop | 0.86 | 0.91 | 0.95 |
+| on backbone register 3, cells outside the crop | 0.55 | 0.82 | 0.93 |
+
+- Cells far from the glimpse attend almost only to register 3, which acts as an attention sink. Its value is not
+  zero, so each glimpse adds it to every cell it does not see.
+- Over level 3, the leak's part from the prefix sums to a vector that is 97% the same in every cell. Its part from
+  the patch tokens is 63% common.
+
+Removing only part of the leak is worse than keeping all of it (C2F, seed 0):
+
+| Writes outside the crop | t = 1 | t = 20 | t = 84 |
+|---|---|---|---|
+| released (both parts) | 41.10 | 45.93 | 43.65 |
+| dropped, from glimpse 1 | 40.56 | 45.47 | 45.63 |
+| only the part from the prefix, from glimpse 1 | 40.77 | 42.97 | 19.62 |
+| only their mean removed, from glimpse 1 | 40.98 | 42.18 | 34.69 |
+| only their mean removed, from level 3 | 41.10 | 45.93 | 44.19 |
+
+With the mean removed from level 3 on, the mIoU first peaks at 46.22 (t = 29).
 
 ### Most of C2F's gain does not need new pixels
 
@@ -199,6 +224,11 @@ layer-normalized patch to its four neighbours, and a tile's score is the mean ov
   [`outputs/ade20k_antialiasing.png`](outputs/ade20k_antialiasing.png).
 - **Halving every Write residual after the first glimpse** slows RFS's decline (+0.30 at t = 84), but costs C2F up
   to 0.89 points (−0.50 at t = 20).
+- **Glimpses of 256 px** (16×16 patches, 79 GFLOPs per glimpse instead of 21), on the first 500 images:
+  - the full view gains 1.1 points at t = 0 (38.47 vs 37.37);
+  - C2F ends lower at t = 20 (40.79 vs 42.02).
+
+  DINOv3 gains 11.8 points from 128 to 256 px. CanViT, pretrained on 128 px glimpses only, does not.
 - **Damping Writes where the canvas was already seen at a finer scale.** Inside the glimpse, Writes are multiplied by
   min(1, finest scale seen / glimpse scale)^k.
   - It is an exact no-op for C2F.

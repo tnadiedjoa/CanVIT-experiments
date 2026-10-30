@@ -17,7 +17,21 @@
    "residual_norm_inside": 6584.779571533203,
    "residual_norm_outside": null,
    "outside_over_inside": null,
-   "outside_by_distance": []
+   "outside_by_distance": [],
+   "patch_norm_inside": 5777.103424072266,
+   "prefix_norm_inside": 1543.378677368164,
+   "prefix_weight_inside": 0.2970117386430502,
+   "prefix_token_weight_inside": {
+    "VPE": 0.047715065302327275,
+    "recurrent CLS": 0.032535965321585536,
+    "backbone register 0": 0.03236513084266335,
+    "backbone register 1": 0.03829796169884503,
+    "backbone register 2": 0.030312101589515805,
+    "backbone register 3": 0.08275792747735977,
+    "backbone register 4": 0.033027582336217165
+   },
+   "prefix_token_weight_outside": null,
+   "per_write_outside_over_inside": null
   },
   {
    "level": 1,
@@ -43,6 +57,35 @@
      "cells": 1835008,
      "outside_over_inside": 0.1993939254674228
     }
+   ],
+   "patch_norm_inside": 5248.500350952148,
+   "patch_norm_outside": 1064.7283582687378,
+   "prefix_norm_inside": 961.5741090774536,
+   "prefix_norm_outside": 870.2788133621216,
+   "prefix_weight_inside": 0.3109195753931999,
+   "prefix_weight_outside": 0.8591669537127018,
+   "prefix_token_weight_inside": {
+    "VPE": 0.008419102829066105,
+    "recurrent CLS": 0.003686524636577815,
+    "backbone register 0": 0.03545545655651949,
+    "backbone register 1": 0.006045222602551803,
+    "backbone register 2": 0.021361823339248076,
+    "backbone register 3": 0.20815095421858132,
+    "backbone register 4": 0.027800489217042923
+   },
+   "prefix_token_weight_outside": {
+    "VPE": 0.028512821707408875,
+    "recurrent CLS": 0.0035007928745471872,
+    "backbone register 0": 0.05821803229628131,
+    "backbone register 1": 0.01672234630677849,
+    "backbone register 2": 0.095721795107238,
+    "backbone register 3": 0.5504422569647431,
+    "backbone register 4": 0.1060489253140986
+   },
+   "per_write_outside_over_inside": [
+    0.45262311880432904,
+    0.5280468606445742,
+    0.3824192145113805
    ]
   },
   {
@@ -85,6 +128,35 @@
      "cells": 3932160,
      "outside_over_inside": 0.10559403547043354
     }
+   ],
+   "patch_norm_inside": 5168.364721298218,
+   "patch_norm_outside": 607.322559595108,
+   "prefix_norm_inside": 628.790289402008,
+   "prefix_norm_outside": 549.8468757867813,
+   "prefix_weight_inside": 0.34253338316921145,
+   "prefix_weight_outside": 0.9105079895816743,
+   "prefix_token_weight_inside": {
+    "VPE": 0.0027922778967877093,
+    "recurrent CLS": 0.003087008615693776,
+    "backbone register 0": 0.012270032302694744,
+    "backbone register 1": 0.0019694451186751394,
+    "backbone register 2": 0.0071312018308162806,
+    "backbone register 3": 0.3052754029049538,
+    "backbone register 4": 0.010008016128267627
+   },
+   "prefix_token_weight_outside": {
+    "VPE": 0.007456677670234058,
+    "recurrent CLS": 0.0016557796038796369,
+    "backbone register 0": 0.016382819230784662,
+    "backbone register 1": 0.004762862396091805,
+    "backbone register 2": 0.027653827193717007,
+    "backbone register 3": 0.8166707910131663,
+    "backbone register 4": 0.03592524017949472
+   },
+   "per_write_outside_over_inside": [
+    0.3542251003729794,
+    0.4044941438141809,
+    0.3424570341164578
    ]
   },
   {
@@ -135,6 +207,35 @@
      "cells": 22806528,
      "outside_over_inside": 0.12239660677364934
     }
+   ],
+   "patch_norm_inside": 3962.7863070964813,
+   "patch_norm_outside": 310.08036459982395,
+   "prefix_norm_inside": 495.1321414113045,
+   "prefix_norm_outside": 479.2254048883915,
+   "prefix_weight_inside": 0.457454118761234,
+   "prefix_weight_outside": 0.9481379524222575,
+   "prefix_token_weight_inside": {
+    "VPE": 0.0007945870590901905,
+    "recurrent CLS": 0.0010882835292136406,
+    "backbone register 0": 0.003924844082803247,
+    "backbone register 1": 0.0006910961710104857,
+    "backbone register 2": 0.0019092040556643042,
+    "backbone register 3": 0.44603188827750273,
+    "backbone register 4": 0.003014216748169929
+   },
+   "prefix_token_weight_outside": {
+    "VPE": 0.002141367415788409,
+    "recurrent CLS": 0.00082020096465385,
+    "backbone register 0": 0.004499495039908652,
+    "backbone register 1": 0.0017229463710464188,
+    "backbone register 2": 0.004904142485656848,
+    "backbone register 3": 0.9264330034493469,
+    "backbone register 4": 0.007616806021360389
+   },
+   "per_write_outside_over_inside": [
+    0.3964774744872357,
+    0.4567654263509912,
+    0.45877387840723244
    ]
   }
  ],
@@ -142,5 +243,9 @@
  "level3_own_sum_norm": 3933.762481689453,
  "level3_leaked_over_own": 8.307603023079734,
  "level3_leaked_common_fraction": 0.8779716119170189,
+ "level3_leaked_prefix_sum_norm": 28457.00390625,
+ "level3_leaked_patch_sum_norm": 15572.106079101562,
+ "level3_leaked_prefix_common_fraction": 0.9747715592384338,
+ "level3_leaked_patch_common_fraction": 0.6289002373814583,
  "final_canvas_patch_norm": 58339.92529296875
 }

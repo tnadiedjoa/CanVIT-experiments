@@ -1,0 +1,80 @@
+{
+ "experiment": {
+  "output": "results/cityscapes/dv3b_512px.json",
+  "probe": "probes/cityscapes_dinov3_vitb16_512px.pt",
+  "batch_size": 8,
+  "device": "cuda"
+ },
+ "probe_config": {
+  "output": "probes/cityscapes_dinov3_vitb16_512px.pt",
+  "features": "dinov3_vitb16",
+  "scene_size_px": 512,
+  "pretrained_repo": "canvit/canvitb16-add-vpe-pretrain-g128px-s512px-in21k-dv3b16-2026-02-02",
+  "canvas_grid_size": 64,
+  "num_glimpses": 10,
+  "training_policy": "random",
+  "validation_policy": "full_then_random",
+  "num_steps": 8000,
+  "batch_size": 16,
+  "peak_lr": 0.0003,
+  "weight_decay": 0.001,
+  "warmup_steps": 500,
+  "warmup_start_lr_fraction": 1e-06,
+  "dropout": 0.1,
+  "validate_every": 1000,
+  "validation_batch_size": 16,
+  "seed": 0,
+  "device": "cuda"
+ },
+ "probe_selected_step": 2000,
+ "miou": [
+  63.78399133682251
+ ],
+ "per_class_iou": [
+  [
+   0.9497268199920654,
+   0.6880729794502258,
+   0.8465825915336609,
+   0.5537459850311279,
+   0.5040034651756287,
+   0.22549672424793243,
+   0.36937329173088074,
+   0.47122645378112793,
+   0.8402125835418701,
+   0.5125842094421387,
+   0.8365931510925293,
+   0.5863476395606995,
+   0.4243444502353668,
+   0.8055221438407898,
+   0.8019005656242371,
+   0.8190367817878723,
+   0.7382397055625916,
+   0.5642455220222473,
+   0.5817036032676697
+  ]
+ ],
+ "class_names": [
+  "road",
+  "sidewalk",
+  "building",
+  "wall",
+  "fence",
+  "pole",
+  "traffic light",
+  "traffic sign",
+  "vegetation",
+  "terrain",
+  "sky",
+  "person",
+  "rider",
+  "car",
+  "truck",
+  "bus",
+  "train",
+  "motorcycle",
+  "bicycle"
+ ],
+ "gflops": 215.036596224,
+ "n_scenes": 1000,
+ "wall_time_seconds": 27.112934122793376
+}

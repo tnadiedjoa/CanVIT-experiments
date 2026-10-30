@@ -1,0 +1,67 @@
+{
+ "experiment": {
+  "output": "results/rfs_c64_t5_n500_g256.json",
+  "policy": "repeated_full_scene",
+  "num_glimpses": 5,
+  "canvas_grid_size": 64,
+  "sampling": "bilinear",
+  "probe_canvas_grid_size": null,
+  "write_scale": 1.0,
+  "finer_seen_write_exponent": null,
+  "local_writes_from": null,
+  "outside_writes": "drop",
+  "local_writes_max_scale": null,
+  "scene_detail_px": null,
+  "seed": 0,
+  "batch_size": 8,
+  "cache": "/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt",
+  "dropped_write_token": null,
+  "dropped_write_token_from": 1,
+  "glimpse_size_px": 256,
+  "num_images": 500,
+  "autocast": true,
+  "device": "cuda"
+ },
+ "probe_repo": "canvit/probe-ade20k-40k-s512-c64-in21k",
+ "paper_name": "RFS",
+ "miou": [
+  38.465678691864014,
+  39.373424649238586,
+  39.433979988098145,
+  39.47295844554901,
+  39.50489163398743
+ ],
+ "canvas_patch_norm": [
+  6881.812140625,
+  12573.23484375,
+  18168.023859375,
+  23802.201609375,
+  29503.350125
+ ],
+ "delta_previous": [
+  0.8588743448257447,
+  0.006122186396270991,
+  0.001106729014776647,
+  0.0004337031089235097,
+  0.0002232835019240156
+ ],
+ "entropy": [
+  0.7503440608978271,
+  0.7304436411857606,
+  0.7253288154602051,
+  0.7242463450431824,
+  0.724484435081482
+ ],
+ "mean_scale": [
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0
+ ],
+ "n_images": 500,
+ "wall_time_seconds": 75.31252051051706,
+ "versions": {
+  "torch": "2.15.0+cu132"
+ }
+}
