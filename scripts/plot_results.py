@@ -295,9 +295,10 @@ def reconstruction() -> None:
 
 
 CITYSCAPES = RESULTS / "cityscapes"
-WRITE_MODES = {  # an entity per Write mode, the same in every Cityscapes figure
+WRITE_MODES = {  # an entity per Write mode, the same in every figure
     "": ("released Writes", "#2a78d6"),
     "_local21": ("Writes kept in the crop from level 3", "#6250d6"),
+    "_local5": ("Writes kept in the crop from level 2", "#eda100"),
     "_local1": ("Writes kept in the crop from glimpse 1", "#1baf7a"),
 }
 
@@ -365,16 +366,13 @@ def cityscapes_classes() -> None:
 
 
 def local_writes() -> None:
-    series = [(WRITE_MODES[suffix], result) for suffix, result in [
-        ("", runs("c2f_c64_t85")),
-        ("_local21", runs(*(f"c2f_c64_t85_s{seed}_local21" for seed in range(5)))),
-        ("_local1", runs(*(f"c2f_c64_t85_s{seed}_local1" for seed in range(5)))),
-    ]]
-    if any(result is None for _, result in series):
+    series = [(mode, runs(*(f"c2f_c64_t85_s{seed}{suffix}" for seed in range(5)))) for suffix, mode in WRITE_MODES.items()]
+    if any(result is None for _, result in series[:2]):
         return
     fig, (miou_ax, norm_ax) = plt.subplots(1, 2, figsize=(11, 3.8))
     for (mode, color), result in series:
-        assert result is not None
+        if result is None:
+            continue
         seeds = f"{len(result.runs)} seed{'s' if len(result.runs) > 1 else ''}"
         miou_ax.plot(result.mean("miou"), color=color, label=f"{mode} ({seeds})")
         norm_ax.plot(result.mean("canvas_patch_norm") / 1e3, color=color, label=mode)

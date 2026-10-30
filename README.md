@@ -105,12 +105,19 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 | released | 41.10 | 45.93 | 43.65 |
 | kept in the crop from level 3 (t ≥ 21) | 41.10 | 45.93 | 46.40 |
 | kept in the crop from glimpse 1 | 40.56 | 45.47 | 45.63 |
+| outside the crop, only their mean removed, from level 3 | 41.10 | 45.93 | 44.19 |
+| outside the crop, only their mean removed, from glimpse 1 | 40.98 | 42.18 | 34.69 |
 
 - Level-3 tiles hold no new pixels on 512 px scenes. With local Writes, level 3 still adds 0.47 points.
 - Over level 3, the mean canvas patch norm doubles with released Writes (27.5k to 58.2k). With local Writes, it grows
   by 12% (to 30.7k).
 - From glimpse 1, local Writes cost 0.4 points at t = 20 (−0.46, −0.48 and −0.34 for seeds 0-2), from the first
   level-1 glimpse on. In C2F's first levels, the writes outside the crop help on ADE20K.
+- **Removing only the shared vector is not enough.** The last two rows subtract, outside the crop, the mean of the
+  Write residuals over those cells, and keep the rest of the leak.
+  - From level 3, the mIoU peaks at 46.22 (t = 29), then ends at 44.19.
+  - From glimpse 1, it costs 3.75 points by t = 20.
+  - So the spatially varying part of the leak also degrades the canvas over level 3.
 - RFS, and the full scene repeated after C2F, are unchanged: their glimpse covers the whole canvas. Their decline
   does not come from writes outside the crop.
 
@@ -187,6 +194,7 @@ resolution. Pretraining used 512 px scenes, where glimpses this small are always
 |---|---|---|---|
 | released | 61.80 | 58.91 | 59.20 |
 | kept in the crop from level 3 | 61.80 | 63.17 | 63.57 |
+| kept in the crop from level 2 | 63.04 | | 64.70 |
 | kept in the crop from glimpse 1 | 63.26 | 64.08 | 64.49 |
 
 Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51.
@@ -201,11 +209,29 @@ Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51.
 
   With Writes kept in the crop from level 3, every class gains, small ones most: traffic sign +4.7, traffic light
   +4.2.
-- **Unlike on ADE20K, local Writes from glimpse 1 help before level 3:** +1.46 points at t = 20.
+- **Unlike on ADE20K, local Writes from glimpse 1 help before level 3:** +1.46 points at t = 20. Of that gain, 1.24
+  points remain when Writes are kept in the crop from level 2 only. Keeping them in the crop from level 2 gives the
+  best t = 84 (64.70).
 - **EG-C2F:**
   - With released Writes, it gains 0.86 points in its first 10 level-3 glimpses (62.70 at t = 30), then loses them.
   - With Writes kept in the crop from glimpse 1, it reaches 64.40 at t = 36. C2F needs 84 glimpses for the same
     level (64.49).
+
+**A CanViT-B pretrained on 1024 px scenes.** The Hub also holds
+`canvitb16-add-vpe-pretrain-g128px-s1024px-sa1b-dv3b16-experimental`, pretrained on 1024 px SA-1B scenes. It is in
+an older checkpoint format, which [`scripts/convert_legacy_checkpoint.py`](scripts/convert_legacy_checkpoint.py)
+converts. Its probe is trained the same way, on 1024 px scenes. Levels 0-2 come from the 512 px scene and level 3
+from the 1024 px scene, as above:
+
+| Writes | t = 0 | t = 20 | t = 84 |
+|---|---|---|---|
+| released | 51.57 | 64.96 | 63.65 |
+| kept in the crop from level 3 | 51.57 | 64.96 | 66.49 |
+
+- Its level-3 drop is half the flagship's (−1.31 points). Local Writes turn it into a gain of 1.53 points.
+- Real detail still adds little: level-3 tiles upsampled from the 512 px scene give 63.37 at t = 84 (−0.28).
+- The two models' probes are trained on different scene sizes (1024 and 512 px). The 3.16 points between them at
+  t = 20 therefore mix model and probe; a flagship probe trained on 1024 px scenes is queued.
 
 ![C2F and EG-C2F to level 3 on Cityscapes](outputs/cityscapes_level3.png)
 

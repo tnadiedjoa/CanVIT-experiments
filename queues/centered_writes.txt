@@ -3,3 +3,7 @@
 # rest of the leak, which local Writes from glimpse 1 show to help in C2F's first levels on ADE20K.
 c2f_c64_t85_s0_center1 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --outside-writes center
 c2f_c64_t85_s0_center21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21 --outside-writes center
+# Moved up from queues/local_writes.txt (that runner skips them once done): local Writes from level 2, and the second
+# seed of local Writes from level 3.
+c2f_c64_t85_s0_local5 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 5
+c2f_c64_t85_s1_local21 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21 --seed 1
