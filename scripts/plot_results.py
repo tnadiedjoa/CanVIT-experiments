@@ -13,6 +13,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MaxNLocator
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
@@ -179,6 +180,9 @@ def tile_orders() -> None:
 
 
 def save(fig: plt.Figure, name: str) -> None:
+    for ax in fig.axes:
+        if ax.get_xlabel() == "glimpse t":
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     FIGURES.mkdir(exist_ok=True)
     fig.savefig(FIGURES / name, bbox_inches="tight")
     plt.close(fig)
