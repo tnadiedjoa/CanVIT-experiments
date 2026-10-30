@@ -79,6 +79,10 @@ class Experiment:
     """When set, a glimpse's Write residual in each canvas cell inside its crop is multiplied by
     min(1, finest scale already seen at that cell / glimpse scale) ** exponent: coarse glimpses barely overwrite cells
     already seen in more detail. Changes nothing for policies that only go from coarse to fine (C2F)."""
+    local_writes_from: int | None = None
+    """When set, from this glimpse on, the Write residuals into the canvas cells outside the glimpse's crop are dropped
+    (the canvas registers keep theirs), so that a glimpse changes only the part of the canvas it saw. The released
+    model writes into every cell."""
     scene_detail_px: int | None = None
     """When set, each scene is downsampled to this size with antialiasing and upsampled back before the rollout, so no
     glimpse sees detail finer than this resolution; labels keep the full scene size."""
@@ -282,6 +286,30 @@ class FinerSeenWriteGate:
             handle.remove()
 
 
+class LocalWrites:
+    """Drops the Canvas Attention Write residuals into the canvas cells whose centers lie outside the current
+    glimpse's crop (Experiment.local_writes_from)."""
+
+    def __init__(self, seg: CanViTForSemanticSegmentation, *, canvas_grid_size: int, device: torch.device) -> None:
+        self.num_registers = seg.canvit.config.num_canvas_registers
+        self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
+        self.mask: Tensor | None = None  # [B, num_registers + G*G, 1] for the glimpse being taken
+        self.handles = [write.register_forward_hook(self.hook) for write in seg.canvit.canvas_writes]
+
+    def restrict_to(self, viewpoint: Viewpoint | None) -> None:
+        """Restricts the next glimpse's Writes to its crop, or leaves them unchanged when viewpoint is None."""
+        if viewpoint is None:
+            self.mask = None
+            return
+        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
+        inside = (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)
+        registers = inside.new_ones(inside.shape[0], self.num_registers)
+        self.mask = torch.cat([registers, inside], dim=1).unsqueeze(-1)
+
+    def hook(self, module, args, output: Tensor) -> Tensor | None:
+        return None if self.mask is None else output * self.mask
+
+
 def build_policy(exp: Experiment, seg: CanViTForSemanticSegmentation, *, labels: Tensor, device: torch.device) -> Policy:
     batch_size = labels.shape[0]
     if exp.policy in get_args(PolicyName):
@@ -327,6 +355,8 @@ def main(exp: Experiment) -> None:
     images_u8, labels_u8 = load_validation_scenes(exp.cache, size_px=scene_px)
     sample = sampler(exp.sampling)
     scaled_writes = ScaledWrites(seg, exp.write_scale)
+    local_writes = (LocalWrites(seg, canvas_grid_size=exp.canvas_grid_size, device=device)
+                    if exp.local_writes_from is not None else None)
 
     mious = [ade20k.MeanIoU(device=device) for _ in range(num_glimpses)]
     sums = {name: torch.zeros(num_glimpses, dtype=torch.float64, device=device) for name in STATISTICS}
@@ -351,6 +381,9 @@ def main(exp: Experiment) -> None:
                 glimpse = sample(spatial=images, viewpoint=viewpoint, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
                 if gate is not None:
                     gate.before_glimpse(viewpoint)
+                if local_writes is not None:
+                    assert exp.local_writes_from is not None
+                    local_writes.restrict_to(viewpoint if t >= exp.local_writes_from else None)
                 state = seg.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 if gate is not None:
                     gate.after_glimpse(viewpoint)
