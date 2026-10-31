@@ -401,8 +401,9 @@ Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51. Over three C2F see
   against 59.22 released and 59.71 with plain local Writes). They end lower than plain local Writes, though: 63.83
   at t = 84, against 64.49 from glimpse 1 and 64.70 from level 2. On Cityscapes, the leak near the crop also hurts
   over level 3.
-- **A 128×128 canvas** (8 px cells at 1024 px), read by the 64×64 probe, with Writes kept in the crop from level 2,
-  reaches 65.06 at t = 84 (+0.36), for twice the FLOPs per glimpse (42.3 GFLOPs).
+- **A 128×128 canvas** (8 px cells at 1024 px), read by the 64×64 probe, adds about 0.4 points for twice the FLOPs
+  per glimpse (42.3 GFLOPs). It drops over level 3 just as much: 62.21 at t = 20 and 59.78 at t = 84 with released
+  Writes, 63.32 and 65.06 with Writes kept in the crop from level 2.
 - **Subtracting only the mean of the residuals outside the crop** (from glimpse 1, level 3 from the 1024 px scene)
   fails here too: 59.50 at t = 20, 52.48 at t = 84.
 - **EG-C2F:**
