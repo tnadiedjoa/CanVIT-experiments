@@ -153,6 +153,23 @@ residuals there as well, and dropping them only farther away (C2F, seed 0):
   against 44.89 with released Writes and 44.41 without the margin. It still gains 2.3 points by t = 84, and needs no
   threshold on the glimpse scale.
 
+**A drift shared by every cell.** The share of the layer-normalized canvas common to all cells (the energy of their
+mean) grows over level 3 from 0.787 to 0.830 with released Writes. With local Writes from level 3, it stays at
+0.784. A readout-only test leaves the canvas unchanged and lets the probe read it with its mean over the cells held at
+its value after t = 20 (C2F, seed 0):
+
+| Writes, readout | t = 40 | t = 60 | t = 84 |
+|---|---|---|---|
+| released | 45.36 | 44.63 | 43.65 |
+| released, mean held at t = 20 | 46.25 | 45.79 | 44.94 |
+| kept in the crop from level 3 | 46.06 | 46.22 | 46.40 |
+| kept in the crop from level 3, mean held at t = 20 | 46.19 | 46.43 | 46.69 |
+
+- Early in level 3, the shared drift is the drop: with released Writes, the recentered readout peaks at 46.27
+  (t = 36), above local Writes at that point.
+- By t = 84, it recovers only 1.3 of the 2.3 points lost. The leak also damages what differs between cells.
+- On local Writes, it adds 0.29 points at t = 84 (46.69, the best ADE20K score in this repository).
+
 **Other policies.** Writes kept in the crop from glimpse 1 (seed 0), change against released Writes:
 
 | Policy | t = 1 | t = 20 | t = 84 |
