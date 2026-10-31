@@ -211,6 +211,9 @@ its value after t = 20 (C2F, seed 0):
   (t = 36), above local Writes at that point.
 - By t = 84, it recovers only 1.3 of the 2.3 points lost. The leak also damages what differs between cells.
 - On local Writes, it adds 0.29 points at t = 84 (46.69, the best ADE20K score in this repository).
+- On Writes kept within one crop width of the crop from glimpse 1, it lowers the mIoU instead: 45.42 at t = 84,
+  against 46.14. The shared part of the canvas then barely grows (0.775 at t = 20, 0.782 at t = 84), and holding the
+  mean removes useful changes.
 
 **Other policies.** Writes kept in the crop from glimpse 1 (seed 0), change against released Writes:
 
