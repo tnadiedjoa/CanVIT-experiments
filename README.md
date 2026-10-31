@@ -285,6 +285,9 @@ robust, though:
 - on Cityscapes (from level 3), it recovers 1.7 of the 4.4 points that local Writes gain (60.92 against 59.20);
 - on the model pretrained on 1024 px scenes (Cityscapes), it changes nothing (63.94 against 63.89);
 - on the reconstruction metric (32×32 canvas), it does worse than released Writes (0.791 against 0.803 at t = 84).
+  The mIoU on the same 32×32 canvas still rises (43.21 against 41.05 at t = 84), so the disagreement comes from the
+  metric, not from the canvas size: the canvas gets easier for the segmentation probe to read but further from
+  DINOv3's features.
 
 ### Most of C2F's gain does not need new pixels
 
