@@ -108,7 +108,7 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 | kept in the crop from level 2 (t ≥ 5) | 41.10 | 45.94 | 46.18 |
 | kept in the crop from glimpse 1 | 40.56 | 45.47 | 45.63 |
 
-- With seed 1, the first two rows end at 43.64 and 46.31 at t = 84.
+- With seed 1, the first three rows end at 43.64, 46.31 and 46.21 at t = 84.
 - Level-3 tiles hold no new pixels on 512 px scenes. With local Writes, level 3 still adds 0.47 points.
 - Over level 3, the mean canvas patch norm doubles with released Writes (27.5k to 58.2k). With local Writes, it grows
   by 12% (to 30.7k).
