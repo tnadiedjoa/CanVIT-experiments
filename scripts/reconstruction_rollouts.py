@@ -28,7 +28,7 @@ from canvit_pytorch.policies import POLICIES, PolicyName, make_policy
 from canvit_pytorch.teacher import TEACHER_REPO, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import LocalWrites, OutsideWrites  # noqa: E402
+from local_writes import DroppedWriteToken, LocalWrites, OutsideWrites  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +47,11 @@ class Experiment:
     """With local_writes_from: cells within this many crop widths of the crop also keep their Writes."""
     unseen_writes: bool = False
     """With local_writes_from: cells that no glimpse has covered yet also keep their Writes."""
+    dropped_write_token: int | None = None
+    """When set, from glimpse dropped_write_token_from on, every Write residual loses the part that comes from this
+    key token of the glimpse (an index into local_writes.PREFIX_TOKENS; 5 is backbone register 3, the attention sink
+    of the canvas cells far from the glimpse)."""
+    dropped_write_token_from: int = 1
     seed: int = 0
     """Seeds the random policies (C2F's tile order, R-IID's viewpoints); the official CLI does not seed them."""
     batch_size: int = 16
@@ -70,6 +75,8 @@ def main(exp: Experiment) -> None:
                                 outside=exp.outside_writes, max_scale=exp.local_writes_max_scale,
                                 margin=exp.local_writes_margin, unseen_writes=exp.unseen_writes)
                     if exp.local_writes_from is not None else None)
+    dropped_token = (DroppedWriteToken(model.canvit, token=exp.dropped_write_token)
+                     if exp.dropped_write_token is not None else None)
 
     sums = torch.zeros(exp.num_glimpses, len(METRICS), dtype=torch.float64)
     start = time.monotonic()
@@ -87,6 +94,8 @@ def main(exp: Experiment) -> None:
                 viewpoint = policy.step(t, state)
                 if local_writes is not None:
                     local_writes.before_glimpse(t, viewpoint)
+                if dropped_token is not None:
+                    dropped_token.active = t >= exp.dropped_write_token_from
                 glimpse = sample_at_viewpoint(spatial=images, viewpoint=viewpoint, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
                 state = model.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 scene_norm, scene_raw = cosine_similarities(

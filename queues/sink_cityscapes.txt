@@ -1,0 +1,4 @@
+# Backbone register 3's part removed from every Write from level 3 on: the one fix that needs no viewpoint
+# (ADE20K: 45.33 at t = 84, against 43.65 released). Does it carry over to Cityscapes, and to the 1024 px model?
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_nosink21.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --dropped-write-token 5 --dropped-write-token-from 21
+results/cityscapes/s1024exp_c2f_c64_t85_native_s0_nosink21.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --dropped-write-token 5 --dropped-write-token-from 21

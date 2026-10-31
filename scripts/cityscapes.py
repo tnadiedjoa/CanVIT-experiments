@@ -47,7 +47,7 @@ from canvit_pytorch.probes import SegmentationProbe
 from canvit_pytorch.teacher import DINOV3_REPOS, DINOv3Teacher, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import LocalWrites, OutsideWrites  # noqa: E402
+from local_writes import DroppedWriteToken, LocalWrites, OutsideWrites  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -372,6 +372,11 @@ class Rollouts:
     unseen_writes: bool = False
     """With local_writes_from: the cells that no glimpse has covered yet also keep their Writes, so policies that start
     with small glimpses (R-IID, F2C) still fill the rest of the canvas."""
+    dropped_write_token: int | None = None
+    """When set, from glimpse dropped_write_token_from on, every Write residual loses the part that comes from this
+    key token of the glimpse (an index into local_writes.PREFIX_TOKENS; 5 is backbone register 3, the attention sink
+    of the canvas cells far from the glimpse)."""
+    dropped_write_token_from: int = 1
     seed: int = 0
     batch_size: int = 8
     device: str = "cuda"
@@ -410,6 +415,8 @@ def rollouts(exp: Rollouts) -> None:
                                 max_scale=exp.local_writes_max_scale, margin=exp.local_writes_margin,
                                 unseen_writes=exp.unseen_writes)
                     if exp.local_writes_from is not None else None)
+    dropped_token = (DroppedWriteToken(seg.canvit, token=exp.dropped_write_token)
+                     if exp.dropped_write_token is not None else None)
     images, labels = load_split("val")
     num_scenes = 2 * len(images)
     ious = [MeanIoU(device=device, num_classes=NUM_CLASSES, ignore_label=IGNORE_LABEL) for _ in range(exp.num_glimpses)]
@@ -428,6 +435,8 @@ def rollouts(exp: Rollouts) -> None:
                 glimpse = sample(scene_1024, scene_512, viewpoint, exp.detail)
                 if local_writes is not None:
                     local_writes.before_glimpse(t, viewpoint)
+                if dropped_token is not None:
+                    dropped_token.active = t >= exp.dropped_write_token_from
                 state = seg.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 ious[t].update(predicted_labels(seg.logits(state.canvas), size_px=SCENE_PX), scene_labels)
                 scales[t] += viewpoint.scales.double().sum().cpu()
