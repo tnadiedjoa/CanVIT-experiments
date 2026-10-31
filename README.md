@@ -180,21 +180,23 @@ tiles, and a level-3 tile into its 3×3 block.
 With seed 1, a margin of one crop width gives the same: 45.01 over t = 1-20 and 46.10 at t = 84, against 44.91 and
 43.64 with released Writes.
 
-The margin also helps the policies that start with small glimpses, where the rule for small glimpses costs early
-(margin from glimpse 1, seed 0):
+The margin also helps the policies that start with small glimpses, where the rule for small glimpses costs early.
+Rules compared (seed 0): released Writes / the rule for small glimpses / a margin of half a crop width / a margin of
+one crop width, both margins from glimpse 1:
 
-| Policy | mean over t = 1-20: released / small glimpses / margin | last glimpse: released / small glimpses / margin |
+| Policy | mean over t = 1-20 | last glimpse |
 |---|---|---|
-| C2F (t = 84) | 44.89 / 44.83 / 44.86 | 43.65 / 46.18 / 45.95 |
-| EG-C2F (t = 84) | 45.21 / 45.20 / 45.25 | 43.53 / 46.24 / 45.99 |
-| F-IID (t = 84) | 44.11 / 44.15 / 44.22 | 44.88 / 45.38 / 45.72 |
-| R-IID (t = 84) | 39.60 / 39.59 / 39.79 | 45.19 / 45.50 / 45.65 |
-| F2C (t = 20) | 34.58 / 30.90 / 35.19 | 42.84 / 45.38 / 44.95 |
+| C2F (t = 84) | 44.89 / 44.83 / 44.86 / 44.98 | 43.65 / 46.18 / 45.95 / 46.14 |
+| EG-C2F (t = 84) | 45.21 / 45.20 / 45.25 / 45.33 | 43.53 / 46.24 / 45.99 / 46.10 |
+| F-IID (t = 84) | 44.11 / 44.15 / 44.22 / 44.24 | 44.88 / 45.38 / 45.72 / 45.53 |
+| R-IID (t = 84) | 39.60 / 39.59 / 39.79 / 39.86 | 45.19 / 45.50 / 45.65 / 45.60 |
+| F2C (t = 20) | 34.58 / 30.90 / 35.19 / 36.04 | 42.84 / 45.38 / 44.95 / 44.74 |
 
-On F2C, the margin is the only change that does not lose early: at t = 15, after the 16 level-2 tiles, it scores
-42.42, against 39.23 with released Writes.
-With a margin of one crop width instead, F2C averages 36.04 over t = 1-20 (44.74 at t = 20) and R-IID 39.86
-(45.60 at t = 84).
+- A margin of one crop width has the best mean over t = 1-20 for every policy, above released Writes.
+- On F2C, the margins are the only change that does not lose early. After the 16 level-2 tiles (t = 15), a margin of
+  half a crop width scores 42.42, against 39.23 with released Writes.
+- By the last glimpse, the rule for small glimpses is ahead on C2F, EG-C2F and F2C, and the margins on F-IID and
+  R-IID.
 
 **A drift shared by every cell.** The share of the layer-normalized canvas common to all cells (the energy of their
 mean) grows over level 3 from 0.787 to 0.830 with released Writes. With local Writes from level 3, it stays at
