@@ -120,7 +120,8 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 - Over level 3, the mean canvas patch norm doubles with released Writes (27.5k to 58.2k). With local Writes, it grows
   by 12% (to 30.7k).
 - On the 32×32 canvas of pretraining, C2F ends at 41.05 at t = 84 with released Writes. Local Writes end at 44.48
-  from level 3 and at 43.81 from glimpse 1.
+  from level 3 and at 43.81 from glimpse 1, and at 44.06 with a margin of one crop width (mean over t = 1-20: 43.46,
+  against 43.39 released).
 - **The paper's reconstruction metric agrees, without any probe.** It measures how well the 32×32 canvas predicts
   DINOv3's features of the scene (cosine similarity). For C2F with released Writes, it falls from 0.837 at t = 20
   to 0.803 at t = 84. With Writes kept in the crop from level 3, it keeps rising, to 0.839 at t = 84. Kept in the

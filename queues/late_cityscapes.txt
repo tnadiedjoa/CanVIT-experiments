@@ -1,0 +1,3 @@
+# EG-C2F on the 1024 px model with Writes kept within a quarter crop width from glimpse 1: does the small-budget lead
+# over DINOv3 at 512 px grow?
+results/cityscapes/s1024exp_egc2f_c64_t85_native_local1_margin0.25.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --policy entropy_coarse_to_fine --local-writes-from 1 --local-writes-margin 0.25

@@ -1,0 +1,2 @@
+# A margin of one crop width on the 32×32 canvas of pretraining.
+results/c2f_c32_t85_s0_local1_margin1.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 32 --batch-size 32 --local-writes-from 1 --local-writes-margin 1
