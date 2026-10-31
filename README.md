@@ -165,7 +165,7 @@ narrower is better by t = 84:
 | 0 (crop only) | 44.41 | 45.63 | 59.71 | 64.49 |
 | 0.25 | 44.70 | 45.77 | 59.90 | 64.20 |
 | 0.5 | 44.86 | 45.95 | 59.83 | 63.83 |
-| 1 | 44.98 | 46.14 | | |
+| 1 | 44.98 | 46.14 | 59.56 | 63.15 |
 | 2 | 44.94 | 45.99 | | |
 
 With a margin of one crop width, a level-1 quadrant still writes everywhere, a level-2 tile into its 3×3 block of
