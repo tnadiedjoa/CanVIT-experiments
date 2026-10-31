@@ -160,6 +160,7 @@ The margin also helps the policies that start with small glimpses, where the rul
 | Policy | mean over t = 1-20: released / small glimpses / margin | last glimpse: released / small glimpses / margin |
 |---|---|---|
 | C2F (t = 84) | 44.89 / 44.83 / 44.86 | 43.65 / 46.18 / 45.95 |
+| F-IID (t = 84) | 44.11 / 44.15 / 44.22 | 44.88 / 45.38 / 45.72 |
 | R-IID (t = 84) | 39.60 / 39.59 / 39.79 | 45.19 / 45.50 / 45.65 |
 | F2C (t = 20) | 34.58 / 30.90 / 35.19 | 42.84 / 45.38 / 44.95 |
 
