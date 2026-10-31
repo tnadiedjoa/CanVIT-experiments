@@ -430,6 +430,9 @@ from the 1024 px scene, as above:
 - **EG-C2F with released Writes** peaks at 66.02 (t = 30), then falls to 64.25.
 - **With every glimpse from the 1024 px scene and Writes kept in the crop from level 2**, C2F reaches 67.16 at
   t = 84 and EG-C2F 67.57 (t = 77). After 8 glimpses (167 GFLOPs), EG-C2F already scores 64.10.
+- On this model too, the crop from level 2 ends highest. From glimpse 1, C2F ends at 66.87 with Writes kept in the
+  crop and at 66.74 with a margin of a quarter crop width. Their means over t = 1-20 are a little higher, though
+  (62.80 and 62.89, against 62.69).
 - **The gap comes from the model, not from the probe.** A flagship probe trained on 1024 px scenes, like the 1024 px
   model's, gives the same curve as the one trained on 512 px scenes: 61.72 at t = 20 and 59.17 at t = 84, against
   61.80 and 59.20. The 3.2 points between the two models at t = 20 come from pretraining on 1024 px scenes.
