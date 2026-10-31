@@ -1,0 +1,5 @@
+# The Writes' own parameters (key and value maps, layer norms; rest of CanViT frozen), trained on the pretraining
+# objective. Control first: 400 steps on rollouts of pretraining length (chunks of 2 glimpses, stop with probability
+# 0.5); then the same 400 steps on long rollouts (C2F to level 3 and R-IID, 85 glimpses).
+probes/write_finetune_short.pt scripts/train_write_gate.py --kind writes --batch-size 16 --lr 5e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400 --stop-probability 0.5 --tbptt-chunk-glimpses 2
+probes/write_finetune_c2f_riid.pt scripts/train_write_gate.py --kind writes --batch-size 16 --lr 5e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400

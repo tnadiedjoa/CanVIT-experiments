@@ -60,6 +60,14 @@ Pretraining rollouts average four glimpses. The table follows four policies over
 - **C2F peaks at the end of level 2 (t = 20).** It then loses 2.3 points over level 3, whose tiles are upsampled 2×
   from the 512 px scene. The next section traces this loss to Writes that land outside the glimpse.
 
+**Averaging a cell's Writes over its views stops RFS's decline.** Each repeated full view adds nearly the same
+residual: the canvas norm grows by about 4.5k per glimpse, from 6.5k at t = 0 to 382k at t = 84. With the Write
+residual into a cell multiplied by 1 / (1 + n), where n counts the earlier glimpses whose crop covered the cell, RFS
+ends at 40.42 at t = 84 instead of 37.55, with a canvas norm of 24.7k. It peaks at 40.99 at t = 5 (released Writes:
+41.12 at t = 2). The model never learned to stop writing what the canvas already holds. The averaging suits
+repetition only: on C2F, it weakens the finer levels' Writes, and scores 44.37 at t = 20 (released: 45.93) and 40.48
+at t = 84.
+
 Three controls continue the same 21 C2F glimpses differently (seed 0). Change in mIoU from t = 20 to t = 84:
 
 - level 3: −2.28;
@@ -310,6 +318,47 @@ robust, though:
   metric, not from the canvas size: the canvas gets easier for the segmentation probe to read but further from
   DINOv3's features.
 
+### Learned Writes
+
+The fixes above are hand-set rules applied at inference. [`scripts/train_write_gate.py`](scripts/train_write_gate.py)
+learns a change to the Writes instead, with the rest of the released model frozen. It uses the paper's objective
+(after every glimpse, mean squared errors to DINOv3's standardized patch features from the canvas, and to its CLS
+token from the recurrent CLS token), but on long rollouts: each step runs one 85-glimpse rollout, C2F or R-IID, on 16
+ADE20K training scenes at 512 px (32×32 canvas), with truncated backpropagation over chunks of 4 glimpses. Evaluation
+uses the validation scenes, never seen in training.
+
+**A learned distance gate.** Each Write's residual into a cell is multiplied, per head, by
+exp(−r · max(0, d − ρ)), where d is the cell's Chebyshev distance to the crop in crop widths and r, ρ are learned
+(two parameters per Write and head, 48 in all). After 400 steps (nearly flat from step 250), r lies between 0.23 and
+0.29 and ρ between 0.01 and 0.19 in all 24 heads (means 0.26 and 0.06): a soft decay, not the hard cut of the rules. A cell one crop width from the crop keeps about 0.78 of
+its residual; the farthest cells from a level-3 tile, seven widths away, keep about 0.16. C2F, seed 0:
+
+| Writes | ADE20K, mean over t = 1-20 | ADE20K, t = 84 | reconstruction, t = 84 | Cityscapes, t = 84 |
+|---|---|---|---|---|
+| released | 44.89 | 43.65 | 0.803 | 59.20 |
+| learned gate | 44.97 | 45.61 | 0.822 | 61.77 |
+| kept within one crop width, from glimpse 1 | 44.98 | 46.14 | 0.836 | 63.15 |
+| kept in the crop from level 3 | 44.89 | 46.40 | 0.839 | 63.57 |
+| kept in the crop from level 2 | 44.83 | 46.18 | 0.837 | 64.70 |
+
+The gate keeps the early gain of the one-width margin and recovers most of the level-3 drop on ADE20K, but less than
+the rules, and less on the reconstruction metric and on Cityscapes.
+
+**Why soft: locality costs the CLS token.** The recurrent CLS token's prediction of the teacher's CLS token also
+drifts over long C2F rollouts: its cosine similarity falls from 0.838 at t = 4 to 0.769 at t = 84 with released
+Writes. Local Writes make it worse, the more so the narrower: 0.692 with Writes kept in the crop from glimpse 1,
+0.729 within one crop width, 0.757 in the crop from level 3, and 0.759 with the learned gate. The objective weighs
+the two terms, and the gate settles between them.
+
+**A zero-value key did not train.** A key with a zero value, added to every Write, would let a cell attend to
+nothing instead of to the sink register (a learned key and logit bias per head). In 10 of the 24 heads, it never
+received a gradient, and only 7 moved substantially. The Write logits are large: over 16 scenes of C2F, the median log-sum-exp over canvas cells is about 160 in the first
+Write, 8 in the second and 20 in the third. Against them, a key that starts with a small logit gets a weight that
+rounds to 0 in float32, and no gradient. At level 3, a canvas cell's largest attention weight averages 0.87 to 0.94
+across the three Writes.
+
+![Learned Writes](outputs/learned_writes.png)
+
 ### Most of C2F's gain does not need new pixels
 
 This test removes the detail finer than 128 px from the scenes (antialiased downsampling, then bilinear upsampling),
@@ -517,8 +566,9 @@ size 1, both variants take 15-23 ms, a time bounded by kernel launches.
   probe is trained once.
 - Deterministic policies (RFS, EG-C2F and the scored tile orders) ran once; the others ran over the seeds shown.
   Variants of C2F use seed 0.
-- Nothing in CanViT is retrained, so the conclusions hold for the released model. Local Writes are a change at
-  inference only; a model pretrained with them may behave differently.
+- Apart from the learned Writes (48 parameters, or the Writes alone, trained briefly with the rest frozen), nothing
+  in CanViT is retrained, so the conclusions hold for the released model. Local Writes are a change at inference
+  only; a model pretrained with them may behave differently.
 
 ## Setup
 
@@ -538,11 +588,12 @@ defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the
 | Path | What it does |
 | --- | --- |
 | `scripts/c2f_rollout.py` | One scene under C2F: numbered viewpoints, the canvas after each glimpse (the paper's PCA protocol) and the per-glimpse canvas change. |
-| `scripts/ade20k_rollouts.py` | ADE20K validation mIoU after every glimpse, with canvas statistics, for the paper's policies and for variants: other tile orders within C2F's levels, C2F continued past level 2 by revisits, anti-aliased glimpses, scenes without fine detail, a probe read on a larger canvas, scaled Write residuals, Writes damped where the canvas was already seen at a finer scale, Writes kept in the glimpse's crop. Uses the official model, probe, transform and metric. |
+| `scripts/ade20k_rollouts.py` | ADE20K validation mIoU after every glimpse, with canvas statistics, for the paper's policies and for variants: other tile orders within C2F's levels, C2F continued past level 2 by revisits, anti-aliased glimpses, scenes without fine detail, a probe read on a larger canvas, scaled Write residuals, Writes damped where the canvas was already seen at a finer scale or averaged over a cell's views, Writes kept in the glimpse's crop, learned changes to the Writes. Uses the official model, probe, transform and metric. |
 | `scripts/level3_canvas.py` | The canvas and the probe's prediction after level 3 of C2F with released and local Writes, on a few ADE20K scenes. |
 | `scripts/write_leak_map.py` | Where one glimpse's Writes land on one scene: residual norm and attention on the sink register, per canvas cell. |
 | `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level, and how much of it comes from the glimpse's prefix tokens. |
-| `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share. |
+| `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share, and the learned changes to the Writes: a distance gate, a zero-value key, the Writes' own parameters. |
+| `scripts/train_write_gate.py` | Trains one of those learned changes, the rest of CanViT frozen, on the pretraining objective with long rollouts. |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
 | `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT and for DINOv3 at several input sizes. |
 | `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released or local Writes), and of DINOv3 at several input sizes. |

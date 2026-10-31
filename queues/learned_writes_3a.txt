@@ -1,0 +1,2 @@
+# Learned Writes, stream 3.
+results/c2f_c64_t85_s0_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_c2f_riid.pt

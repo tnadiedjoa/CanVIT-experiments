@@ -392,6 +392,42 @@ def local_writes() -> None:
     save(fig, "ade20k_local_writes.png")
 
 
+LEARNED_MODES = {  # hand-set rules (dashed) and learned changes (solid), against released Writes
+    "": ("released Writes", "#2a78d6", "-"),
+    "_local21": ("kept in the crop from level 3 (hand-set)", "#6250d6", "--"),
+    "_local1_margin1": ("kept within one crop width, from glimpse 1 (hand-set)", "#e34948", "--"),
+    "_gate_c2f_riid": ("learned gate, patch + CLS loss", "#eb6834", "-"),
+    "_gate_patch_c2f_riid": ("learned gate, patch loss", "#e87ba4", "-"),
+    "_finetune_short": ("Writes fine-tuned, pretraining-length rollouts", "#8a8985", "-"),
+    "_finetune_c2f_riid": ("Writes fine-tuned, 85-glimpse rollouts", "#008300", "-"),
+}
+
+
+def learned_writes() -> None:
+    reconstruction = {suffix: json.loads(path.read_text())["per_timestep"] for suffix in LEARNED_MODES
+                      if (path := RESULTS / "reconstruction" / f"c2f_c32_t85_s0{suffix}.json").exists()}
+    if len(reconstruction) < 3:
+        return
+    fig, (patch_ax, cls_ax, miou_ax) = plt.subplots(1, 3, figsize=(16, 3.8))
+    for suffix, (label, color, style) in LEARNED_MODES.items():
+        if suffix in reconstruction:
+            patch_ax.plot([p["scene_cos_norm"] for p in reconstruction[suffix]], style, color=color, label=label)
+            cls_ax.plot([p["cls_cos_norm"] for p in reconstruction[suffix]], style, color=color, label=label)
+        if (path := RESULTS / f"c2f_c64_t85_s0{suffix}.json").exists():
+            miou_ax.plot(json.loads(path.read_text())["miou"], style, color=color, label=label)
+    for ax in (patch_ax, cls_ax, miou_ax):
+        level_boundaries(ax)
+        ax.set_xlabel("glimpse t")
+    patch_ax.set(ylabel="cosine similarity to DINOv3 (standardized)",
+                 title="Canvas: teacher patch features (C2F, canvas 32×32)")
+    cls_ax.set(ylabel="cosine similarity to DINOv3 (standardized)", title="Recurrent CLS: teacher CLS token")
+    miou_ax.set(ylabel="ADE20K val mIoU (%)", title="C2F, canvas 64×64")
+    for ax in (patch_ax, cls_ax, miou_ax):
+        ax.title.set_fontsize(9)
+    patch_ax.legend(fontsize=7, loc="lower left")
+    save(fig, "learned_writes.png")
+
+
 def cityscapes_cost() -> None:
     dinov3 = sorted((run for px in (512, 768, 1024) if (run := cityscapes_run(f"dv3b_{px}px"))),
                     key=lambda run: run["gflops"])
@@ -494,6 +530,7 @@ if __name__ == "__main__":
     cost_frontier()
     reconstruction()
     local_writes()
+    learned_writes()
     cityscapes_level3()
     cityscapes_classes()
     cityscapes_cost()

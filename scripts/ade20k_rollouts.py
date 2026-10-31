@@ -84,6 +84,11 @@ class Experiment:
     """When set, a glimpse's Write residual in each canvas cell inside its crop is multiplied by
     min(1, finest scale already seen at that cell / glimpse scale) ** exponent: coarse glimpses barely overwrite cells
     already seen in more detail. Changes nothing for policies that only go from coarse to fine (C2F)."""
+    covered_write_exponent: float | None = None
+    """When set, a glimpse's Write residual in each canvas cell inside its crop is multiplied by
+    (1 + number of earlier glimpses whose crop covered the cell) ** -exponent. With 1, a cell's Writes are averaged over
+    its views instead of summed: repeated views add nearly the same Write each time (RFS), and summed they make the
+    canvas grow along that one vector."""
     local_writes_from: int | None = None
     """When set, from this glimpse on, the Write residuals into the canvas cells outside the glimpse's crop are dropped
     (the canvas registers keep theirs), so that a glimpse changes only the part of the canvas it saw. The released
@@ -319,6 +324,26 @@ class FinerSeenWriteGate:
             handle.remove()
 
 
+class CoveredWriteGate(FinerSeenWriteGate):
+    """Damps Writes into the canvas cells that earlier glimpses' crops already covered
+    (Experiment.covered_write_exponent)."""
+
+    def __init__(self, seg: CanViTForSemanticSegmentation, *, exponent: float, batch_size: int, canvas_grid_size: int,
+                 device: torch.device) -> None:
+        super().__init__(seg, exponent=exponent, batch_size=batch_size, canvas_grid_size=canvas_grid_size,
+                         device=device)
+        self.covered = torch.zeros(batch_size, canvas_grid_size, canvas_grid_size, device=device)
+
+    def before_glimpse(self, viewpoint: Viewpoint) -> None:
+        factor = (1 + self.covered) ** -self.exponent
+        cells = torch.where(self.inside(viewpoint), factor, torch.ones_like(factor)).flatten(1)
+        registers = torch.ones(cells.shape[0], self.num_registers, device=cells.device)
+        self.factor = torch.cat([registers, cells], dim=1).unsqueeze(-1)
+
+    def after_glimpse(self, viewpoint: Viewpoint) -> None:
+        self.covered += self.inside(viewpoint).float()
+
+
 def build_policy(exp: Experiment, seg: CanViTForSemanticSegmentation, *, labels: Tensor, device: torch.device) -> Policy:
     batch_size = labels.shape[0]
     if exp.policy in get_args(PolicyName):
@@ -391,6 +416,10 @@ def main(exp: Experiment) -> None:
             gate = (FinerSeenWriteGate(seg, exponent=exp.finer_seen_write_exponent, batch_size=batch_size,
                                        canvas_grid_size=exp.canvas_grid_size, device=device)
                     if exp.finer_seen_write_exponent is not None else None)
+            if exp.covered_write_exponent is not None:
+                assert gate is None, "one gate at a time"
+                gate = CoveredWriteGate(seg, exponent=exp.covered_write_exponent, batch_size=batch_size,
+                                        canvas_grid_size=exp.canvas_grid_size, device=device)
             previous = layer_normalized_patches(seg, state.canvas)
             for t in range(num_glimpses):
                 viewpoint = policy.step(t, state)

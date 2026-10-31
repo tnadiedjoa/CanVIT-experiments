@@ -1,0 +1,2 @@
+# Learned Writes, last evaluations before the allocation ends, by priority (stream 1).
+results/c2f_c64_t85_s0_finetune_short.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_short.pt

@@ -1,0 +1,5 @@
+# Writes averaged over a cell's views instead of summed (covered_write_exponent 1: a cell already covered n times gets
+# 1 / (n + 1) of the Write): does it stop the drift under repeated views (RFS), and what does it do to C2F?
+results/rfs_c64_t85_covered1.json scripts/ade20k_rollouts.py --policy repeated_full_scene --num-glimpses 85 --canvas-grid-size 64 --covered-write-exponent 1
+results/c2f_c64_t85_s0_covered1.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --covered-write-exponent 1
+results/c2f_c64_t85_s0_covered1_local21.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --covered-write-exponent 1 --local-writes-from 21

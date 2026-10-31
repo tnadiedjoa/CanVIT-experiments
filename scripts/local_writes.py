@@ -5,7 +5,8 @@ A Write lets every canvas cell attend to the glimpse's tokens, so a glimpse also
 outside the crop; write_parts splits a Write's residual into the part from the glimpse's prefix tokens (VPE, recurrent
 CLS, registers), whose keys carry no position, and the part from its patch tokens. DroppedWriteToken removes, in every
 cell, the part that comes from one key token: canvas cells far from the glimpse attend almost only to backbone
-register 3, which works as an attention sink whose value is not zero.
+register 3, which works as an attention sink whose value is not zero. LEARNED_WRITES are the learned counterparts,
+trained by scripts/train_write_gate.py and loaded by load_learned_writes.
 """
 
 import math
@@ -194,7 +195,9 @@ class LearnedNullWrite(nn.Module):
     """A key with a zero value added to every Write, so that a canvas cell can attend to it and write nothing, instead
     of attending to backbone register 3, whose value is not zero. Its key (per head, without position) and a logit
     bias per head are learned; everything else in CanViT stays frozen. With the initial bias (-3), the zero-value key
-    takes a few percent of each cell's attention, enough for gradients to flow."""
+    takes a few percent of the attention of a cell whose real logits are small. In many heads they are far larger (the
+    median log-sum-exp over canvas cells is about 160 in the first Write, 8 in the second, 20 in the third), and the
+    key gets almost none."""
 
     def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device) -> None:
         super().__init__()
@@ -217,12 +220,13 @@ class LearnedNullWrite(nn.Module):
             v = to_multihead(write.v_map(kv), heads).to(q.dtype)
             out = F.scaled_dot_product_attention(q, k, v)  # the released Write, same kernel
             # A zero-value key with logit l0 rescales that output by the attention mass left to the real keys,
-            # sigmoid(logsumexp(real logits) - l0), computed in float32.
+            # sigmoid(logsumexp(real logits) - l0) = exp(-softplus(l0 - logsumexp)), in float32. The second form
+            # keeps a gradient where the sigmoid rounds to 1.
             scale = q.shape[-1] ** -0.5
             real = torch.logsumexp(q.float() @ k.float().transpose(-1, -2) * scale, dim=-1, keepdim=True)
             null = (q.float() @ self.null_key[index].view(1, heads, -1, 1)) * scale
             null = null + self.null_bias[index].view(1, heads, 1, 1)
-            out = (out.float() * torch.sigmoid(real - null)).to(out.dtype)
+            out = (out.float() * torch.exp(-F.softplus(null - real))).to(out.dtype)
             return write.o_map(from_multihead(out))
         return forward
 
@@ -237,7 +241,34 @@ class LearnedNullWrite(nn.Module):
             write.forward = forward
 
 
-LEARNED_WRITES = {"gate": LearnedWriteGate, "null": LearnedNullWrite}
+class FinetunedWrites(nn.Module):
+    """The released Writes' own parameters (key and value maps, layer norms), trained further while the rest of
+    CanViT stays frozen. Its state dict holds the Writes' parameters."""
+
+    def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device) -> None:
+        super().__init__()
+        self.writes = canvit.canvas_writes
+        self.released = {name: value.detach().clone() for name, value in self.writes.state_dict().items()}
+        self.writes.requires_grad_(True)
+
+    def before_glimpse(self, t: int, viewpoint: Viewpoint) -> None:
+        pass
+
+    def describe(self) -> dict[str, list[list[float]]]:
+        """Per Write, the norm of each parameter's change relative to its released norm."""
+        current = self.writes.state_dict()
+        changes: list[list[float]] = [[] for _ in self.writes]
+        for name, released in self.released.items():
+            change = (current[name].float() - released.float()).norm() / released.float().norm().clamp(min=1e-12)
+            changes[int(name.split(".")[0])].append(change.item())
+        return {"relative_change": changes}
+
+    def remove(self) -> None:
+        self.writes.load_state_dict(self.released)
+        self.writes.requires_grad_(False)
+
+
+LEARNED_WRITES = {"gate": LearnedWriteGate, "null": LearnedNullWrite, "writes": FinetunedWrites}
 
 
 def load_learned_writes(canvit: CanViT, path, *, canvas_grid_size: int, device: torch.device) -> nn.Module:

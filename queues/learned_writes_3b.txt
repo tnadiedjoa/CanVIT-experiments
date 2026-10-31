@@ -1,0 +1,4 @@
+# Learned Writes, stream 3, after the patch-only gate is trained.
+results/c2f_c64_t85_s0_gate_patch_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_gate_patch_c2f_riid.pt
+results/reconstruction/riid_c32_t85_s0_finetune_c2f_riid.json scripts/reconstruction_rollouts.py --policy random --write-gate probes/write_finetune_c2f_riid.pt
+results/f2c_c64_t21_s0_gate_c2f_riid.json scripts/ade20k_rollouts.py --policy fine_to_coarse --num-glimpses 21 --canvas-grid-size 64 --write-gate probes/write_gate_c2f_riid.pt
