@@ -184,6 +184,8 @@ The margin also helps the policies that start with small glimpses, where the rul
 
 On F2C, the margin is the only change that does not lose early: at t = 15, after the 16 level-2 tiles, it scores
 42.42, against 39.23 with released Writes.
+With a margin of one crop width instead, F2C averages 36.04 over t = 1-20 (44.74 at t = 20) and R-IID 39.86
+(45.60 at t = 84).
 
 **A drift shared by every cell.** The share of the layer-normalized canvas common to all cells (the energy of their
 mean) grows over level 3 from 0.787 to 0.830 with released Writes. With local Writes from level 3, it stays at
