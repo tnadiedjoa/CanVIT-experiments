@@ -222,6 +222,7 @@ Removing only part of the leak is worse than keeping all of it (C2F, seed 0):
 | dropped, from glimpse 1 | 40.56 | 45.47 | 45.63 |
 | only the part from the prefix, from glimpse 1 | 40.77 | 42.97 | 19.62 |
 | only the part from the patch tokens, from glimpse 1 | 40.73 | 44.25 | 39.83 |
+| only the part from the prefix, from level 3 | 41.10 | 45.93 | 37.81 |
 | only their mean removed, from glimpse 1 | 40.98 | 42.18 | 34.69 |
 | only their mean removed, from level 3 | 41.10 | 45.93 | 44.19 |
 
