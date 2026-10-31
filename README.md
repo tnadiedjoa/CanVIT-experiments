@@ -263,7 +263,13 @@ With the mean removed from level 3 on, the mIoU first peaks at 46.22 (t = 29).
 Removing register 3's part from every Write, in every cell, needs no viewpoint. From glimpse 1, it does not help:
 44.39 at t = 20 and 43.17 at t = 84, and the canvas norm grows even more (64.0k at t = 84, against 58.2k with the
 released Writes). From level 3 on, though, it recovers most of the drop: 45.33 at t = 84, against 43.65 with released
-Writes and 46.40 with local Writes. The coarse levels need the sink's value; level 3 does not.
+Writes and 46.40 with local Writes. The coarse levels need the sink's value; level 3 does not. This fix is not
+robust, though:
+
+- from level 2 on, it ends at 43.99 and loses 0.40 points at t = 20;
+- on Cityscapes (from level 3), it recovers 1.7 of the 4.4 points that local Writes gain (60.92 against 59.20);
+- on the model pretrained on 1024 px scenes (Cityscapes), it changes nothing (63.94 against 63.89);
+- on the reconstruction metric (32×32 canvas), it does worse than released Writes (0.791 against 0.803 at t = 84).
 
 ### Most of C2F's gain does not need new pixels
 
