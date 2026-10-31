@@ -197,6 +197,8 @@ one crop width, both margins from glimpse 1:
   half a crop width scores 42.42, against 39.23 with released Writes.
 - By the last glimpse, the rule for small glimpses is ahead on C2F, EG-C2F and F2C, and the margins on F-IID and
   R-IID.
+- The reconstruction metric agrees. With a margin of one crop width, C2F ends at 0.836 (released Writes: 0.803),
+  F-IID at 0.830 (0.821) and R-IID at 0.829 (0.825). Their means over t = 1-20 stay within 0.002 of released Writes.
 
 **A drift shared by every cell.** The share of the layer-normalized canvas common to all cells (the energy of their
 mean) grows over level 3 from 0.787 to 0.830 with released Writes. With local Writes from level 3, it stays at

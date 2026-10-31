@@ -1,0 +1,2 @@
+results/reconstruction/fiid_c32_t85_s0_local1_margin1.json scripts/reconstruction_rollouts.py --policy full_then_random --local-writes-from 1 --local-writes-margin 1
+results/reconstruction/c2f_c32_t85_s0_local1_margin0.25.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --local-writes-from 1 --local-writes-margin 0.25

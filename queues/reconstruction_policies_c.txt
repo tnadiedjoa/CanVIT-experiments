@@ -1,0 +1,1 @@
+results/reconstruction/c2f_c32_t85_s0_local1_margin0.25.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --local-writes-from 1 --local-writes-margin 0.25

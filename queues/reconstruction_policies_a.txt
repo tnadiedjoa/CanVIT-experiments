@@ -1,0 +1,3 @@
+# The reconstruction metric for R-IID and F-IID, released Writes against a margin of one crop width from glimpse 1.
+results/reconstruction/riid_c32_t85_s0.json scripts/reconstruction_rollouts.py --policy random
+results/reconstruction/riid_c32_t85_s0_local1_margin1.json scripts/reconstruction_rollouts.py --policy random --local-writes-from 1 --local-writes-margin 1
