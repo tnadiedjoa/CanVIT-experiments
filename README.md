@@ -118,7 +118,8 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
   DINOv3's features of the scene (cosine similarity). For C2F with released Writes, it falls from 0.837 at t = 20
   to 0.803 at t = 84. With Writes kept in the crop from level 3, it keeps rising, to 0.839 at t = 84. Kept in the
   crop from level 2, they give the best t = 20 (0.839 against 0.837) and end at 0.837. From glimpse 1, they give
-  0.835 at t = 20 and 0.831 at t = 84.
+  0.835 at t = 20 and 0.831 at t = 84. Kept within half a crop width of the crop from glimpse 1, they give 0.839 and
+  0.835.
 - The drop is not a bfloat16 artifact. On the first 500 images, C2F ends at 40.48 at t = 84 both in float32 and under
   the official bfloat16 autocast. In float32, local Writes from level 3 raise it to 42.86.
 - From glimpse 1, local Writes cost 0.4 points at t = 20 (−0.46, −0.48 and −0.34 for seeds 0-2), from the first
@@ -257,10 +258,10 @@ Removing only part of the leak is worse than keeping all of it (C2F, seed 0):
 
 With the mean removed from level 3 on, the mIoU first peaks at 46.22 (t = 29).
 
-Removing register 3's part from every Write, in every cell, needs no viewpoint, but it does not help either:
-44.39 at t = 20 and 43.17 at t = 84 (from glimpse 1). The canvas norm then grows even more: 64.0k at t = 84, against
-58.2k with the released Writes. The sink shows where the outside cells' attention goes, but its value alone is not
-the cause.
+Removing register 3's part from every Write, in every cell, needs no viewpoint. From glimpse 1, it does not help:
+44.39 at t = 20 and 43.17 at t = 84, and the canvas norm grows even more (64.0k at t = 84, against 58.2k with the
+released Writes). From level 3 on, though, it recovers most of the drop: 45.33 at t = 84, against 43.65 with released
+Writes and 46.40 with local Writes. The coarse levels need the sink's value; level 3 does not.
 
 ### Most of C2F's gain does not need new pixels
 
