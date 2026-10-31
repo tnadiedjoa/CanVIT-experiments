@@ -282,7 +282,9 @@ resolution. Pretraining used 512 px scenes, where glimpses this small are always
 | kept in the crop from level 2 | 63.04 | | 64.70 |
 | kept in the crop from glimpse 1 | 63.26 | 64.08 | 64.49 |
 
-Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51.
+Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51. Over three C2F seeds (mean ± sd), released Writes give
+61.71 ± 0.11 at t = 20 and 59.13 ± 0.09 at t = 84. Writes kept in the crop from level 2 give 63.04 ± 0.02 and
+64.65 ± 0.06.
 
 - **Real detail adds little.** Over level 3, glimpses from the 1024 px scene beat upsampled ones by 0.29 to 0.41
   points at t = 84.
@@ -347,7 +349,8 @@ size 1, both variants take 15-23 ms, a time bounded by kernel launches.
 
 ### Limits
 
-- Two datasets. On Cityscapes, the probe is trained here and every run uses one seed.
+- Two datasets. On Cityscapes, the probe is trained here. Every run uses one seed, except the comparison of released
+  Writes with Writes kept in the crop from level 2 (three seeds).
 - Deterministic policies (RFS, EG-C2F and the scored tile orders) ran once; the others ran over the seeds shown.
   Variants of C2F use seed 0.
 - Nothing in CanViT is retrained, so the conclusions hold for the released model. Local Writes are a change at
