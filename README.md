@@ -63,8 +63,9 @@ Pretraining rollouts average four glimpses. The table follows four policies over
 Three controls continue the same 21 C2F glimpses differently (seed 0). Change in mIoU from t = 20 to t = 84:
 
 - level 3: −2.28;
-- level-2 tiles again: −1.24;
-- the full scene again: −5.77 (down to 40.17).
+- level-2 tiles again: −1.24, and −0.13 with Writes kept in the crop (next section);
+- the full scene again: −5.77 (down to 40.17). Its glimpse covers the whole canvas, so this drop is repetition,
+  not Writes outside the glimpse.
 
 ![C2F continued past level 2](outputs/ade20k_level3_controls.png)
 

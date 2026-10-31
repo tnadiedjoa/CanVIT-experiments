@@ -1,0 +1,4 @@
+# The model pretrained on 1024 px scenes, every glimpse from the 1024 px scene: Writes kept in the crop from glimpse 1,
+# with and without a margin of a quarter crop width (from level 2: 67.16 at t = 84).
+results/cityscapes/s1024exp_c2f_c64_t85_native_s0_local1.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --local-writes-from 1
+results/cityscapes/s1024exp_c2f_c64_t85_native_s0_local1_margin0.25.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --local-writes-from 1 --local-writes-margin 0.25

@@ -1,0 +1,2 @@
+# A margin of one crop width (from glimpse 1) on EG-C2F and F-IID.
+results/fiid_c64_t85_s0_local1_margin1.json scripts/ade20k_rollouts.py --policy full_then_random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 1

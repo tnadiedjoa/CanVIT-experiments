@@ -1,0 +1,2 @@
+# The best ADE20K rule so far (a margin of one crop width from glimpse 1) with the readout recentered at t = 20.
+results/c2f_c64_t85_s0_local1_margin1_readout20.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 1 --readout-mean-from 20
