@@ -359,6 +359,10 @@ Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51. Over three C2F see
 - **Unlike on ADE20K, local Writes from glimpse 1 help before level 3:** +1.46 points at t = 20. Of that gain, 1.24
   points remain when Writes are kept in the crop from level 2 only. Keeping them in the crop from level 2 gives the
   best t = 84 (64.70).
+- **Writes kept within half a crop width of the crop, from glimpse 1,** give the best mean over t = 1-20 (59.83,
+  against 59.22 released and 59.71 with plain local Writes). They end lower than plain local Writes, though: 63.83
+  at t = 84, against 64.49 from glimpse 1 and 64.70 from level 2. On Cityscapes, the leak near the crop also hurts
+  over level 3.
 - **A 128×128 canvas** (8 px cells at 1024 px), read by the 64×64 probe, with Writes kept in the crop from level 2,
   reaches 65.06 at t = 84 (+0.36), for twice the FLOPs per glimpse (42.3 GFLOPs).
 - **Subtracting only the mean of the residuals outside the crop** (from glimpse 1, level 3 from the 1024 px scene)
