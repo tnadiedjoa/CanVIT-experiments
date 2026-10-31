@@ -143,13 +143,14 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
   45.75 at t = 20, 43.53 at t = 84. With Writes kept in the crop from level 2, it ends at 46.24 (next table).
 
 **Local Writes for small glimpses only.** Glimpses of scale ≤ 1/4 keep their Writes in the crop, and larger ones
-write everywhere; for C2F, this is local Writes from level 2. On C2F, EG-C2F, F-IID and R-IID, the rule costs at
-most 0.06 points on average over t = 1-20 and gains by t = 84:
+write everywhere; for C2F, this is local Writes from level 2. On the three C2F tile orders, F-IID and R-IID, the
+rule costs at most 0.06 points on average over t = 1-20 and gains by t = 84:
 
 | Policy (seed 0) | mean over t = 1-20, released / rule | t = 84, released / rule |
 |---|---|---|
 | C2F | 44.89 / 44.83 | 43.65 / 46.18 |
 | EG-C2F | 45.21 / 45.20 | 43.53 / 46.24 |
+| C2F, highest canvas contrast first (no probe) | 45.20 / 45.15 | 43.59 / 46.23 |
 | F-IID | 44.11 / 44.15 | 44.88 / 45.38 |
 | R-IID | 39.60 / 39.59 | 45.19 / 45.50 |
 
