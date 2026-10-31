@@ -283,6 +283,8 @@ Levels 0-2 come from the 512 px scene, and t = 0 gives 49.51.
 - **Unlike on ADE20K, local Writes from glimpse 1 help before level 3:** +1.46 points at t = 20. Of that gain, 1.24
   points remain when Writes are kept in the crop from level 2 only. Keeping them in the crop from level 2 gives the
   best t = 84 (64.70).
+- **A 128×128 canvas** (8 px cells at 1024 px), read by the 64×64 probe, with Writes kept in the crop from level 2,
+  reaches 65.06 at t = 84 (+0.36), for twice the FLOPs per glimpse (42.3 GFLOPs).
 - **Subtracting only the mean of the residuals outside the crop** (from glimpse 1, level 3 from the 1024 px scene)
   fails here too: 59.50 at t = 20, 52.48 at t = 84.
 - **EG-C2F:**
