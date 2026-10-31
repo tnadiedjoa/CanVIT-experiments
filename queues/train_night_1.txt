@@ -1,0 +1,2 @@
+# Writes fine-tuned with small glimpses (scale <= 1/4) kept in their crop during training (C2F: local Writes from level 2).
+probes/write_finetune_c2f_riid_localmax0.25.pt scripts/train_write_gate.py --batch-size 16 --lr 5e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400 --kind writes --local-writes-from 1 --local-writes-max-scale 0.25

@@ -241,34 +241,52 @@ class LearnedNullWrite(nn.Module):
             write.forward = forward
 
 
-class FinetunedWrites(nn.Module):
-    """The released Writes' own parameters (key and value maps, layer norms), trained further while the rest of
-    CanViT stays frozen. Its state dict holds the Writes' parameters."""
+class FinetunedModules(nn.Module):
+    """Some of CanViT's Canvas Attention modules (`groups`: "reads", "writes"), with their own parameters trained
+    further while the rest of CanViT stays frozen. Its state dict holds their parameters."""
+
+    groups: tuple[str, ...] = ()
 
     def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device) -> None:
         super().__init__()
-        self.writes = canvit.canvas_writes
-        self.released = {name: value.detach().clone() for name, value in self.writes.state_dict().items()}
-        self.writes.requires_grad_(True)
+        for group in self.groups:
+            setattr(self, group, getattr(canvit, f"canvas_{group}"))
+        self.released = {name: value.detach().clone() for name, value in self.state_dict().items()}
+        self.requires_grad_(True)
 
     def before_glimpse(self, t: int, viewpoint: Viewpoint) -> None:
         pass
 
     def describe(self) -> dict[str, list[list[float]]]:
-        """Per Write, the norm of each parameter's change relative to its released norm."""
-        current = self.writes.state_dict()
-        changes: list[list[float]] = [[] for _ in self.writes]
+        """Per module, the norm of each parameter's change relative to its released norm."""
+        current = self.state_dict()
+        changes: dict[str, list[list[float]]] = {f"{group}_relative_change": [[] for _ in getattr(self, group)]
+                                                 for group in self.groups}
         for name, released in self.released.items():
+            group, index = name.split(".")[:2]
             change = (current[name].float() - released.float()).norm() / released.float().norm().clamp(min=1e-12)
-            changes[int(name.split(".")[0])].append(change.item())
-        return {"relative_change": changes}
+            changes[f"{group}_relative_change"][int(index)].append(change.item())
+        return changes
 
     def remove(self) -> None:
-        self.writes.load_state_dict(self.released)
-        self.writes.requires_grad_(False)
+        self.load_state_dict(self.released)
+        self.requires_grad_(False)
 
 
-LEARNED_WRITES = {"gate": LearnedWriteGate, "null": LearnedNullWrite, "writes": FinetunedWrites}
+class FinetunedWrites(FinetunedModules):
+    """The released Writes' own parameters (key and value maps, layer norms), trained further."""
+
+    groups = ("writes",)
+
+
+class FinetunedCanvasAttention(FinetunedModules):
+    """The released Reads' and Writes' own parameters, trained further."""
+
+    groups = ("reads", "writes")
+
+
+LEARNED_WRITES = {"gate": LearnedWriteGate, "null": LearnedNullWrite, "writes": FinetunedWrites,
+                  "canvas_attention": FinetunedCanvasAttention}
 
 
 def load_learned_writes(canvit: CanViT, path, *, canvas_grid_size: int, device: torch.device) -> nn.Module:

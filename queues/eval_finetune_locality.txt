@@ -1,0 +1,3 @@
+# The Writes fine-tuned on long rollouts (without a rule) combined with local Writes at inference.
+results/reconstruction/c2f_c32_t85_s0_finetune_c2f_riid_local21.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/write_finetune_c2f_riid.pt --local-writes-from 21
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_finetune_c2f_riid_local5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --write-gate probes/write_finetune_c2f_riid.pt --local-writes-from 5

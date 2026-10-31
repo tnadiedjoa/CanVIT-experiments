@@ -1,0 +1,3 @@
+# A Cityscapes probe trained on the canvas of the Writes fine-tuned on long rollouts (the released probe was trained on
+# the released canvas), with the recipe of probes/cityscapes_canvas_s512_c64.pt.
+probes/cityscapes_canvas_s512_c64_finetune_c2f_riid.pt scripts/cityscapes.py train-probe --write-gate probes/write_finetune_c2f_riid.pt

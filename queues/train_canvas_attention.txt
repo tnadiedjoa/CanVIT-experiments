@@ -1,0 +1,2 @@
+# The Reads' and Writes' own parameters fine-tuned on long rollouts (the Writes alone plateau).
+probes/canvas_attention_finetune_c2f_riid.pt scripts/train_write_gate.py --batch-size 16 --lr 5e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400 --kind canvas_attention

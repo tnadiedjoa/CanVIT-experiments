@@ -1,0 +1,2 @@
+# The learned gate trained on C2F only (no R-IID), 300 steps: does it get sharper?
+probes/write_gate_c2f.pt scripts/train_write_gate.py --policies coarse_to_fine --batch-size 16 --lr 0.05 --num-steps 300

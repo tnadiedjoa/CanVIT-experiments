@@ -1,0 +1,3 @@
+# The Writes fine-tuned on long rollouts, read by a Cityscapes probe trained on their own canvas.
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_finetune_c2f_riid_ownprobe.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64_finetune_c2f_riid.pt --detail s512_then_native --write-gate probes/write_finetune_c2f_riid.pt
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_finetune_c2f_riid_local5_ownprobe.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64_finetune_c2f_riid.pt --detail s512_then_native --write-gate probes/write_finetune_c2f_riid.pt --local-writes-from 5

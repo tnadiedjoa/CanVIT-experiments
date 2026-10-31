@@ -1,0 +1,6 @@
+# Controls: the Writes fine-tuned without the rule (probes/write_finetune_c2f_riid.pt), with the one-width margin
+# applied at inference only; and seed 1 of the fine-tuned Writes.
+results/c2f_c64_t85_s0_finetune_c2f_riid_local1_margin1.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_c2f_riid.pt --local-writes-from 1 --local-writes-margin 1
+results/reconstruction/c2f_c32_t85_s0_finetune_c2f_riid_local1_margin1.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/write_finetune_c2f_riid.pt --local-writes-from 1 --local-writes-margin 1
+results/c2f_c64_t85_s1_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --seed 1 --write-gate probes/write_finetune_c2f_riid.pt
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_finetune_c2f_riid_local1_margin1.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --write-gate probes/write_finetune_c2f_riid.pt --local-writes-from 1 --local-writes-margin 1

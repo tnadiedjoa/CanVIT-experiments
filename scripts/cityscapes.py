@@ -47,7 +47,8 @@ from canvit_pytorch.probes import SegmentationProbe
 from canvit_pytorch.teacher import DINOV3_REPOS, DINOv3Teacher, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import DroppedWriteToken, LocalWrites, OutsideWrites, load_learned_writes  # noqa: E402
+from local_writes import (DroppedWriteToken, FinetunedModules, LocalWrites, OutsideWrites,  # noqa: E402
+                          load_learned_writes)
 
 log = logging.getLogger(__name__)
 
@@ -221,6 +222,9 @@ class TrainProbe:
     scene_size_px: int = 512
     """Side of the training crops and of the downsampled validation scenes; DINOv3's input size."""
     pretrained_repo: str = FLAGSHIP
+    write_gate: Path | None = None
+    """With canvas features: CanViT's Canvas Attention parameters fine-tuned by scripts/train_write_gate.py
+    (local_writes.FinetunedModules), so that the probe reads the canvas of the fine-tuned model."""
     canvas_grid_size: int = 64
     num_glimpses: int = 10
     training_policy: PolicyName = "random"
@@ -242,6 +246,10 @@ def load_feature_maps(config: TrainProbe, device: torch.device) -> CanvasMaps | 
     match config.features:
         case "canvas":
             canvit = CanViTForPretraining.from_pretrained(config.pretrained_repo).canvit.to(device).eval()
+            if config.write_gate is not None:
+                learned = load_learned_writes(canvit, config.write_gate, canvas_grid_size=config.canvas_grid_size,
+                                              device=device)
+                assert isinstance(learned, FinetunedModules), "a change that needs the viewpoints of the rollout"
             return CanvasMaps(canvit.requires_grad_(False), canvas_grid_size=config.canvas_grid_size,
                               num_glimpses=config.num_glimpses)
         case "dinov3_vitb16" | "dinov3_vits16":

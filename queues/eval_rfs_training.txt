@@ -1,0 +1,4 @@
+# The Writes fine-tuned with RFS among the training policies.
+results/rfs_c64_t85_finetune_c2f_riid_rfs.json scripts/ade20k_rollouts.py --policy repeated_full_scene --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_c2f_riid_rfs.pt
+results/c2f_c64_t85_s0_finetune_c2f_riid_rfs.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_c2f_riid_rfs.pt
+results/reconstruction/c2f_c32_t85_s0_finetune_c2f_riid_rfs.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/write_finetune_c2f_riid_rfs.pt

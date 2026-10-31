@@ -42,7 +42,7 @@ from canvit_pytorch.pretrain.step import sample_rollout_length
 from canvit_pytorch.teacher import TEACHER_REPO, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import LEARNED_WRITES  # noqa: E402
+from local_writes import LEARNED_WRITES, LocalWrites  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -72,10 +72,10 @@ class TrainingScenes(Dataset[Tensor]):
 @dataclass(frozen=True)
 class Training:
     output: Path
-    kind: Literal["gate", "null", "writes"] = "gate"
+    kind: Literal["gate", "null", "writes", "canvas_attention"] = "gate"
     """gate: local_writes.LearnedWriteGate (how far Writes reach); null: local_writes.LearnedNullWrite (a key with a
     zero value that cells can attend to instead of the sink register); writes: local_writes.FinetunedWrites (the
-    Writes' own parameters)."""
+    Writes' own parameters); canvas_attention: local_writes.FinetunedCanvasAttention (the Reads' and Writes')."""
     scenes: Literal["ade20k", "cityscapes"] = "ade20k"
     policies: tuple[PolicyName, ...] = ("coarse_to_fine", "random")
     """One policy per step, drawn uniformly: C2F to level 3, and R-IID, whose large glimpses should keep writing."""
@@ -93,6 +93,11 @@ class Training:
     cls_loss: bool = True
     """Also train on the CLS term of the objective. Local Writes help the canvas but hurt the recurrent CLS token's
     prediction (README), so a change that only acts on canvas cells can be trained on the patch term alone."""
+    local_writes_from: int | None = None
+    """When set, the Writes are kept in the glimpse's crop from this glimpse on during training
+    (local_writes.LocalWrites), so that the learned change adapts to the rule; evaluate with the same rule."""
+    local_writes_margin: float = 0.0
+    local_writes_max_scale: float | None = None
     seed: int = 0
     log_every: int = 10
     device: str = "cuda"
@@ -107,6 +112,9 @@ def main(cfg: Training) -> None:
     teacher = load_teacher(TEACHER_REPO, device)
     grid = model.teacher_patch_grid
     gate = LEARNED_WRITES[cfg.kind](model.canvit, canvas_grid_size=grid, device=device)
+    local_writes = (LocalWrites(model.canvit, canvas_grid_size=grid, device=device, start=cfg.local_writes_from,
+                                margin=cfg.local_writes_margin, max_scale=cfg.local_writes_max_scale)
+                    if cfg.local_writes_from is not None else None)
     optimizer = torch.optim.Adam(gate.parameters(), lr=cfg.lr)
     schedule = torch.optim.lr_scheduler.LambdaLR(optimizer,
                                                  lambda step: min(1.0, (step + 1) / max(cfg.warmup_steps, 1)))
@@ -140,6 +148,8 @@ def main(cfg: Training) -> None:
             with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
                 viewpoint = policy.step(t, state)
                 gate.before_glimpse(t, viewpoint)
+                if local_writes is not None:
+                    local_writes.before_glimpse(t, viewpoint)
                 glimpse = sample_at_viewpoint(spatial=images, viewpoint=viewpoint, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
                 state = model(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 losses = distillation_losses(model, state, targets, enable_teacher_patch_loss=True,
