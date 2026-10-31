@@ -2,3 +2,7 @@
 results/reconstruction/c2f_c32_t85_s0_nosink21.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --dropped-write-token 5 --dropped-write-token-from 21
 results/c2f_c64_t85_s0_nosink5.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --dropped-write-token 5 --dropped-write-token-from 5
 results/c2f_c64_t85_s1_local1_margin0.5.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.5 --seed 1
+# The reconstruction metric (32×32 canvas) disagrees: is it the canvas size or the metric?
+results/c2f_c32_t85_s0_nosink21_b8.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 32 --dropped-write-token 5 --dropped-write-token-from 21
+# The same with the batch size of the released 32×32 run (C2F's tile order depends on it).
+results/c2f_c32_t85_s0_nosink21.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 32 --batch-size 32 --dropped-write-token 5 --dropped-write-token-from 21

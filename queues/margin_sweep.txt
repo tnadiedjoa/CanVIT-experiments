@@ -1,0 +1,7 @@
+# Width of the margin around the crop where Writes are kept (from glimpse 1): 0.5 crop widths keeps the level-1 gain
+# on ADE20K but loses 0.9 points at t = 84 on Cityscapes. Narrower and wider margins.
+results/c2f_c64_t85_s0_local1_margin0.25.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.25
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_local1_margin0.25.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --local-writes-from 1 --local-writes-margin 0.25
+results/c2f_c64_t85_s0_local1_margin1.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 1
+results/c2f_c64_t85_s0_local1_margin2.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 2
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_local1_margin1.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --local-writes-from 1 --local-writes-margin 1

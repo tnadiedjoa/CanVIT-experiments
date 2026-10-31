@@ -155,6 +155,20 @@ residuals there as well, and dropping them only farther away (C2F, seed 0):
   threshold on the glimpse scale. Seed 1 gives the same: 45.96 at t = 20 and 45.89 at t = 84, against 45.89 and
   43.64 with released Writes.
 
+**Width of the margin** (C2F, seed 0, Writes restricted from glimpse 1). On ADE20K, wider is better up to one crop
+width; on Cityscapes (1024 px, level 3 from the 1024 px scene), narrower is better by t = 84:
+
+| Margin (crop widths) | ADE20K, mean over t = 1-20 | ADE20K, t = 84 | Cityscapes, mean over t = 1-20 | Cityscapes, t = 84 |
+|---|---|---|---|---|
+| released Writes | 44.89 | 43.65 | 59.22 | 59.20 |
+| 0 (crop only) | 44.41 | 45.63 | 59.71 | 64.49 |
+| 0.25 | 44.70 | 45.77 | 59.90 | 64.20 |
+| 0.5 | 44.86 | 45.95 | 59.83 | 63.83 |
+| 1 | 44.98 | 46.14 | | |
+
+With a margin of one crop width, a level-1 quadrant still writes everywhere, a level-2 tile into its 3×3 block of
+tiles, and a level-3 tile into its 3×3 block.
+
 The margin also helps the policies that start with small glimpses, where the rule for small glimpses costs early
 (margin from glimpse 1, seed 0):
 
