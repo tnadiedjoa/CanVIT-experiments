@@ -414,8 +414,9 @@ from the 1024 px scene, as above:
 - **EG-C2F with released Writes** peaks at 66.02 (t = 30), then falls to 64.25.
 - **With every glimpse from the 1024 px scene and Writes kept in the crop from level 2**, C2F reaches 67.16 at
   t = 84 and EG-C2F 67.57 (t = 77). After 8 glimpses (167 GFLOPs), EG-C2F already scores 64.10.
-- The two models' probes are trained on different scene sizes (1024 and 512 px). The 3.16 points between them at
-  t = 20 therefore mix model and probe; a flagship probe trained on 1024 px scenes is queued.
+- **The gap comes from the model, not from the probe.** A flagship probe trained on 1024 px scenes, like the 1024 px
+  model's, gives the same curve as the one trained on 512 px scenes: 61.72 at t = 20 and 59.17 at t = 84, against
+  61.80 and 59.20. The 3.2 points between the two models at t = 20 come from pretraining on 1024 px scenes.
 
 ![C2F and EG-C2F to level 3 on Cityscapes](outputs/cityscapes_level3.png)
 
