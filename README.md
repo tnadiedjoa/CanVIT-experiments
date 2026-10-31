@@ -365,18 +365,19 @@ from the 1024 px scene, as above:
 ![Per-class IoU change over level 3](outputs/cityscapes_classes.png)
 
 **Against DINOv3.** DINOv3 ViT-B/16 sees the scene once, resized to its input size, with a probe trained the same
-way at that size. It scores 63.78 at 512 px (215 GFLOPs) and 71.99 at 1024 px (1,322 GFLOPs). CanViT is ahead only
-on small budgets:
+way at that size. It scores 63.78 at 512 px (215 GFLOPs), 69.10 at 768 px (592 GFLOPs) and 71.99 at 1024 px
+(1,322 GFLOPs). CanViT is ahead only on small budgets:
 
 | Model | GFLOPs | mIoU |
 |---|---|---|
 | DINOv3 ViT-B/16, 512 px | 215 | 63.78 |
 | CanViT-B pretrained on 1024 px, EG-C2F, Writes kept in the crop from level 2, 10 glimpses | 208 | 64.79 |
+| DINOv3 ViT-B/16, 768 px | 592 | 69.10 |
+| same CanViT, 28 glimpses | 583 | 66.88 |
 | DINOv3 ViT-B/16, 1024 px | 1,322 | 71.99 |
 | same CanViT, 64 glimpses | 1,334 | 67.56 |
 
-The flagship CanViT stays below DINOv3 at 512 px for the same cost (61.83 after 10 glimpses of EG-C2F). DINOv3 at
-768 px is queued.
+The flagship CanViT stays below DINOv3 at 512 px for the same cost (61.83 after 10 glimpses of EG-C2F).
 
 ![Accuracy against compute on 1024 px Cityscapes scenes](outputs/cityscapes_cost_frontier.png)
 
