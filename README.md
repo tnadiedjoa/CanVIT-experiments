@@ -358,6 +358,30 @@ Write, 8 in the second and 20 in the third. Against them, a key that starts with
 rounds to 0 in float32, and no gradient. At level 3, a canvas cell's largest attention weight averages 0.87 to 0.94
 across the three Writes.
 
+**Fine-tuning the Writes themselves.** The same training, on the Writes' own parameters instead (key and value maps
+and layer norms of the three Writes: 4.7M parameters, 5% of CanViT), with a learning rate of 5e-5 after 20 warmup
+steps, for 400 steps; the weights move by 0.2-0.7% of their norm. The control trains the same way on rollouts of
+pretraining length (chunks of 2 glimpses, then stop with probability 0.5). Both runs, and the gate's, see the same
+scenes in the same order. C2F, seed 0 (means over t = 0-84):
+
+| Writes | reconstruction, t = 20 / 84 / mean | CLS, t = 84 | ADE20K, t = 20 / 84 / mean |
+|---|---|---|---|
+| released | 0.837 / 0.803 / 0.823 | 0.769 | 45.93 / 43.65 / 44.81 |
+| fine-tuned on rollouts of pretraining length | 0.838 / 0.797 / 0.821 | 0.771 | 45.66 / 42.31 / 44.20 |
+| fine-tuned on 85-glimpse rollouts | 0.844 / 0.831 / 0.837 | 0.775 | 46.02 / 44.42 / 45.13 |
+| kept in the crop from level 3 | 0.837 / 0.839 / 0.836 | 0.757 | 45.93 / 46.40 / 45.78 |
+| fine-tuned on 85-glimpse rollouts, kept in the crop from level 3 | | | 46.02 / 46.46 / 45.84 |
+
+- **Rollout length decides the direction.** On short rollouts, fine-tuning sharpens the first glimpses
+  (reconstruction mean over t = 1-20: 0.833, against 0.832) but deepens the long-rollout drift. On long rollouts, it
+  improves the reconstruction at every stage and the CLS token too, with no trade-off.
+- **The segmentation probe sees less of it.** The long fine-tune recovers 0.77 of the 2.28 points that C2F loses over
+  level 3; local Writes recover all of them. The canvas norm still nearly doubles over level 3 (26.1k to 52.0k;
+  released Writes 27.5k to 58.2k, local Writes 30.7k at t = 84). The released probe still reads the fine-tuned
+  canvas: at t = 0, it loses 0.08 points.
+- **Locality still matters after fine-tuning.** It adds 2.05 points at t = 84 on top of the fine-tuned Writes, which
+  add 0.06 on top of locality (one seed).
+
 ![Learned Writes](outputs/learned_writes.png)
 
 ### Most of C2F's gain does not need new pixels

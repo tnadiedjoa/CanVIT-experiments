@@ -1,0 +1,3 @@
+# The Writes fine-tuned with lr 2e-4 (probes/write_finetune_c2f_riid_lr2e-4.pt), on the first 500 ADE20K validation
+# scenes (time left on the allocation).
+results/c2f_c64_t85_s0_n500_finetune_c2f_riid_lr2e-4.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --num-images 500 --write-gate probes/write_finetune_c2f_riid_lr2e-4.pt
