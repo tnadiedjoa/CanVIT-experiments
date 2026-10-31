@@ -1,4 +1,2 @@
-# Learned Writes, stream 1, after the patch-only gate is trained.
-results/reconstruction/c2f_c32_t85_s0_gate_patch_c2f_riid.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/write_gate_patch_c2f_riid.pt
-results/cityscapes/c2f_c64_t85_s512_then_native_s0_gate_patch_c2f_riid.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --write-gate probes/write_gate_patch_c2f_riid.pt
+# Learned Writes, stream 1, second part.
 results/rfs_c64_t85_finetune_short.json scripts/ade20k_rollouts.py --policy repeated_full_scene --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_short.pt

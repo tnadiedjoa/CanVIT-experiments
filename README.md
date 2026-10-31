@@ -344,11 +344,12 @@ its residual; the farthest cells from a level-3 tile, seven widths away, keep ab
 The gate keeps the early gain of the one-width margin and recovers most of the level-3 drop on ADE20K, but less than
 the rules, and less on the reconstruction metric and on Cityscapes.
 
-**Why soft: locality costs the CLS token.** The recurrent CLS token's prediction of the teacher's CLS token also
-drifts over long C2F rollouts: its cosine similarity falls from 0.838 at t = 4 to 0.769 at t = 84 with released
-Writes. Local Writes make it worse, the more so the narrower: 0.692 with Writes kept in the crop from glimpse 1,
-0.729 within one crop width, 0.757 in the crop from level 3, and 0.759 with the learned gate. The objective weighs
-the two terms, and the gate settles between them.
+**Locality costs the CLS token.** The recurrent CLS token's prediction of the teacher's CLS token also drifts over
+long C2F rollouts: its cosine similarity falls from 0.838 at t = 4 to 0.769 at t = 84 with released Writes. Local
+Writes make it worse, the more so the narrower: 0.692 with Writes kept in the crop from glimpse 1, 0.729 within one
+crop width, 0.757 in the crop from level 3, and 0.759 with the learned gate. This does not explain why the gate
+stays soft, though: trained on the patch term alone, it converges to nearly the same values (r from 0.24 to 0.31,
+mean 0.27; ρ mean 0.05).
 
 **A zero-value key did not train.** A key with a zero value, added to every Write, would let a cell attend to
 nothing instead of to the sink register (a learned key and logit bias per head). In 10 of the 24 heads, it never
