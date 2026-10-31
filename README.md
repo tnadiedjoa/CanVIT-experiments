@@ -129,6 +129,18 @@ registers keep their residuals. Applied from glimpse 21 on, it turns the level-3
 
 ![Local Writes on ADE20K](outputs/ade20k_local_writes.png)
 
+![The canvas after level 3 with released and local Writes](outputs/ade20k_level3_canvas.png)
+
+*Four ADE20K scenes, chosen among the first 64 validation images by the pixel accuracy they lose over level 3 with
+released Writes: the two largest losses (16.0 and 14.1 points) and two at the median loss (0.4 points). With released
+Writes, level 3 changes the colors of the whole canvas (one PCA basis per scene): it is the vector that the leak adds
+to every cell. With local Writes, the canvas at t = 84 stays close to the one at t = 20. Made by
+[`scripts/level3_canvas.py`](scripts/level3_canvas.py).*
+
+**Writes also kept near the crop.** Keeping the Write residuals of level 3 within half a crop width of the crop, where
+the leak is strongest, costs almost nothing: 46.33 at t = 84, against 46.40 with local Writes and 43.65 with released
+Writes (seed 0). The harm comes from the leak far from the glimpse.
+
 **Other policies.** Writes kept in the crop from glimpse 1 (seed 0), change against released Writes:
 
 | Policy | t = 1 | t = 20 | t = 84 |
@@ -390,6 +402,7 @@ DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
 | --- | --- |
 | `scripts/c2f_rollout.py` | One scene under C2F: numbered viewpoints, the canvas after each glimpse (the paper's PCA protocol) and the per-glimpse canvas change. |
 | `scripts/ade20k_rollouts.py` | ADE20K validation mIoU after every glimpse, with canvas statistics, for the paper's policies and for variants: other tile orders within C2F's levels, C2F continued past level 2 by revisits, anti-aliased glimpses, scenes without fine detail, a probe read on a larger canvas, scaled Write residuals, Writes damped where the canvas was already seen at a finer scale, Writes kept in the glimpse's crop. Uses the official model, probe, transform and metric. |
+| `scripts/level3_canvas.py` | The canvas and the probe's prediction after level 3 of C2F with released and local Writes, on a few ADE20K scenes. |
 | `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level, and how much of it comes from the glimpse's prefix tokens. |
 | `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share. |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
