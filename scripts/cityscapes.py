@@ -47,7 +47,7 @@ from canvit_pytorch.probes import SegmentationProbe
 from canvit_pytorch.teacher import DINOV3_REPOS, DINOv3Teacher, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import DroppedWriteToken, LearnedWriteGate, LocalWrites, OutsideWrites  # noqa: E402
+from local_writes import DroppedWriteToken, LocalWrites, OutsideWrites, load_learned_writes  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -378,7 +378,7 @@ class Rollouts:
     of the canvas cells far from the glimpse)."""
     dropped_write_token_from: int = 1
     write_gate: Path | None = None
-    """When set, a learned gate on the Writes (local_writes.LearnedWriteGate) saved by scripts/train_write_gate.py."""
+    """When set, a learned change to the Writes (local_writes.LEARNED_WRITES) saved by scripts/train_write_gate.py."""
     seed: int = 0
     batch_size: int = 8
     device: str = "cuda"
@@ -419,10 +419,8 @@ def rollouts(exp: Rollouts) -> None:
                     if exp.local_writes_from is not None else None)
     dropped_token = (DroppedWriteToken(seg.canvit, token=exp.dropped_write_token)
                      if exp.dropped_write_token is not None else None)
-    write_gate = None
-    if exp.write_gate is not None:
-        write_gate = LearnedWriteGate(seg.canvit, canvas_grid_size=exp.canvas_grid_size, device=device)
-        write_gate.load_state_dict(torch.load(exp.write_gate, weights_only=True)["state_dict"])
+    write_gate = (load_learned_writes(seg.canvit, exp.write_gate, canvas_grid_size=exp.canvas_grid_size, device=device)
+                  if exp.write_gate is not None else None)
     images, labels = load_split("val")
     num_scenes = 2 * len(images)
     ious = [MeanIoU(device=device, num_classes=NUM_CLASSES, ignore_label=IGNORE_LABEL) for _ in range(exp.num_glimpses)]

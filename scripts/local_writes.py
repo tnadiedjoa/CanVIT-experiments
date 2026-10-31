@@ -188,3 +188,61 @@ class LearnedWriteGate(nn.Module):
     def remove(self) -> None:
         for handle in self.handles:
             handle.remove()
+
+
+class LearnedNullWrite(nn.Module):
+    """A key with a zero value added to every Write, so that a canvas cell can attend to it and write nothing, instead
+    of attending to backbone register 3, whose value is not zero. Its key (per head, without position) and a logit
+    bias per head are learned; everything else in CanViT stays frozen. With the initial bias (-3), the zero-value key
+    takes a few percent of each cell's attention, enough for gradients to flow."""
+
+    def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device) -> None:
+        super().__init__()
+        writes = canvit.canvas_writes
+        num_heads = writes[0].num_heads
+        head_dim = canvit.canvas_dim // num_heads
+        self.null_key = nn.Parameter(torch.zeros(len(writes), num_heads, head_dim, device=device))
+        self.null_bias = nn.Parameter(torch.full((len(writes), num_heads), -3.0, device=device))
+        self.writes = list(writes)
+        self.released_forwards = [write.forward for write in writes]
+        for index, write in enumerate(writes):
+            write.forward = self.forward_with_null(write, index)
+
+    def forward_with_null(self, write: CanvasAttention, index: int):
+        def forward(*, query: Tensor, kv: Tensor, query_rope: RoPE, kv_rope: RoPE) -> Tensor:
+            heads = write.num_heads
+            q = apply_2d_rope(to_multihead(write.q_map(write.ln_q(query)), heads), query_rope)
+            kv = write.ln_kv(kv)
+            k = apply_2d_rope(to_multihead(write.k_map(kv), heads), kv_rope).to(q.dtype)
+            v = to_multihead(write.v_map(kv), heads).to(q.dtype)
+            out = F.scaled_dot_product_attention(q, k, v)  # the released Write, same kernel
+            # A zero-value key with logit l0 rescales that output by the attention mass left to the real keys,
+            # sigmoid(logsumexp(real logits) - l0), computed in float32.
+            scale = q.shape[-1] ** -0.5
+            real = torch.logsumexp(q.float() @ k.float().transpose(-1, -2) * scale, dim=-1, keepdim=True)
+            null = (q.float() @ self.null_key[index].view(1, heads, -1, 1)) * scale
+            null = null + self.null_bias[index].view(1, heads, 1, 1)
+            out = (out.float() * torch.sigmoid(real - null)).to(out.dtype)
+            return write.o_map(from_multihead(out))
+        return forward
+
+    def before_glimpse(self, t: int, viewpoint: Viewpoint) -> None:
+        pass
+
+    def describe(self) -> dict[str, list[list[float]]]:
+        return {"null_bias": self.null_bias.tolist(), "null_key_norm": self.null_key.norm(dim=-1).tolist()}
+
+    def remove(self) -> None:
+        for write, forward in zip(self.writes, self.released_forwards):
+            write.forward = forward
+
+
+LEARNED_WRITES = {"gate": LearnedWriteGate, "null": LearnedNullWrite}
+
+
+def load_learned_writes(canvit: CanViT, path, *, canvas_grid_size: int, device: torch.device) -> nn.Module:
+    """The learned Write change saved by scripts/train_write_gate.py, hooked into canvit."""
+    record = torch.load(path, weights_only=True)
+    module = LEARNED_WRITES[record.get("kind", "gate")](canvit, canvas_grid_size=canvas_grid_size, device=device)
+    module.load_state_dict(record["state_dict"])
+    return module

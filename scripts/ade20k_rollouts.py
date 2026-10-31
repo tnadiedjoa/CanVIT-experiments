@@ -39,7 +39,7 @@ from canvit_pytorch.preprocess import IMAGENET_MEAN, IMAGENET_STD
 from canvit_pytorch.viewpoint import grid_coords
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import DroppedWriteToken, LearnedWriteGate, LocalWrites, OutsideWrites  # noqa: E402
+from local_writes import DroppedWriteToken, LocalWrites, OutsideWrites, load_learned_writes  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ class Experiment:
     of the canvas cells far from the glimpse)."""
     dropped_write_token_from: int = 1
     write_gate: Path | None = None
-    """When set, a learned gate on the Writes (local_writes.LearnedWriteGate) saved by scripts/train_write_gate.py."""
+    """When set, a learned change to the Writes (local_writes.LEARNED_WRITES) saved by scripts/train_write_gate.py."""
     glimpse_size_px: int = RELEASED_GLIMPSE_SIZE_PX
     """Side of each glimpse: 128 px (8×8 patches) in pretraining and in the paper."""
     num_images: int | None = None
@@ -372,10 +372,8 @@ def main(exp: Experiment) -> None:
                     if exp.local_writes_from is not None else None)
     dropped_token = (DroppedWriteToken(seg.canvit, token=exp.dropped_write_token)
                      if exp.dropped_write_token is not None else None)
-    write_gate = None
-    if exp.write_gate is not None:
-        write_gate = LearnedWriteGate(seg.canvit, canvas_grid_size=exp.canvas_grid_size, device=device)
-        write_gate.load_state_dict(torch.load(exp.write_gate, weights_only=True)["state_dict"])
+    write_gate = (load_learned_writes(seg.canvit, exp.write_gate, canvas_grid_size=exp.canvas_grid_size, device=device)
+                  if exp.write_gate is not None else None)
 
     mious = [ade20k.MeanIoU(device=device) for _ in range(num_glimpses)]
     sums = {name: torch.zeros(num_glimpses, dtype=torch.float64, device=device) for name in STATISTICS}

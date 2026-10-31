@@ -1,0 +1,2 @@
+# A key with a zero value in every Write (two parameters per head: its key and a logit bias), trained like the gate.
+probes/write_null_c2f_riid.pt scripts/train_write_gate.py --kind null --batch-size 16 --lr 0.05 --num-steps 400
