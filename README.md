@@ -137,9 +137,21 @@ Writes, level 3 changes the colors of the whole canvas (one PCA basis per scene)
 to every cell. With local Writes, the canvas at t = 84 stays close to the one at t = 20. Made by
 [`scripts/level3_canvas.py`](scripts/level3_canvas.py).*
 
-**Writes also kept near the crop.** Keeping the Write residuals of level 3 within half a crop width of the crop, where
-the leak is strongest, costs almost nothing: 46.33 at t = 84, against 46.40 with local Writes and 43.65 with released
-Writes (seed 0). The harm comes from the leak far from the glimpse.
+**Writes also kept near the crop.** The leak is strongest within half a crop width of the crop. Keeping the Write
+residuals there as well, and dropping them only farther away (C2F, seed 0):
+
+| Writes | t = 1 | t = 20 | t = 84 |
+|---|---|---|---|
+| released | 41.10 | 45.93 | 43.65 |
+| kept in the crop, from glimpse 1 | 40.56 | 45.47 | 45.63 |
+| kept within half a crop width of the crop, from glimpse 1 | 41.02 | 45.98 | 45.95 |
+| kept in the crop, from level 3 | 41.10 | 45.93 | 46.40 |
+| kept within half a crop width of the crop, from level 3 | 41.10 | 45.93 | 46.33 |
+
+- The harm comes from the leak far from the glimpse: from level 3, the margin costs 0.07 points at t = 84.
+- From glimpse 1, the margin removes the cost of local Writes during level 1. Its mean over t = 1-20 is 44.86,
+  against 44.89 with released Writes and 44.41 without the margin. It still gains 2.3 points by t = 84, and needs no
+  threshold on the glimpse scale.
 
 **Other policies.** Writes kept in the crop from glimpse 1 (seed 0), change against released Writes:
 
@@ -209,6 +221,7 @@ Removing only part of the leak is worse than keeping all of it (C2F, seed 0):
 | released (both parts) | 41.10 | 45.93 | 43.65 |
 | dropped, from glimpse 1 | 40.56 | 45.47 | 45.63 |
 | only the part from the prefix, from glimpse 1 | 40.77 | 42.97 | 19.62 |
+| only the part from the patch tokens, from glimpse 1 | 40.73 | 44.25 | 39.83 |
 | only their mean removed, from glimpse 1 | 40.98 | 42.18 | 34.69 |
 | only their mean removed, from level 3 | 41.10 | 45.93 | 44.19 |
 

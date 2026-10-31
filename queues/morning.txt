@@ -7,3 +7,8 @@ probes/nyu_depth_dinov3_vitb16_384px.pt scripts/nyu_depth.py train-probe --featu
 results/nyu_depth/nyu_dv3b_384px.json scripts/nyu_depth.py passive --probe probes/nyu_depth_dinov3_vitb16_384px.pt
 # A second seed for C2F with local Writes from level 2 on ADE20K.
 results/c2f_c64_t85_s1_local5.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 5 --seed 1
+# Writes kept within half a crop width of the crop, from glimpse 1: on C2F this removes the level-1 cost of local
+# Writes with no threshold on the scale. Does it also help the policies that start small, and Cityscapes?
+results/riid_c64_t85_s0_local1_margin0.5.json scripts/ade20k_rollouts.py --policy random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.5
+results/f2c_c64_t21_s0_local1_margin0.5.json scripts/ade20k_rollouts.py --policy fine_to_coarse --num-glimpses 21 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.5
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_local1_margin0.5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --local-writes-from 1 --local-writes-margin 0.5
