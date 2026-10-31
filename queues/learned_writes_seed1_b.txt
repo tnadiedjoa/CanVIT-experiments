@@ -1,0 +1,2 @@
+# Seed 1 (another C2F tile order) for the Writes fine-tuned on long rollouts.
+results/c2f_c64_t85_s1_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --seed 1 --write-gate probes/write_finetune_c2f_riid.pt

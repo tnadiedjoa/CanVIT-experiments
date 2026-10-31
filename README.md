@@ -342,7 +342,8 @@ its residual; the farthest cells from a level-3 tile, seven widths away, keep ab
 | kept in the crop from level 2 | 44.83 | 46.18 | 0.837 | 64.70 |
 
 The gate keeps the early gain of the one-width margin and recovers most of the level-3 drop on ADE20K, but less than
-the rules, and less on the reconstruction metric and on Cityscapes. On the policies that start with small glimpses, it
+the rules, and less on the reconstruction metric and on Cityscapes. With seed 1, it scores 44.99 over t = 1-20 and
+45.59 at t = 84 (released 44.91 and 43.64; one-width margin 45.01 and 46.10). On the policies that start with small glimpses, it
 matches the margin early. Mean over t = 1-20:
 
 - R-IID: 40.06 (margin 39.86, released 39.60), ending at 45.50 at t = 84;
