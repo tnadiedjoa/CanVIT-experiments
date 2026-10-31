@@ -153,6 +153,18 @@ residuals there as well, and dropping them only farther away (C2F, seed 0):
   against 44.89 with released Writes and 44.41 without the margin. It still gains 2.3 points by t = 84, and needs no
   threshold on the glimpse scale.
 
+The margin also helps the policies that start with small glimpses, where the rule for small glimpses costs early
+(margin from glimpse 1, seed 0):
+
+| Policy | mean over t = 1-20: released / small glimpses / margin | last glimpse: released / small glimpses / margin |
+|---|---|---|
+| C2F (t = 84) | 44.89 / 44.83 / 44.86 | 43.65 / 46.18 / 45.95 |
+| R-IID (t = 84) | 39.60 / 39.59 / 39.79 | 45.19 / 45.50 / 45.65 |
+| F2C (t = 20) | 34.58 / 30.90 / 35.19 | 42.84 / 45.38 / 44.95 |
+
+On F2C, the margin is the only change that does not lose early: at t = 15, after the 16 level-2 tiles, it scores
+42.42, against 39.23 with released Writes.
+
 **A drift shared by every cell.** The share of the layer-normalized canvas common to all cells (the energy of their
 mean) grows over level 3 from 0.787 to 0.830 with released Writes. With local Writes from level 3, it stays at
 0.784. A readout-only test leaves the canvas unchanged and lets the probe read it with its mean over the cells held at

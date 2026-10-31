@@ -12,3 +12,5 @@ results/c2f_c64_t85_s1_local5.json scripts/ade20k_rollouts.py --policy coarse_to
 results/riid_c64_t85_s0_local1_margin0.5.json scripts/ade20k_rollouts.py --policy random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.5
 results/f2c_c64_t21_s0_local1_margin0.5.json scripts/ade20k_rollouts.py --policy fine_to_coarse --num-glimpses 21 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.5
 results/cityscapes/c2f_c64_t85_s512_then_native_s0_local1_margin0.5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --local-writes-from 1 --local-writes-margin 0.5
+results/fiid_c64_t85_s0_local1_margin0.5.json scripts/ade20k_rollouts.py --policy full_then_random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.5
+results/egc2f_c64_t85_local1_margin0.5.json scripts/ade20k_rollouts.py --policy entropy_coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.5
