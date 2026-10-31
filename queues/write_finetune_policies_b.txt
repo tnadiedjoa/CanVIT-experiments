@@ -1,0 +1,2 @@
+# The Writes fine-tuned on long rollouts, on ADE20K F-IID (not a training policy).
+results/fiid_c64_t85_s0_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy full_then_random --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_c2f_riid.pt

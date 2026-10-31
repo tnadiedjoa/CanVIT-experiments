@@ -379,16 +379,28 @@ scenes in the same order. C2F, seed 0 (means over t = 0-84):
 - **Rollout length decides the direction.** On short rollouts, fine-tuning sharpens the first glimpses
   (reconstruction mean over t = 1-20: 0.833, against 0.832) but deepens the long-rollout drift. On long rollouts, it
   improves the reconstruction at every stage and the CLS token too, with no trade-off.
-- On R-IID (also a training policy), the long fine-tune has the best reconstruction at every stage: 0.831 at
-  t = 84 (released 0.825, one-width margin 0.829), mean over t = 0-84 0.814 (0.809), CLS 0.794 (0.791).
+- On R-IID (also a training policy), the long fine-tune has the best reconstruction at t = 1, 20 and 84: 0.831 at
+  t = 84 (released 0.825, one-width margin 0.829), mean over t = 0-84 0.814 (0.809), CLS 0.794 (0.791). It does on
+  F-IID too, which it was not trained on: 0.832 at t = 84 (0.821, margin 0.830), mean 0.831 (0.824), CLS 0.796
+  (0.794).
 - **The segmentation probe sees less of it.** The long fine-tune recovers 0.77 of the 2.28 points that C2F loses over
   level 3; local Writes recover all of them. The canvas norm still nearly doubles over level 3 (26.1k to 52.0k;
   released Writes 27.5k to 58.2k, local Writes 30.7k at t = 84). The released probe still reads the fine-tuned
   canvas: at t = 0, it loses 0.08 points.
 - On Cityscapes (1024 px, a dataset it was not trained on), the long fine-tune scores 62.33 at t = 20 and 60.89 at
   t = 84 (released 61.80 and 59.20; Writes kept in the crop from level 2: 63.04 and 64.70).
+- Outside C2F's level 3, its ADE20K mIoU stays close to released Writes, even on R-IID, a training policy:
+  - R-IID: 39.54 over t = 1-20 and 45.28 at t = 84 (released 39.60 and 45.19; one-width margin 39.86 and 45.60);
+  - F-IID: 44.07 and 45.05 (released 44.11 and 44.88; margin 44.24 and 45.53);
+  - F2C: 34.72 over t = 1-20 (released 34.58, margin 36.04).
+
+  The fine-tune improves the objective it trains on, the reconstruction of the teacher's features, on every policy;
+  the segmentation probe gains only where the leak hurts most.
 - **Locality still matters after fine-tuning.** It adds 2.05 points at t = 84 on top of the fine-tuned Writes, which
   add 0.06 on top of locality (one seed).
+- **A higher learning rate does not help.** With 2e-4 for 300 steps, the weights move about 1.7 times more, for the
+  same training loss (paired over steps 200-299: 0.6398 against 0.6401). On the first 500 validation scenes, C2F
+  ends at 41.61 at t = 84, against 41.41 with 5e-5 and 40.48 with released Writes.
 - **Repetition is not fixed.** On RFS, the fine-tuned Writes decline as the released ones (37.39 at t = 84, against
   37.55; canvas norm 389k): C2F and R-IID rollouts almost never repeat a view.
 

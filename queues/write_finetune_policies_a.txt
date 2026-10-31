@@ -1,0 +1,3 @@
+# The Writes fine-tuned on long rollouts, on ADE20K with the policies they were not trained on.
+results/f2c_c64_t21_s0_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy fine_to_coarse --num-glimpses 21 --canvas-grid-size 64 --write-gate probes/write_finetune_c2f_riid.pt
+results/riid_c64_t85_s0_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy random --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_c2f_riid.pt
