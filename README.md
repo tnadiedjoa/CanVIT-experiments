@@ -93,6 +93,12 @@ it did not see. [`scripts/write_leakage.py`](scripts/write_leakage.py) measures 
 The leak is strongest next to the crop. At level 3, it is 0.61 within half a tile width of the crop and 0.12 beyond
 four tile widths.
 
+![Where one glimpse writes](outputs/ade20k_write_leak_map.png)
+
+*One scene, two glimpses of C2F ([`scripts/write_leak_map.py`](scripts/write_leak_map.py)). Outside the crop, the
+residual is not uniform: it follows the scene's layout. The level-3 tile, on the armchair, also writes into the rest
+of the armchair. The cells it does not see put 0.93 of their attention on backbone register 3 (see below).*
+
 Over level 3, a cell receives the leaked residuals of the 63 glimpses of other tiles:
 
 - They mostly point the same way: their sum is 8.3 times the residual from the cell's own glimpse.
@@ -519,6 +525,7 @@ defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the
 | `scripts/c2f_rollout.py` | One scene under C2F: numbered viewpoints, the canvas after each glimpse (the paper's PCA protocol) and the per-glimpse canvas change. |
 | `scripts/ade20k_rollouts.py` | ADE20K validation mIoU after every glimpse, with canvas statistics, for the paper's policies and for variants: other tile orders within C2F's levels, C2F continued past level 2 by revisits, anti-aliased glimpses, scenes without fine detail, a probe read on a larger canvas, scaled Write residuals, Writes damped where the canvas was already seen at a finer scale, Writes kept in the glimpse's crop. Uses the official model, probe, transform and metric. |
 | `scripts/level3_canvas.py` | The canvas and the probe's prediction after level 3 of C2F with released and local Writes, on a few ADE20K scenes. |
+| `scripts/write_leak_map.py` | Where one glimpse's Writes land on one scene: residual norm and attention on the sink register, per canvas cell. |
 | `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level, and how much of it comes from the glimpse's prefix tokens. |
 | `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share. |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
