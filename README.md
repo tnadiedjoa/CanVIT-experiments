@@ -157,6 +157,19 @@ F2C, whose first 16 glimpses are small, still loses early with it (30.90 against
 higher, though: 45.38 at t = 20, against 42.84. On the reconstruction metric, F-IID with the rule ends at 0.828 at
 t = 84, against 0.821 with released Writes.
 
+**Writes also kept in the cells that no glimpse has covered yet** (local Writes from glimpse 1, seed 0) recover the
+first glimpses, but not the rest:
+
+| Policy | t = 1, released / local / local + unseen | mean over t = 1-20, released / local / local + unseen |
+|---|---|---|
+| R-IID | 27.40 / 23.74 / 27.21 | 39.60 / 36.28 / 39.04 |
+| F2C | 18.05 / 13.08 / 17.78 | 34.58 / 30.57 / 32.76 |
+
+The leak does more than fill the cells no glimpse has seen: it also helps the cells already seen. F2C, whose first
+16 glimpses tile level 2, scores 35.53 at t = 15 this way, below both released Writes (39.23) and local Writes
+(39.48). R-IID ends at 45.51 at t = 84, as with the rule for small glimpses (45.50), which keeps the first 20
+glimpses intact.
+
 **The leak goes through an attention sink.** A Write's keys and values are all the glimpse's tokens. They include 7
 prefix tokens (VPE, recurrent CLS, 5 backbone registers) that SR-RoPE leaves unrotated, so every canvas cell sees
 them the same way, wherever it is. Attention of the canvas cells, mean over the three Writes (256 scenes):
