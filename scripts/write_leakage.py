@@ -51,6 +51,8 @@ class Measurement:
     num_scenes: int = 256
     """The first validation scenes, in the dataset's order."""
     canvas_grid_size: int = 64
+    pretrained_repo: str = FLAGSHIP
+    """A Hub repo or a local converted checkpoint, such as the experimental model pretrained on 1024 px scenes."""
     seed: int = 0
     batch_size: int = 16
     cache: Path = Path("/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt")
@@ -62,7 +64,7 @@ def main(m: Measurement) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     torch.manual_seed(m.seed)
     device = torch.device(m.device)
-    canvit = CanViTForPretraining.from_pretrained(FLAGSHIP).canvit.to(device).eval()
+    canvit = CanViTForPretraining.from_pretrained(m.pretrained_repo).canvit.to(device).eval()
     num_registers, grid = canvit.config.num_canvas_registers, m.canvas_grid_size
     scenes = torch.load(m.cache, weights_only=True)["images"][:m.num_scenes]
     assert scenes.shape[-1] == RELEASED_SCENE_SIZE_PX and len(scenes) == m.num_scenes, scenes.shape
@@ -168,7 +170,7 @@ def main(m: Measurement) -> None:
               for level in range(num_levels)]
     result = {
         "measurement": {k: str(v) if isinstance(v, Path) else v for k, v in asdict(m).items()},
-        "pretrained_repo": FLAGSHIP,
+        "pretrained_repo": m.pretrained_repo,
         "levels": levels,
         "level3_leaked_sum_norm": leaked_sum_norm / m.num_scenes,
         "level3_own_sum_norm": own_sum_norm / m.num_scenes,

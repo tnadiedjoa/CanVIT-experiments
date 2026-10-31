@@ -1,0 +1,9 @@
+# The Write leak of the model pretrained on 1024 px scenes, whose level-3 drop on Cityscapes is half the flagship's.
+results/write_leakage_s1024exp.json scripts/write_leakage.py --pretrained-repo /tmp/canvit-nadiedjoa-24/converted/canvitb16-s1024px-sa1b-experimental
+# DINOv3 depth at intermediate input sizes, for the cost curve.
+probes/nyu_depth_dinov3_vitb16_256px.pt scripts/nyu_depth.py train-probe --features dinov3_vitb16 --scene-size-px 256
+results/nyu_depth/nyu_dv3b_256px.json scripts/nyu_depth.py passive --probe probes/nyu_depth_dinov3_vitb16_256px.pt
+probes/nyu_depth_dinov3_vitb16_384px.pt scripts/nyu_depth.py train-probe --features dinov3_vitb16 --scene-size-px 384
+results/nyu_depth/nyu_dv3b_384px.json scripts/nyu_depth.py passive --probe probes/nyu_depth_dinov3_vitb16_384px.pt
+# A second seed for C2F with local Writes from level 2 on ADE20K.
+results/c2f_c64_t85_s1_local5.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 5 --seed 1

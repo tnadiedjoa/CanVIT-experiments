@@ -198,6 +198,9 @@ them the same way, wherever it is. Attention of the canvas cells, mean over the 
   zero, so each glimpse adds it to every cell it does not see.
 - Over level 3, the leak's part from the prefix sums to a vector that is 97% the same in every cell. Its part from
   the patch tokens is 63% common.
+- The model pretrained on 1024 px scenes leaks as much, on the same 256 scenes: 0.28, 0.18 and 0.18 outside the crop
+  relative to inside, for levels 1-3. Its outside cells also attend to backbone register 3 (0.92 at level 3). Its
+  smaller level-3 drop on Cityscapes does not come from a smaller leak.
 
 Removing only part of the leak is worse than keeping all of it (C2F, seed 0):
 
