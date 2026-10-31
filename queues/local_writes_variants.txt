@@ -1,0 +1,15 @@
+# ADE20K, seed 0: two variants of local Writes.
+# Writes also kept in the cells that no glimpse has covered yet. With plain local Writes, the policies that start
+# with small glimpses (R-IID, F2C) lose early, because such a cell then receives nothing.
+riid_c64_t85_s0_unseen1 --policy random --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --unseen-writes
+f2c_c64_t21_s0_unseen1 --policy fine_to_coarse --num-glimpses 21 --canvas-grid-size 64 --local-writes-from 1 --unseen-writes
+# Writes also kept within half a crop width of the crop, where the leak is strongest. From level 3: is the harmful part
+# of the leak the far one? From glimpse 1: does the near leak carry what level 1 needs (plain local Writes from
+# glimpse 1 cost 0.4 points at t = 20)?
+c2f_c64_t85_s0_local21_margin0.5 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21 --local-writes-margin 0.5
+c2f_c64_t85_s0_local1_margin0.5 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 1 --local-writes-margin 0.5
+# The probe reads the canvas with its mean over the cells held at its value after level 2; the canvas is unchanged.
+# Does a drift shared by every cell cause the drop past level 2? Also records how much of the layer-normalized canvas
+# is common to all cells, with released Writes and with local Writes from level 3.
+c2f_c64_t85_s0_readout20 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --readout-mean-from 20
+c2f_c64_t85_s0_local21_readout20 --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --local-writes-from 21 --readout-mean-from 20

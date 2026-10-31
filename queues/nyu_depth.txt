@@ -1,0 +1,10 @@
+# NYU Depth v2: linear depth probes on frozen features (no depth probe was tested in the paper), then test errors.
+probes/nyu_depth_canvas_c64.pt scripts/nyu_depth.py train-probe --features canvas
+probes/nyu_depth_dinov3_vitb16_512px.pt scripts/nyu_depth.py train-probe --features dinov3_vitb16 --scene-size-px 512
+probes/nyu_depth_dinov3_vitb16_128px.pt scripts/nyu_depth.py train-probe --features dinov3_vitb16 --scene-size-px 128
+results/nyu_depth/nyu_dv3b_512px.json scripts/nyu_depth.py passive --probe probes/nyu_depth_dinov3_vitb16_512px.pt
+results/nyu_depth/nyu_dv3b_128px.json scripts/nyu_depth.py passive --probe probes/nyu_depth_dinov3_vitb16_128px.pt
+results/nyu_depth/nyu_c2f_c64_t21_s0.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt
+results/nyu_depth/nyu_c2f_c64_t21_s0_local5.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --local-writes-from 5
+results/nyu_depth/nyu_fiid_c64_t21_s0.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --policy full_then_random
+results/nyu_depth/nyu_rfs_c64_t21.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --policy repeated_full_scene

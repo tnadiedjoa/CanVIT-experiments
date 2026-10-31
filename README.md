@@ -154,7 +154,8 @@ most 0.06 points on average over t = 1-20 and gains by t = 84:
 | R-IID | 39.60 / 39.59 | 45.19 / 45.50 |
 
 F2C, whose first 16 glimpses are small, still loses early with it (30.90 against 34.58 over t = 1-20). It ends
-higher, though: 45.38 at t = 20, against 42.84.
+higher, though: 45.38 at t = 20, against 42.84. On the reconstruction metric, F-IID with the rule ends at 0.828 at
+t = 84, against 0.821 with released Writes.
 
 **The leak goes through an attention sink.** A Write's keys and values are all the glimpse's tokens. They include 7
 prefix tokens (VPE, recurrent CLS, 5 backbone registers) that SR-RoPE leaves unrotated, so every canvas cell sees

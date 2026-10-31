@@ -366,6 +366,12 @@ class Rollouts:
     local_writes_max_scale: float | None = None
     """With local_writes_from: only glimpses of at most this scale keep their Writes in their crop, and larger ones
     write into every cell, as released; 0.25 is C2F's levels 2 and 3."""
+    local_writes_margin: float = 0.0
+    """With local_writes_from: the cells within this many crop widths of the crop (Chebyshev distance) also keep their
+    Writes; the leak is strongest there (scripts/write_leakage.py)."""
+    unseen_writes: bool = False
+    """With local_writes_from: the cells that no glimpse has covered yet also keep their Writes, so policies that start
+    with small glimpses (R-IID, F2C) still fill the rest of the canvas."""
     seed: int = 0
     batch_size: int = 8
     device: str = "cuda"
@@ -400,7 +406,9 @@ def rollouts(exp: Rollouts) -> None:
     canvit = CanViTForPretraining.from_pretrained(record["config"]["pretrained_repo"]).canvit
     seg = CanViTForSemanticSegmentation(canvit=canvit, probe=probe).to(device).eval()
     local_writes = (LocalWrites(seg.canvit, canvas_grid_size=exp.canvas_grid_size, device=device,
-                                outside=exp.outside_writes, max_scale=exp.local_writes_max_scale)
+                                start=exp.local_writes_from, outside=exp.outside_writes,
+                                max_scale=exp.local_writes_max_scale, margin=exp.local_writes_margin,
+                                unseen_writes=exp.unseen_writes)
                     if exp.local_writes_from is not None else None)
     images, labels = load_split("val")
     num_scenes = 2 * len(images)
@@ -419,8 +427,7 @@ def rollouts(exp: Rollouts) -> None:
                 viewpoint = policy.step(t, state)
                 glimpse = sample(scene_1024, scene_512, viewpoint, exp.detail)
                 if local_writes is not None:
-                    assert exp.local_writes_from is not None
-                    local_writes.restrict_to(viewpoint if t >= exp.local_writes_from else None)
+                    local_writes.before_glimpse(t, viewpoint)
                 state = seg.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 ious[t].update(predicted_labels(seg.logits(state.canvas), size_px=SCENE_PX), scene_labels)
                 scales[t] += viewpoint.scales.double().sum().cpu()

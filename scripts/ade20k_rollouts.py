@@ -61,9 +61,10 @@ Sampling = Literal["bilinear", "antialiased"]
 """bilinear: the official extraction (grid_sample, used in pretraining too); antialiased: the crop at its native
 resolution, then downsampled with an anti-aliasing filter when it covers more pixels than the glimpse."""
 
-STATISTICS = ("canvas_patch_norm", "delta_previous", "entropy")
+STATISTICS = ("canvas_patch_norm", "delta_previous", "entropy", "canvas_common_fraction")
 """Per glimpse, averaged over canvas cells and scenes: the L2 norm of the raw canvas patches, the cosine
-dissimilarity of each layer-normalized patch to the previous canvas, and the probe's predictive entropy in nats."""
+dissimilarity of each layer-normalized patch to the previous canvas, the probe's predictive entropy in nats, and the
+fraction of the layer-normalized patches' energy in their mean over the cells (1 when every cell is the same)."""
 
 
 @dataclass(frozen=True)
@@ -92,6 +93,12 @@ class Experiment:
     local_writes_max_scale: float | None = None
     """With local_writes_from: only glimpses of at most this scale keep their Writes in their crop, and larger ones
     write into every cell, as released; 0.25 is C2F's levels 2 and 3."""
+    local_writes_margin: float = 0.0
+    """With local_writes_from: the cells within this many crop widths of the crop (Chebyshev distance) also keep their
+    Writes; the leak is strongest there (scripts/write_leakage.py)."""
+    unseen_writes: bool = False
+    """With local_writes_from: the cells that no glimpse has covered yet also keep their Writes, so policies that start
+    with small glimpses (R-IID, F2C) still fill the rest of the canvas."""
     scene_detail_px: int | None = None
     """When set, each scene is downsampled to this size with antialiasing and upsampled back before the rollout, so no
     glimpse sees detail finer than this resolution; labels keep the full scene size."""
@@ -112,6 +119,10 @@ class Experiment:
     """When set, only the first validation images, for quick checks."""
     autocast: bool = True
     """bfloat16 autocast, as in the official evaluation; False runs in float32."""
+    readout_mean_from: int | None = None
+    """When set, after every later glimpse, the probe reads the canvas patches with their mean over the cells replaced
+    by its value after this glimpse. The canvas itself is unchanged: this tests whether a drift shared by every cell
+    causes the drop past level 2."""
     device: str = "cuda"
 
 
@@ -353,7 +364,9 @@ def main(exp: Experiment) -> None:
     sample = sampler(exp.sampling)
     scaled_writes = ScaledWrites(seg, exp.write_scale)
     local_writes = (LocalWrites(seg.canvit, canvas_grid_size=exp.canvas_grid_size, device=device,
-                                outside=exp.outside_writes, max_scale=exp.local_writes_max_scale)
+                                start=exp.local_writes_from, outside=exp.outside_writes,
+                                max_scale=exp.local_writes_max_scale, margin=exp.local_writes_margin,
+                                unseen_writes=exp.unseen_writes)
                     if exp.local_writes_from is not None else None)
     dropped_token = (DroppedWriteToken(seg.canvit, token=exp.dropped_write_token)
                      if exp.dropped_write_token is not None else None)
@@ -382,20 +395,27 @@ def main(exp: Experiment) -> None:
                 if gate is not None:
                     gate.before_glimpse(viewpoint)
                 if local_writes is not None:
-                    assert exp.local_writes_from is not None
-                    local_writes.restrict_to(viewpoint if t >= exp.local_writes_from else None)
+                    local_writes.before_glimpse(t, viewpoint)
                 if dropped_token is not None:
                     dropped_token.active = t >= exp.dropped_write_token_from
                 state = seg.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 if gate is not None:
                     gate.after_glimpse(viewpoint)
-                logits = seg.logits(state.canvas)
+                patches = seg.canvit.canvas_patch_grid(state.canvas).float()
+                if exp.readout_mean_from is not None and t >= exp.readout_mean_from:
+                    mean = patches.mean(dim=(1, 2), keepdim=True)
+                    if t == exp.readout_mean_from:
+                        anchored_mean = mean
+                    patches = patches - mean + anchored_mean
+                logits = seg.probe(patches)
                 mious[t].update(predicted_labels(logits, size_px=scene_px), labels)
                 current = layer_normalized_patches(seg, state.canvas)
                 raw = seg.canvit.canvas_patch_grid(state.canvas).float()
                 sums["canvas_patch_norm"][t] += raw.norm(dim=-1).mean(dim=(1, 2)).sum().double()
                 sums["delta_previous"][t] += (1 - F.cosine_similarity(current, previous, dim=-1)).mean(dim=(1, 2)).sum().double()
                 sums["entropy"][t] += predictive_entropy(logits).mean(dim=(1, 2)).sum().double()
+                common = current.mean(dim=(1, 2)).pow(2).sum(dim=-1) / current.pow(2).sum(dim=-1).mean(dim=(1, 2))
+                sums["canvas_common_fraction"][t] += common.sum().double()
                 scales[t] += viewpoint.scales.double().sum().cpu()
                 previous = current
             if gate is not None:

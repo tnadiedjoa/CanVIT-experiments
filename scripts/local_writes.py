@@ -67,26 +67,39 @@ def token_part(write: CanvasAttention, token: int, *, query: Tensor, kv: Tensor,
 
 class LocalWrites:
     """Changes the Canvas Attention Write residuals into the canvas cells whose centers lie outside the current
-    glimpse's crop (OutsideWrites); the canvas registers keep theirs. With max_scale, only glimpses of at most that
-    scale are restricted, and larger ones write into every cell, as released."""
+    glimpse's crop (OutsideWrites), from glimpse `start` on; the canvas registers keep theirs. With max_scale, only
+    glimpses of at most that scale are restricted, and larger ones write into every cell, as released. With margin,
+    the cells within that many crop widths of the crop (Chebyshev distance) count as inside. With unseen_writes, the
+    cells that no glimpse has covered yet also keep their residuals."""
 
-    def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device, outside: OutsideWrites = "drop",
-                 max_scale: float | None = None) -> None:
-        self.outside, self.max_scale = outside, max_scale
+    def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device, start: int,
+                 outside: OutsideWrites = "drop", max_scale: float | None = None, margin: float = 0.0,
+                 unseen_writes: bool = False) -> None:
+        self.start, self.outside, self.max_scale, self.margin = start, outside, max_scale, margin
+        self.unseen_writes = unseen_writes
         self.num_registers = canvit.config.num_canvas_registers
         self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
+        self.seen: Tensor | None = None  # [B, G*G], cells inside the crop of an earlier glimpse of the rollout
         self.mask: Tensor | None = None  # [B, num_registers + G*G, 1] for the glimpse being taken
         self.handles = [write.register_forward_hook(self.hook, with_kwargs=True) for write in canvit.canvas_writes]
 
-    def restrict_to(self, viewpoint: Viewpoint | None) -> None:
-        """Restricts the next glimpse's Writes to its crop, or leaves them unchanged when viewpoint is None."""
-        if viewpoint is None:
+    def before_glimpse(self, t: int, viewpoint: Viewpoint) -> None:
+        """Sets the restriction for glimpse t of a rollout; t = 0 starts a new one."""
+        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs().amax(dim=-1).flatten(1)
+        scales = viewpoint.scales.view(-1, 1)
+        covered = offsets <= scales
+        if t == 0:
+            self.seen = torch.zeros_like(covered)
+        assert self.seen is not None
+        inside = offsets <= scales * (1 + 2 * self.margin)
+        if self.max_scale is not None:
+            inside |= scales > self.max_scale
+        if self.unseen_writes:
+            inside |= ~self.seen
+        self.seen |= covered
+        if t < self.start:
             self.mask = None
             return
-        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
-        inside = (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)
-        if self.max_scale is not None:
-            inside |= (viewpoint.scales > self.max_scale).view(-1, 1)
         registers = inside.new_ones(inside.shape[0], self.num_registers)
         self.mask = torch.cat([registers, inside], dim=1).unsqueeze(-1)
 

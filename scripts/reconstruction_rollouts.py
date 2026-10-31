@@ -43,6 +43,10 @@ class Experiment:
     outside_writes: OutsideWrites = "drop"
     local_writes_max_scale: float | None = None
     """With local_writes_from: only glimpses of at most this scale keep their Writes in their crop."""
+    local_writes_margin: float = 0.0
+    """With local_writes_from: cells within this many crop widths of the crop also keep their Writes."""
+    unseen_writes: bool = False
+    """With local_writes_from: cells that no glimpse has covered yet also keep their Writes."""
     seed: int = 0
     """Seeds the random policies (C2F's tile order, R-IID's viewpoints); the official CLI does not seed them."""
     batch_size: int = 16
@@ -62,8 +66,9 @@ def main(exp: Experiment) -> None:
     dataset = Scenes(root=ade20k.dataset_root(), size_px=grid * teacher.patch_size)
     if exp.num_images is not None:
         dataset = Subset(dataset, range(exp.num_images))
-    local_writes = (LocalWrites(model.canvit, canvas_grid_size=grid, device=device, outside=exp.outside_writes,
-                                max_scale=exp.local_writes_max_scale)
+    local_writes = (LocalWrites(model.canvit, canvas_grid_size=grid, device=device, start=exp.local_writes_from,
+                                outside=exp.outside_writes, max_scale=exp.local_writes_max_scale,
+                                margin=exp.local_writes_margin, unseen_writes=exp.unseen_writes)
                     if exp.local_writes_from is not None else None)
 
     sums = torch.zeros(exp.num_glimpses, len(METRICS), dtype=torch.float64)
@@ -81,8 +86,7 @@ def main(exp: Experiment) -> None:
             for t in range(exp.num_glimpses):
                 viewpoint = policy.step(t, state)
                 if local_writes is not None:
-                    assert exp.local_writes_from is not None
-                    local_writes.restrict_to(viewpoint if t >= exp.local_writes_from else None)
+                    local_writes.before_glimpse(t, viewpoint)
                 glimpse = sample_at_viewpoint(spatial=images, viewpoint=viewpoint, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
                 state = model.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 scene_norm, scene_raw = cosine_similarities(
