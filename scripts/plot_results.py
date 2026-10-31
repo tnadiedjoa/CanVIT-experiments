@@ -369,19 +369,24 @@ def local_writes() -> None:
     series = [(mode, runs(*(f"c2f_c64_t85_s{seed}{suffix}" for seed in range(5)))) for suffix, mode in WRITE_MODES.items()]
     if any(result is None for _, result in series[:2]):
         return
-    fig, (miou_ax, norm_ax) = plt.subplots(1, 2, figsize=(11, 3.8))
-    for (mode, color), result in series:
-        if result is None:
-            continue
-        seeds = f"{len(result.runs)} seed{'s' if len(result.runs) > 1 else ''}"
-        miou_ax.plot(result.mean("miou"), color=color, label=f"{mode} ({seeds})")
-        norm_ax.plot(result.mean("canvas_patch_norm") / 1e3, color=color, label=mode)
-    for ax in (miou_ax, norm_ax):
+    fig, (miou_ax, norm_ax, reconstruction_ax) = plt.subplots(1, 3, figsize=(16, 3.8))
+    for ((mode, color), result), suffix in zip(series, WRITE_MODES):
+        if result is not None:
+            seeds = f"{len(result.runs)} seed{'s' if len(result.runs) > 1 else ''}"
+            miou_ax.plot(result.mean("miou"), color=color, label=f"{mode} ({seeds})")
+            norm_ax.plot(result.mean("canvas_patch_norm") / 1e3, color=color, label=mode)
+        path = RESULTS / "reconstruction" / f"c2f_c32_t85_s0{suffix}.json"
+        if path.exists():
+            per_timestep = json.loads(path.read_text())["per_timestep"]
+            reconstruction_ax.plot([p["scene_cos_norm"] for p in per_timestep], color=color, label=mode)
+    for ax in (miou_ax, norm_ax, reconstruction_ax):
         level_boundaries(ax)
         ax.set_xlabel("glimpse t")
     miou_ax.set(ylabel="ADE20K val mIoU (%)", title="C2F, canvas 64×64 (level 3 upsampled 2× from 512 px)")
     norm_ax.set(ylabel="raw canvas patch L2 norm (thousands)", title="Mean norm of a canvas patch")
-    for ax in (miou_ax, norm_ax):
+    reconstruction_ax.set(ylabel="cosine similarity to DINOv3 (standardized)",
+                          title="Reconstruction of the teacher's features (seed 0, canvas 32×32)")
+    for ax in (miou_ax, norm_ax, reconstruction_ax):
         ax.title.set_fontsize(9)
     miou_ax.legend(fontsize=7, loc="lower right")
     save(fig, "ade20k_local_writes.png")
