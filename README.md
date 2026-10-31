@@ -176,6 +176,8 @@ narrower is better by t = 84:
 
 With a margin of one crop width, a level-1 quadrant still writes everywhere, a level-2 tile into its 3×3 block of
 tiles, and a level-3 tile into its 3×3 block.
+With seed 1, a margin of one crop width gives the same: 45.01 over t = 1-20 and 46.10 at t = 84, against 44.91 and
+43.64 with released Writes.
 
 The margin also helps the policies that start with small glimpses, where the rule for small glimpses costs early
 (margin from glimpse 1, seed 0):
