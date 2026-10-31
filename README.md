@@ -156,7 +156,8 @@ residuals there as well, and dropping them only farther away (C2F, seed 0):
   43.64 with released Writes.
 
 **Width of the margin** (C2F, seed 0, Writes restricted from glimpse 1). On ADE20K, wider is better up to one crop
-width; on Cityscapes (1024 px, level 3 from the 1024 px scene), narrower is better by t = 84:
+width, and a margin of two widths does slightly worse; on Cityscapes (1024 px, level 3 from the 1024 px scene),
+narrower is better by t = 84:
 
 | Margin (crop widths) | ADE20K, mean over t = 1-20 | ADE20K, t = 84 | Cityscapes, mean over t = 1-20 | Cityscapes, t = 84 |
 |---|---|---|---|---|
@@ -165,6 +166,7 @@ width; on Cityscapes (1024 px, level 3 from the 1024 px scene), narrower is bett
 | 0.25 | 44.70 | 45.77 | 59.90 | 64.20 |
 | 0.5 | 44.86 | 45.95 | 59.83 | 63.83 |
 | 1 | 44.98 | 46.14 | | |
+| 2 | 44.94 | 45.99 | | |
 
 With a margin of one crop width, a level-1 quadrant still writes everywhere, a level-2 tile into its 3×3 block of
 tiles, and a level-3 tile into its 3×3 block.
