@@ -1,0 +1,40 @@
+{
+ "experiment": {
+  "output": "results/nyu_depth/nyu_dv3b_256px.json",
+  "probe": "probes/nyu_depth_dinov3_vitb16_256px.pt",
+  "batch_size": 8,
+  "device": "cuda"
+ },
+ "probe_config": {
+  "output": "probes/nyu_depth_dinov3_vitb16_256px.pt",
+  "features": "dinov3_vitb16",
+  "scene_size_px": 256,
+  "pretrained_repo": "canvit/canvitb16-add-vpe-pretrain-g128px-s512px-in21k-dv3b16-2026-02-02",
+  "canvas_grid_size": 64,
+  "num_glimpses": 10,
+  "training_policy": "random",
+  "selection_policy": "full_then_random",
+  "num_steps": 4000,
+  "batch_size": 8,
+  "peak_lr": 0.0003,
+  "weight_decay": 0.001,
+  "warmup_steps": 300,
+  "dropout": 0.1,
+  "validate_every": 500,
+  "seed": 0,
+  "device": "cuda"
+ },
+ "probe_selected_step": 3500,
+ "rmse": [
+  0.47530628228132876
+ ],
+ "abs_rel": [
+  0.12993901290728593
+ ],
+ "delta1": [
+  84.01327682051819
+ ],
+ "gflops": 47.149092864,
+ "n_images": 654,
+ "wall_time_seconds": 17.031223826110363
+}

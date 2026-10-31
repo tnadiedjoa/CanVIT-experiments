@@ -425,6 +425,37 @@ def cityscapes_cost() -> None:
     save(fig, "cityscapes_cost_frontier.png")
 
 
+NYU_DEPTH = RESULTS / "nyu_depth"
+
+
+def nyu_depth() -> None:
+    dinov3 = [json.loads(path.read_text()) for px in (128, 256, 384, 512)
+              if (path := NYU_DEPTH / f"nyu_dv3b_{px}px.json").exists()]
+    canvit = [(label, json.loads(path.read_text())) for label, name in [
+        ("C2F", "nyu_c2f_c64_t21_s0"), ("F-IID", "nyu_fiid_c64_t21_s0"), ("RFS", "nyu_rfs_c64_t21"),
+    ] if (path := NYU_DEPTH / f"{name}.json").exists()]
+    if not dinov3 or not canvit:
+        return
+    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    for label, run in canvit:
+        gflops = run["glimpse_gflops"] * np.arange(1, len(run["rmse"]) + 1)
+        ax.plot(gflops, run["rmse"], color=COLORS[label], label=f"CanViT-B, {label} (canvas 64×64)")
+    dinov3.sort(key=lambda run: run["gflops"])
+    ax.plot([run["gflops"] for run in dinov3], [run["rmse"][0] for run in dinov3], color=MUTED, marker="s",
+            markersize=4, linewidth=1.5, label="DINOv3 ViT-B/16, one view")
+    for run in dinov3:
+        ax.annotate(f"{run['probe_config']['scene_size_px']} px", (run["gflops"], run["rmse"][0]), xytext=(6, 4),
+                    textcoords="offset points", ha="left", fontsize=7, color=MUTED)
+    ax.set(xscale="log", xlabel="forward GFLOPs per scene (CanViT: cumulative over glimpses 1-21)",
+           ylabel="test RMSE (m), lower is better",
+           title="Linear depth probes on NYU Depth v2 (654 test images, central 480 px square)")
+    ax.set_xticks([10, 20, 50, 100, 200, 500], labels=["10", "20", "50", "100", "200", "500"])
+    ax.xaxis.set_minor_formatter(plt.NullFormatter())
+    ax.title.set_fontsize(9)
+    ax.legend(fontsize=7, loc="upper right")
+    save(fig, "nyu_depth_cost.png")
+
+
 def save(fig: plt.Figure, name: str) -> None:
     for ax in fig.axes:
         if ax.get_xlabel() == "glimpse t":
@@ -466,4 +497,5 @@ if __name__ == "__main__":
     cityscapes_level3()
     cityscapes_classes()
     cityscapes_cost()
+    nyu_depth()
     summary_table()

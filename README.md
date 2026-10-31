@@ -366,6 +366,37 @@ The flagship CanViT stays below DINOv3 at 512 px for the same cost (61.83 after 
 
 ![Accuracy against compute on 1024 px Cityscapes scenes](outputs/cityscapes_cost_frontier.png)
 
+### Depth on NYU Depth v2: later glimpses add little
+
+The paper does not test depth. [`scripts/nyu_depth.py`](scripts/nyu_depth.py) trains linear depth probes on frozen
+features, on the labeled NYU Depth v2 set:
+
+- 700 training images and 654 test images (the official split; the last 95 of its 795 training images select the
+  probe's step);
+- a scene is the central 480×480 square of an image, resized to 512 px. Errors are computed at 480 px, inside the
+  crop of Eigen et al.;
+- the probe is the paper's segmentation head over 256 depth bins (0-10 m), trained with the scale-invariant log
+  loss. The canvas probe is trained on 10 R-IID glimpses per scene, as for Cityscapes.
+
+| Features | GFLOPs | RMSE (m) | AbsRel | δ < 1.25 (%) |
+|---|---|---|---|---|
+| DINOv3 ViT-B/16, 128 px | 12 | 0.550 | 0.152 | 77.9 |
+| CanViT-B, one glimpse (the full scene) | 21 | 0.554 | 0.155 | 77.9 |
+| DINOv3 ViT-B/16, 256 px | 47 | 0.475 | 0.130 | 84.0 |
+| CanViT-B, C2F, 10 glimpses | 208 | 0.525 | 0.146 | 80.0 |
+| DINOv3 ViT-B/16, 512 px | 215 | 0.445 | 0.122 | 86.2 |
+| CanViT-B, C2F, 21 glimpses | 438 | 0.524 | 0.149 | 79.9 |
+
+- One glimpse matches DINOv3 at 128 px, but later glimpses add little. Over 20 more glimpses, C2F lowers the RMSE by
+  0.030 m and F-IID by 0.027 m. On ADE20K, the same C2F glimpses add 6.35 points of mIoU.
+- DINOv3 at 256 px (47 GFLOPs) beats CanViT at every budget.
+- The canvas is trained to predict DINOv3's features of the 512 px scene. For segmentation, its probe comes close to
+  DINOv3's at 512 px (45.9 against 47.2 mIoU); for depth, it does not (0.524 against 0.445 m).
+- RFS degrades depth as it degrades segmentation: from 0.554 m at t = 0 to 0.586 m at t = 20.
+- Over 21 glimpses, Writes kept in the crop from level 2 change nothing (0.527 m at t = 20).
+
+![Depth error against compute on NYU Depth v2](outputs/nyu_depth_cost.png)
+
 ### Cost of the asymmetric Canvas Attention
 
 The released model has no learned projections on the canvas side; the QKVO ablation has projections on both sides.
@@ -380,8 +411,9 @@ size 1, both variants take 15-23 ms, a time bounded by kernel launches.
 
 ### Limits
 
-- Two datasets. On Cityscapes, the probe is trained here. Every run uses one seed, except the comparison of released
-  Writes with Writes kept in the crop from level 2 (three seeds).
+- Three datasets. On Cityscapes and NYU Depth v2, the probes are trained here. Every Cityscapes run uses one seed,
+  except the comparison of released Writes with Writes kept in the crop from level 2 (three seeds). Each depth
+  probe is trained once.
 - Deterministic policies (RFS, EG-C2F and the scored tile orders) ran once; the others ran over the seeds shown.
   Variants of C2F use seed 0.
 - Nothing in CanViT is retrained, so the conclusions hold for the released model. Local Writes are a change at
@@ -396,8 +428,9 @@ git clone https://github.com/m2b3/CanViT external/CanViT   # the paper's exporte
 ```
 
 ADE20K (`ADEChallengeData2016`) goes wherever `ADE20K_ROOT` points, Cityscapes (`gtFine_trainvaltest.zip` and
-`leftImg8bit_trainvaltest.zip`, unzipped) wherever `CITYSCAPES_ROOT` points; the queue runners set the defaults.
-DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
+`leftImg8bit_trainvaltest.zip`, unzipped) wherever `CITYSCAPES_ROOT` points, and NYU Depth v2
+(`nyu_depth_v2_labeled.mat` and `splits.mat`) wherever `NYU_ROOT` points; the queue runners and scripts set the
+defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
 
 ## Contents
 
@@ -409,6 +442,7 @@ DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
 | `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level, and how much of it comes from the glimpse's prefix tokens. |
 | `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share. |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
+| `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT and for DINOv3 at several input sizes. |
 | `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released or local Writes), and of DINOv3 at several input sizes. |
 | `scripts/convert_legacy_checkpoint.py` | Converts a checkpoint in the canvit-pytorch 0.1 format (the Hub's experimental 1024 px CanViT-B) to the current format. |
 | `scripts/run_queue.sh`, `scripts/run_official_queue.sh`, `scripts/run_commands.sh`, `queues/` | Run a list of experiments one after another, skipping finished ones: `ade20k_rollouts.py` runs, official `canvit_pytorch.evaluate` runs, and any Python command. |
