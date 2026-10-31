@@ -152,7 +152,8 @@ residuals there as well, and dropping them only farther away (C2F, seed 0):
 - The harm comes from the leak far from the glimpse: from level 3, the margin costs 0.07 points at t = 84.
 - From glimpse 1, the margin removes the cost of local Writes during level 1. Its mean over t = 1-20 is 44.86,
   against 44.89 with released Writes and 44.41 without the margin. It still gains 2.3 points by t = 84, and needs no
-  threshold on the glimpse scale.
+  threshold on the glimpse scale. Seed 1 gives the same: 45.96 at t = 20 and 45.89 at t = 84, against 45.89 and
+  43.64 with released Writes.
 
 The margin also helps the policies that start with small glimpses, where the rule for small glimpses costs early
 (margin from glimpse 1, seed 0):
