@@ -403,6 +403,8 @@ def cityscapes_cost() -> None:
         (f"CanViT-B, EG-C2F, {local5[0]}", "egc2f_c64_t85_s512_then_native_local5", COLORS["EG-C2F"], "-"),
         (f"CanViT-B pretrained on 1024 px, C2F, {released[0]}", "s1024exp_c2f_c64_t85_native_s0", released[1], "--"),
         (f"CanViT-B pretrained on 1024 px, C2F, {local5[0]}", "s1024exp_c2f_c64_t85_native_s0_local5", local5[1], "--"),
+        (f"CanViT-B pretrained on 1024 px, EG-C2F, {local5[0]}", "s1024exp_egc2f_c64_t85_native_local5",
+         COLORS["EG-C2F"], "--"),
     ] if (run := cityscapes_run(name))]
     if not dinov3 or not canvit:
         return

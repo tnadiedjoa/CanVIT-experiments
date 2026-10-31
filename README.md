@@ -40,7 +40,8 @@ On 512 px scenes, C2F stays on the frontier of the two DINOv3 models up to about
 
 Past that point, C2F flattens: 21 glimpses (438 GFLOPs) reach 45.9%, below DINOv3 ViT-B at 512 px (47.2%,
 215 GFLOPs). A glimpse costs the same whatever the scene size, so the comparison that matters is on scenes larger
-than 512 px. That comparison is in progress, on Cityscapes at 1024 px.
+than 512 px. On Cityscapes at 1024 px, CanViT leads DINOv3 only on small budgets (about 200 GFLOPs); DINOv3 at
+1024 px is 4.4 points ahead at its own cost (section [Cityscapes at 1024 px](#cityscapes-at-1024-px-past-the-pretraining-resolution)).
 
 ### Long rollouts: repetition, not length, degrades the canvas
 
@@ -327,13 +328,28 @@ from the 1024 px scene, as above:
 - **EG-C2F with released Writes** peaks at 66.02 (t = 30), then falls to 64.25.
 - **With every glimpse from the 1024 px scene and Writes kept in the crop from level 2**, C2F reaches 67.16 at
   t = 84 and EG-C2F 67.57 (t = 77). After 8 glimpses (167 GFLOPs), EG-C2F already scores 64.10.
-  DINOv3 ViT-B/16 scores 63.78 with one 512 px view (215 GFLOPs), with its own probe trained the same way.
 - The two models' probes are trained on different scene sizes (1024 and 512 px). The 3.16 points between them at
   t = 20 therefore mix model and probe; a flagship probe trained on 1024 px scenes is queued.
 
 ![C2F and EG-C2F to level 3 on Cityscapes](outputs/cityscapes_level3.png)
 
 ![Per-class IoU change over level 3](outputs/cityscapes_classes.png)
+
+**Against DINOv3.** DINOv3 ViT-B/16 sees the scene once, resized to its input size, with a probe trained the same
+way at that size. It scores 63.78 at 512 px (215 GFLOPs) and 71.99 at 1024 px (1,322 GFLOPs). CanViT is ahead only
+on small budgets:
+
+| Model | GFLOPs | mIoU |
+|---|---|---|
+| DINOv3 ViT-B/16, 512 px | 215 | 63.78 |
+| CanViT-B pretrained on 1024 px, EG-C2F, Writes kept in the crop from level 2, 10 glimpses | 208 | 64.79 |
+| DINOv3 ViT-B/16, 1024 px | 1,322 | 71.99 |
+| same CanViT, 64 glimpses | 1,334 | 67.56 |
+
+The flagship CanViT stays below DINOv3 at 512 px for the same cost (61.83 after 10 glimpses of EG-C2F). DINOv3 at
+768 px is queued.
+
+![Accuracy against compute on 1024 px Cityscapes scenes](outputs/cityscapes_cost_frontier.png)
 
 ### Cost of the asymmetric Canvas Attention
 
