@@ -28,7 +28,7 @@ from canvit_pytorch.policies import POLICIES, PolicyName, make_policy
 from canvit_pytorch.teacher import TEACHER_REPO, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import DroppedWriteToken, LocalWrites, OutsideWrites  # noqa: E402
+from local_writes import DroppedWriteToken, LearnedWriteGate, LocalWrites, OutsideWrites  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +52,8 @@ class Experiment:
     key token of the glimpse (an index into local_writes.PREFIX_TOKENS; 5 is backbone register 3, the attention sink
     of the canvas cells far from the glimpse)."""
     dropped_write_token_from: int = 1
+    write_gate: Path | None = None
+    """When set, a learned gate on the Writes (local_writes.LearnedWriteGate) saved by scripts/train_write_gate.py."""
     seed: int = 0
     """Seeds the random policies (C2F's tile order, R-IID's viewpoints); the official CLI does not seed them."""
     batch_size: int = 16
@@ -77,6 +79,10 @@ def main(exp: Experiment) -> None:
                     if exp.local_writes_from is not None else None)
     dropped_token = (DroppedWriteToken(model.canvit, token=exp.dropped_write_token)
                      if exp.dropped_write_token is not None else None)
+    write_gate = None
+    if exp.write_gate is not None:
+        write_gate = LearnedWriteGate(model.canvit, canvas_grid_size=grid, device=device)
+        write_gate.load_state_dict(torch.load(exp.write_gate, weights_only=True)["state_dict"])
 
     sums = torch.zeros(exp.num_glimpses, len(METRICS), dtype=torch.float64)
     start = time.monotonic()
@@ -94,6 +100,8 @@ def main(exp: Experiment) -> None:
                 viewpoint = policy.step(t, state)
                 if local_writes is not None:
                     local_writes.before_glimpse(t, viewpoint)
+                if write_gate is not None:
+                    write_gate.before_glimpse(t, viewpoint)
                 if dropped_token is not None:
                     dropped_token.active = t >= exp.dropped_write_token_from
                 glimpse = sample_at_viewpoint(spatial=images, viewpoint=viewpoint, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)

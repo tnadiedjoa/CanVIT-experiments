@@ -1,0 +1,6 @@
+# The learned Write gate (probes/write_gate_c2f_riid.pt) on the reconstruction metric and ADE20K, against the released
+# Writes and the hand-set rules (margin of one crop width from glimpse 1; crop only from level 2).
+results/reconstruction/c2f_c32_t85_s0_gate_c2f_riid.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/write_gate_c2f_riid.pt
+results/c2f_c64_t85_s0_gate_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_gate_c2f_riid.pt
+results/f2c_c64_t21_s0_gate_c2f_riid.json scripts/ade20k_rollouts.py --policy fine_to_coarse --num-glimpses 21 --canvas-grid-size 64 --write-gate probes/write_gate_c2f_riid.pt
+results/reconstruction/fiid_c32_t85_s0_gate_c2f_riid.json scripts/reconstruction_rollouts.py --policy full_then_random --write-gate probes/write_gate_c2f_riid.pt

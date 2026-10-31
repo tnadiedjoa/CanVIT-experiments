@@ -12,7 +12,8 @@ import math
 from typing import Literal
 
 import torch
-from torch import Tensor
+import torch.nn.functional as F
+from torch import Tensor, nn
 
 from canvit_pytorch import Viewpoint
 from canvit_pytorch.model import CanViT
@@ -137,6 +138,52 @@ class DroppedWriteToken:
         if not self.active:
             return None
         return (output.float() - token_part(module, self.token, **kwargs)).to(output.dtype)
+
+    def remove(self) -> None:
+        for handle in self.handles:
+            handle.remove()
+
+
+class LearnedWriteGate(nn.Module):
+    """A learned, soft version of local Writes. Each Write's residual into a canvas cell is multiplied, per head h, by
+    exp(-rate_h · max(0, d − reach_h)), where d is the Chebyshev distance from the cell's center to the glimpse's crop
+    in crop widths (0 inside the crop); the canvas registers keep their residuals. rate = softplus(raw_rate) and
+    reach = softplus(raw_reach) are learned per Write and head; everything else in CanViT stays frozen. The initial
+    rate (softplus(-4) ≈ 0.018) leaves the released Writes almost unchanged."""
+
+    def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device) -> None:
+        super().__init__()
+        num_writes, num_heads = len(canvit.canvas_writes), canvit.canvas_writes[0].num_heads
+        self.raw_rate = nn.Parameter(torch.full((num_writes, num_heads), -4.0, device=device))
+        self.raw_reach = nn.Parameter(torch.zeros(num_writes, num_heads, device=device))
+        self.num_registers = canvit.config.num_canvas_registers
+        self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
+        self.distance: Tensor | None = None  # [B, G*G, 1], for the glimpse being taken
+        self.handles = [write.register_forward_hook(self.hook(index), with_kwargs=True)
+                        for index, write in enumerate(canvit.canvas_writes)]
+
+    def before_glimpse(self, t: int, viewpoint: Viewpoint) -> None:
+        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs().amax(dim=-1).flatten(1)
+        scales = viewpoint.scales.view(-1, 1)
+        self.distance = ((offsets - scales) / (2 * scales)).clamp(min=0).unsqueeze(-1).float()
+
+    def gates(self, index: int) -> Tensor:
+        """[B, G*G, heads] factors of Write `index` for the current glimpse."""
+        assert self.distance is not None, "call before_glimpse first"
+        rate, reach = F.softplus(self.raw_rate[index]), F.softplus(self.raw_reach[index])
+        return torch.exp(-rate * (self.distance - reach).clamp(min=0))
+
+    def hook(self, index: int):
+        def apply(module: CanvasAttention, args, kwargs: dict, output: Tensor) -> Tensor:
+            B, N, D = output.shape
+            heads = self.raw_rate.shape[1]
+            cells = output[:, self.num_registers:].float().view(B, N - self.num_registers, heads, D // heads)
+            gated = (cells * self.gates(index).unsqueeze(-1)).view(B, N - self.num_registers, D)
+            return torch.cat([output[:, :self.num_registers].float(), gated], dim=1).to(output.dtype)
+        return apply
+
+    def describe(self) -> dict[str, list[list[float]]]:
+        return {"rate": F.softplus(self.raw_rate).tolist(), "reach": F.softplus(self.raw_reach).tolist()}
 
     def remove(self) -> None:
         for handle in self.handles:

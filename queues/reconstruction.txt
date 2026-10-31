@@ -8,3 +8,5 @@ results/reconstruction/c2f_c32_t85_s0_local5.json scripts/reconstruction_rollout
 results/reconstruction/c2f_c32_t85_s0_local1.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --local-writes-from 1
 results/reconstruction/fiid_c32_t85_s0_localmax0.25.json scripts/reconstruction_rollouts.py --policy full_then_random --local-writes-from 1 --local-writes-max-scale 0.25
 results/reconstruction/fiid_c32_t85_s0.json scripts/reconstruction_rollouts.py --policy full_then_random
+# Writes kept within half a crop width of the crop, from glimpse 1.
+results/reconstruction/c2f_c32_t85_s0_local1_margin0.5.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --local-writes-from 1 --local-writes-margin 0.5
