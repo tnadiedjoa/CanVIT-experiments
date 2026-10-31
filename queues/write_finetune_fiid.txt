@@ -1,0 +1,2 @@
+# The Writes fine-tuned on long rollouts, on F-IID, a policy they were not trained on (reconstruction metric).
+results/reconstruction/fiid_c32_t85_s0_finetune_c2f_riid.json scripts/reconstruction_rollouts.py --policy full_then_random --write-gate probes/write_finetune_c2f_riid.pt

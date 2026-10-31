@@ -342,7 +342,11 @@ its residual; the farthest cells from a level-3 tile, seven widths away, keep ab
 | kept in the crop from level 2 | 44.83 | 46.18 | 0.837 | 64.70 |
 
 The gate keeps the early gain of the one-width margin and recovers most of the level-3 drop on ADE20K, but less than
-the rules, and less on the reconstruction metric and on Cityscapes.
+the rules, and less on the reconstruction metric and on Cityscapes. On the policies that start with small glimpses, it
+matches the margin early. Mean over t = 1-20:
+
+- R-IID: 40.06 (margin 39.86, released 39.60), ending at 45.50 at t = 84;
+- F2C: 35.97 (margin 36.04, released 34.58), ending at 44.16 at t = 20.
 
 **Locality costs the CLS token.** The recurrent CLS token's prediction of the teacher's CLS token also drifts over
 long C2F rollouts: its cosine similarity falls from 0.838 at t = 4 to 0.769 at t = 84 with released Writes. Local
@@ -375,12 +379,18 @@ scenes in the same order. C2F, seed 0 (means over t = 0-84):
 - **Rollout length decides the direction.** On short rollouts, fine-tuning sharpens the first glimpses
   (reconstruction mean over t = 1-20: 0.833, against 0.832) but deepens the long-rollout drift. On long rollouts, it
   improves the reconstruction at every stage and the CLS token too, with no trade-off.
+- On R-IID (also a training policy), the long fine-tune has the best reconstruction at every stage: 0.831 at
+  t = 84 (released 0.825, one-width margin 0.829), mean over t = 0-84 0.814 (0.809), CLS 0.794 (0.791).
 - **The segmentation probe sees less of it.** The long fine-tune recovers 0.77 of the 2.28 points that C2F loses over
   level 3; local Writes recover all of them. The canvas norm still nearly doubles over level 3 (26.1k to 52.0k;
   released Writes 27.5k to 58.2k, local Writes 30.7k at t = 84). The released probe still reads the fine-tuned
   canvas: at t = 0, it loses 0.08 points.
+- On Cityscapes (1024 px, a dataset it was not trained on), the long fine-tune scores 62.33 at t = 20 and 60.89 at
+  t = 84 (released 61.80 and 59.20; Writes kept in the crop from level 2: 63.04 and 64.70).
 - **Locality still matters after fine-tuning.** It adds 2.05 points at t = 84 on top of the fine-tuned Writes, which
   add 0.06 on top of locality (one seed).
+- **Repetition is not fixed.** On RFS, the fine-tuned Writes decline as the released ones (37.39 at t = 84, against
+  37.55; canvas norm 389k): C2F and R-IID rollouts almost never repeat a view.
 
 ![Learned Writes](outputs/learned_writes.png)
 
