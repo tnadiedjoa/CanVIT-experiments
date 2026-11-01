@@ -1,0 +1,2 @@
+# All of CanViT fine-tuned on long rollouts, on RFS: does any fine-tune stop the repetition drift?
+results/rfs_c64_t85_canvit_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy repeated_full_scene --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/canvit_finetune_c2f_riid.pt

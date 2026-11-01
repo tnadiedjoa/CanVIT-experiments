@@ -322,11 +322,20 @@ robust, though:
 ### Learned Writes
 
 The fixes above are hand-set rules applied at inference. [`scripts/train_write_gate.py`](scripts/train_write_gate.py)
-learns a change to the Writes instead, with the rest of the released model frozen. It uses the paper's objective
-(after every glimpse, mean squared errors to DINOv3's standardized patch features from the canvas, and to its CLS
-token from the recurrent CLS token), but on long rollouts: each step runs one 85-glimpse rollout, C2F or R-IID, on 16
-ADE20K training scenes at 512 px (32×32 canvas), with truncated backpropagation over chunks of 4 glimpses. Evaluation
-uses the validation scenes, never seen in training.
+learns a change instead: a few new parameters in the Writes, or the Writes' own parameters, the Reads' too, or all of
+CanViT, with the rest of the released model frozen. It uses the paper's objective (after every glimpse, mean squared
+errors to DINOv3's standardized patch features from the canvas, and to its CLS token from the recurrent CLS token),
+but on long rollouts: each step runs one 85-glimpse rollout, C2F or R-IID, on 16 ADE20K training scenes at 512 px
+(32×32 canvas), with truncated backpropagation over chunks of 4 glimpses. Evaluation uses the validation scenes, never
+seen in training.
+
+In short:
+
+- Training on long rollouts improves the objective it trains on and removes most of the CLS token's drift, while
+  training as long on rollouts of pretraining length deepens the drift.
+- It helps segmentation much less. Local Writes remain the main fix of C2F's level-3 drop, and the two add up a
+  little: the best scores here are 46.54 on ADE20K and 65.52 on Cityscapes at t = 84.
+- No training fixes the decline under repeated views: a Write's residual cannot vanish.
 
 **A learned distance gate.** Each Write's residual into a cell is multiplied, per head, by
 exp(−r · max(0, d − ρ)), where d is the cell's Chebyshev distance to the crop in crop widths and r, ρ are learned
@@ -421,7 +430,8 @@ scenes in the same order. C2F, seed 0 (means over t = 0-84):
   against 0.760 with fine-tuned Writes and 0.757 with released ones).
 - **Repetition is not fixed, even when trained on it.** On RFS, the fine-tuned Writes decline as the released ones
   (37.39 at t = 84, against 37.55; canvas norm 389k). With RFS added as a third training policy, they end at 37.83
-  (norm 378k), and C2F gains less (43.84 at t = 84, against 44.42).
+  (norm 378k), and C2F gains less (43.84 at t = 84, against 44.42). All of CanViT fine-tuned ends at 37.10 (norm
+  389k).
 
 **A Write cannot write nothing.** Its residual is a softmax-weighted mean of value vectors computed from the glimpse
 alone (the Writes have no output projection), so it never vanishes. A repeated view writes the same vector again, and
@@ -441,7 +451,7 @@ reconstruction) or from level 2 (Cityscapes):
 | one-width margin from glimpse 1 | 46.14 | 63.15 | 0.836 |
 | fine-tuned, with the margin | 46.17 | 63.83 | 0.842 |
 | fine-tuned with the margin applied during training | 46.22 | 63.88 | 0.843 |
-| all of CanViT fine-tuned, with the rule | | 65.12 | 0.846 |
+| all of CanViT fine-tuned, with the rule | 46.49 | 65.12 | 0.846 |
 
 - The fine-tune adds to locality on Cityscapes (0.3 to 0.8 points) and on the reconstruction metric (0.006), little
   on ADE20K. With seed 1 too, Writes kept in the crop from level 3 end at 46.31, the fine-tuned Writes with them at
@@ -688,8 +698,8 @@ defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the
 | `scripts/level3_canvas.py` | The canvas and the probe's prediction after level 3 of C2F with released and local Writes, on a few ADE20K scenes. |
 | `scripts/write_leak_map.py` | Where one glimpse's Writes land on one scene: residual norm and attention on the sink register, per canvas cell. |
 | `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level, and how much of it comes from the glimpse's prefix tokens. |
-| `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share, and the learned changes to the Writes: a distance gate, a zero-value key, the Writes' own parameters. |
-| `scripts/train_write_gate.py` | Trains one of those learned changes, the rest of CanViT frozen, on the pretraining objective with long rollouts. |
+| `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share, and the learned changes: a distance gate on the Writes, a zero-value key, the Writes' own parameters, the Reads' too, or all of CanViT's. |
+| `scripts/train_write_gate.py` | Trains one of those learned changes, the rest of CanViT frozen, on the pretraining objective with long rollouts, optionally with local Writes applied during training. |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
 | `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT and for DINOv3 at several input sizes. |
 | `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released or local Writes), and of DINOv3 at several input sizes. |
