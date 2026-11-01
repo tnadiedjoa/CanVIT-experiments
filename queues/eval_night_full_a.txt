@@ -1,0 +1,3 @@
+# All of CanViT fine-tuned on long rollouts (split of queues/eval_night_full.txt to run in parallel).
+results/reconstruction/c2f_c32_t85_s0_canvit_finetune_c2f_riid.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/canvit_finetune_c2f_riid.pt
+results/reconstruction/c2f_c32_t85_s0_canvit_finetune_c2f_riid_local21.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/canvit_finetune_c2f_riid.pt --local-writes-from 21

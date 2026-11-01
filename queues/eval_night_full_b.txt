@@ -1,0 +1,3 @@
+# All of CanViT fine-tuned on long rollouts (split of queues/eval_night_full.txt to run in parallel).
+results/c2f_c64_t85_s0_canvit_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/canvit_finetune_c2f_riid.pt
+results/c2f_c64_t85_s0_canvit_finetune_c2f_riid_local21.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/canvit_finetune_c2f_riid.pt --local-writes-from 21

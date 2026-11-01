@@ -1,0 +1,2 @@
+# All of CanViT fine-tuned on long rollouts, on other policies.
+results/reconstruction/fiid_c32_t85_s0_canvit_finetune_c2f_riid.json scripts/reconstruction_rollouts.py --policy full_then_random --write-gate probes/canvit_finetune_c2f_riid.pt

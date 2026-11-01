@@ -1,0 +1,4 @@
+# Seed 1 (another C2F tile order) for the fine-tuned Writes, and Reads and Writes, with local Writes from level 3
+# (their seed-0 gains over local Writes alone are within the noise of one seed).
+results/c2f_c64_t85_s1_finetune_c2f_riid_local21.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --seed 1 --write-gate probes/write_finetune_c2f_riid.pt --local-writes-from 21
+results/c2f_c64_t85_s1_ca_finetune_c2f_riid_local21.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --seed 1 --write-gate probes/canvas_attention_finetune_c2f_riid.pt --local-writes-from 21

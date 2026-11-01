@@ -397,9 +397,9 @@ LEARNED_MODES = {  # hand-set rules (dashed) and learned changes (solid), agains
     "_local21": ("kept in the crop from level 3 (hand-set)", "#6250d6", "--"),
     "_local1_margin1": ("kept within one crop width, from glimpse 1 (hand-set)", "#e34948", "--"),
     "_gate_c2f_riid": ("learned gate, patch + CLS loss", "#eb6834", "-"),
-    "_gate_patch_c2f_riid": ("learned gate, patch loss", "#e87ba4", "-"),
     "_finetune_short": ("Writes fine-tuned, pretraining-length rollouts", "#8a8985", "-"),
     "_finetune_c2f_riid": ("Writes fine-tuned, 85-glimpse rollouts", "#008300", "-"),
+    "_canvit_finetune_c2f_riid": ("all of CanViT fine-tuned, 85-glimpse rollouts", "#1baf7a", "-"),
 }
 
 

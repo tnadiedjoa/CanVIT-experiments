@@ -1,0 +1,2 @@
+# All of CanViT fine-tuned on long rollouts, on other policies.
+results/riid_c64_t85_s0_canvit_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy random --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/canvit_finetune_c2f_riid.pt

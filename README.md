@@ -400,7 +400,7 @@ scenes in the same order. C2F, seed 0 (means over t = 0-84):
   the segmentation probe gains only where the leak hurts most.
 - **Seeds.** With another C2F tile order (seed 1), the fine-tuned Writes end at 44.40 at t = 84 (released 43.64):
   the same gain. Fine-tuned again with another training seed, they reach the same reconstruction (0.833 at t = 84,
-  against 0.831; mean 0.838, against 0.837).
+  against 0.831; mean 0.838, against 0.837) and the same mIoU (44.42 at t = 84 both times).
 - **A probe trained on the fine-tuned canvas reads it better.** The segmentation probes were trained on the released
   canvas. A Cityscapes probe trained the same way on the canvas of the fine-tuned Writes gives 62.86 at t = 20 and
   61.79 at t = 84, against 62.33 and 60.89 with the released probe (released Writes, read by their own probe: 61.80
@@ -412,9 +412,16 @@ scenes in the same order. C2F, seed 0 (means over t = 0-84):
 - **Fine-tuning the Reads too** (9.5M parameters) lowers the training loss further (paired over the last 100 steps:
   0.630, against 0.639) and helps a little on ADE20K (44.83 at t = 84, against 44.42; reconstruction 0.833, against
   0.831; CLS 0.778), but not on Cityscapes (60.72, against 60.89) or R-IID.
+- **Fine-tuning all of CanViT** (95M parameters, learning rate 1e-5, 400 steps; the weights move by 0.07%) lowers the
+  training loss most (paired over the last 100 steps: 0.613, against 0.639 for the Writes alone) and nearly removes
+  the CLS token's drift (0.801 at t = 84, against 0.769 with released Writes and 0.775 with fine-tuned Writes; on
+  F-IID, not a training policy, 0.817 against 0.794). The canvas gains no more than with the Writes alone, though:
+  reconstruction 0.831 at t = 84, ADE20K 44.32, Cityscapes 60.52 (released probe). With local Writes from level 3, it
+  has the best reconstruction (0.846 at t = 84, mean 0.843), and locality then barely costs the CLS token (0.793,
+  against 0.760 with fine-tuned Writes and 0.757 with released ones).
 - **Repetition is not fixed, even when trained on it.** On RFS, the fine-tuned Writes decline as the released ones
   (37.39 at t = 84, against 37.55; canvas norm 389k). With RFS added as a third training policy, they end at 37.83
-  (norm 378k).
+  (norm 378k), and C2F gains less (43.84 at t = 84, against 44.42).
 
 **A Write cannot write nothing.** Its residual is a softmax-weighted mean of value vectors computed from the glimpse
 alone (the Writes have no output projection), so it never vanishes. A repeated view writes the same vector again, and
@@ -434,9 +441,12 @@ reconstruction) or from level 2 (Cityscapes):
 | one-width margin from glimpse 1 | 46.14 | 63.15 | 0.836 |
 | fine-tuned, with the margin | 46.17 | 63.83 | 0.842 |
 | fine-tuned with the margin applied during training | 46.22 | 63.88 | 0.843 |
+| all of CanViT fine-tuned, with the rule | | 65.12 | 0.846 |
 
-- The fine-tune adds to locality on Cityscapes (0.3 to 0.8 points) and on the reconstruction metric (0.006), barely
-  on ADE20K (0.03 to 0.14 points, within the noise of one seed).
+- The fine-tune adds to locality on Cityscapes (0.3 to 0.8 points) and on the reconstruction metric (0.006), little
+  on ADE20K. With seed 1 too, Writes kept in the crop from level 3 end at 46.31, the fine-tuned Writes with them at
+  46.43, and the fine-tuned Reads and Writes with them at 46.51: over the two tile orders, the fine-tune adds 0.09
+  and 0.17 points.
 - Training with the margin applied gives the same as adding it after a fine-tune without it, on every policy tested
   (R-IID: 39.74 over t = 1-20, against 39.86 with the margin alone; F2C: 35.97, against 36.04). Only the CLS token
   gains a little (0.743 at t = 84, against 0.733).
