@@ -3,7 +3,8 @@
 Experiments with the released [CanViT](https://github.com/m2b3/CanViT) (Canvas Vision Transformer,
 arXiv:2603.22570) active-vision model: reproducing its ADE20K results and testing it in settings the paper does not
 cover. Everything here uses the published `canvit-pytorch` package and the released checkpoints from the Hugging
-Face Hub. CanViT is never retrained; only linear probes are trained, where none is released (Cityscapes).
+Face Hub. CanViT stays frozen, and only linear probes are trained where none is released (Cityscapes), except in the
+section [Learned Writes](#learned-writes), which fine-tunes parts of it.
 
 ## Results
 
@@ -397,13 +398,48 @@ scenes in the same order. C2F, seed 0 (means over t = 0-84):
 
   The fine-tune improves the objective it trains on, the reconstruction of the teacher's features, on every policy;
   the segmentation probe gains only where the leak hurts most.
-- **Locality still matters after fine-tuning.** It adds 2.05 points at t = 84 on top of the fine-tuned Writes, which
-  add 0.06 on top of locality (one seed).
+- **Seeds.** With another C2F tile order (seed 1), the fine-tuned Writes end at 44.40 at t = 84 (released 43.64):
+  the same gain. Fine-tuned again with another training seed, they reach the same reconstruction (0.833 at t = 84,
+  against 0.831; mean 0.838, against 0.837).
+- **A probe trained on the fine-tuned canvas reads it better.** The segmentation probes were trained on the released
+  canvas. A Cityscapes probe trained the same way on the canvas of the fine-tuned Writes gives 62.86 at t = 20 and
+  61.79 at t = 84, against 62.33 and 60.89 with the released probe (released Writes, read by their own probe: 61.80
+  and 59.20). With matched probes, the fine-tune removes about 60% of the level-3 drop on Cityscapes, not 45%; local
+  Writes still remove all of it.
 - **A higher learning rate does not help.** With 2e-4 for 300 steps, the weights move about 1.7 times more, for the
   same training loss (paired over steps 200-299: 0.6398 against 0.6401). On the first 500 validation scenes, C2F
   ends at 41.61 at t = 84, against 41.41 with 5e-5 and 40.48 with released Writes.
-- **Repetition is not fixed.** On RFS, the fine-tuned Writes decline as the released ones (37.39 at t = 84, against
-  37.55; canvas norm 389k): C2F and R-IID rollouts almost never repeat a view.
+- **Fine-tuning the Reads too** (9.5M parameters) lowers the training loss further (paired over the last 100 steps:
+  0.630, against 0.639) and helps a little on ADE20K (44.83 at t = 84, against 44.42; reconstruction 0.833, against
+  0.831; CLS 0.778), but not on Cityscapes (60.72, against 60.89) or R-IID.
+- **Repetition is not fixed, even when trained on it.** On RFS, the fine-tuned Writes decline as the released ones
+  (37.39 at t = 84, against 37.55; canvas norm 389k). With RFS added as a third training policy, they end at 37.83
+  (norm 378k).
+
+**A Write cannot write nothing.** Its residual is a softmax-weighted mean of value vectors computed from the glimpse
+alone (the Writes have no output projection), so it never vanishes. A repeated view writes the same vector again, and
+a cell outside the crop must write something too. The sink is the model's closest approximation of a no-op: from
+level 1 on, its value vector's norm is about 950-1,000, against a median of 2,900-4,900 for the patch tokens and
+1,500-3,000 for the other prefix tokens (16 scenes, C2F). The zero-value key above was meant to give the Writes that
+missing option.
+
+**Fine-tuning and locality together.** C2F, seed 0, t = 84; the rule keeps Writes in the crop from level 3 (ADE20K,
+reconstruction) or from level 2 (Cityscapes):
+
+| Writes | ADE20K | Cityscapes | reconstruction |
+|---|---|---|---|
+| the rule | 46.40 | 64.70 | 0.839 |
+| fine-tuned, with the rule | 46.46 | 65.02 (probe trained on their canvas: 65.52) | 0.845 |
+| Reads and Writes fine-tuned, with the rule | 46.54 | | |
+| one-width margin from glimpse 1 | 46.14 | 63.15 | 0.836 |
+| fine-tuned, with the margin | 46.17 | 63.83 | 0.842 |
+| fine-tuned with the margin applied during training | 46.22 | 63.88 | 0.843 |
+
+- The fine-tune adds to locality on Cityscapes (0.3 to 0.8 points) and on the reconstruction metric (0.006), barely
+  on ADE20K (0.03 to 0.14 points, within the noise of one seed).
+- Training with the margin applied gives the same as adding it after a fine-tune without it, on every policy tested
+  (R-IID: 39.74 over t = 1-20, against 39.86 with the margin alone; F2C: 35.97, against 36.04). Only the CLS token
+  gains a little (0.743 at t = 84, against 0.733).
 
 ![Learned Writes](outputs/learned_writes.png)
 
@@ -614,9 +650,11 @@ size 1, both variants take 15-23 ms, a time bounded by kernel launches.
   probe is trained once.
 - Deterministic policies (RFS, EG-C2F and the scored tile orders) ran once; the others ran over the seeds shown.
   Variants of C2F use seed 0.
-- Apart from the learned Writes (48 parameters, or the Writes alone, trained briefly with the rest frozen), nothing
-  in CanViT is retrained, so the conclusions hold for the released model. Local Writes are a change at inference
-  only; a model pretrained with them may behave differently.
+- Apart from the section Learned Writes (at most 400 steps on ADE20K, against 2 million steps of pretraining),
+  nothing in CanViT is retrained, so the conclusions hold for the released model. Local Writes are a change at
+  inference only; a model pretrained with them may behave differently.
+- Most segmentation probes were trained on the released canvas. A probe trained on a fine-tuned canvas reads it
+  better (0.4 to 0.9 points on Cityscapes).
 
 ## Setup
 
