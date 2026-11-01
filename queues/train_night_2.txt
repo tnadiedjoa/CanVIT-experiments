@@ -1,2 +1,2 @@
 # Reads and Writes fine-tuned with the one-width margin during training.
-probes/canvas_attention_finetune_c2f_riid_margin1.pt scripts/train_write_gate.py --batch-size 16 --lr 5e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400 --kind canvas_attention --local-writes-from 1 --local-writes-margin 1
+# (replaced by the fine-tuning of all of CanViT: training with the rule changed nothing on ADE20K) probes/canvas_attention_finetune_c2f_riid_margin1.pt scripts/train_write_gate.py --batch-size 16 --lr 5e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400 --kind canvas_attention --local-writes-from 1 --local-writes-margin 1

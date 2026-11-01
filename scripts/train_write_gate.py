@@ -72,10 +72,11 @@ class TrainingScenes(Dataset[Tensor]):
 @dataclass(frozen=True)
 class Training:
     output: Path
-    kind: Literal["gate", "null", "writes", "canvas_attention"] = "gate"
+    kind: Literal["gate", "null", "writes", "canvas_attention", "canvit"] = "gate"
     """gate: local_writes.LearnedWriteGate (how far Writes reach); null: local_writes.LearnedNullWrite (a key with a
     zero value that cells can attend to instead of the sink register); writes: local_writes.FinetunedWrites (the
-    Writes' own parameters); canvas_attention: local_writes.FinetunedCanvasAttention (the Reads' and Writes')."""
+    Writes' own parameters); canvas_attention: local_writes.FinetunedCanvasAttention (the Reads' and Writes');
+    canvit: local_writes.FinetunedCanViT (all of CanViT's)."""
     scenes: Literal["ade20k", "cityscapes"] = "ade20k"
     policies: tuple[PolicyName, ...] = ("coarse_to_fine", "random")
     """One policy per step, drawn uniformly: C2F to level 3, and R-IID, whose large glimpses should keep writing."""

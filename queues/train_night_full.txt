@@ -1,0 +1,2 @@
+# All of CanViT's own parameters fine-tuned on long rollouts, lr 1e-5 (the Writes, and the Reads with them, plateau).
+probes/canvit_finetune_c2f_riid.pt scripts/train_write_gate.py --kind canvit --batch-size 16 --lr 1e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400

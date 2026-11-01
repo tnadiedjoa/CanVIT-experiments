@@ -47,8 +47,8 @@ from canvit_pytorch.probes import SegmentationProbe
 from canvit_pytorch.teacher import DINOV3_REPOS, DINOv3Teacher, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from local_writes import (DroppedWriteToken, FinetunedModules, LocalWrites, OutsideWrites,  # noqa: E402
-                          load_learned_writes)
+from local_writes import (DroppedWriteToken, FinetunedCanViT, FinetunedModules, LocalWrites,  # noqa: E402
+                          OutsideWrites, load_learned_writes)
 
 log = logging.getLogger(__name__)
 
@@ -249,7 +249,7 @@ def load_feature_maps(config: TrainProbe, device: torch.device) -> CanvasMaps | 
             if config.write_gate is not None:
                 learned = load_learned_writes(canvit, config.write_gate, canvas_grid_size=config.canvas_grid_size,
                                               device=device)
-                assert isinstance(learned, FinetunedModules), "a change that needs the viewpoints of the rollout"
+                assert isinstance(learned, (FinetunedModules, FinetunedCanViT)), "a change that needs the viewpoints"
             return CanvasMaps(canvit.requires_grad_(False), canvas_grid_size=config.canvas_grid_size,
                               num_glimpses=config.num_glimpses)
         case "dinov3_vitb16" | "dinov3_vits16":

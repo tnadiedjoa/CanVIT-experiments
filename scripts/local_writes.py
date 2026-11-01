@@ -285,8 +285,34 @@ class FinetunedCanvasAttention(FinetunedModules):
     groups = ("reads", "writes")
 
 
+class FinetunedCanViT(nn.Module):
+    """All of CanViT's own parameters (backbone, VPE, Reads, Writes, canvas initialization), trained further; the heads
+    that predict the teacher's features stay frozen. Its state dict holds CanViT's parameters."""
+
+    def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device) -> None:
+        super().__init__()
+        self.canvit = canvit
+        self.released = {name: value.detach().clone() for name, value in self.state_dict().items()}
+        self.requires_grad_(True)
+
+    def before_glimpse(self, t: int, viewpoint: Viewpoint) -> None:
+        pass
+
+    def describe(self) -> dict[str, list[list[float]]]:
+        """The norm of the change of all parameters, relative to their released norm."""
+        current = self.state_dict()
+        change = sum((current[name].float() - released.float()).pow(2).sum()
+                     for name, released in self.released.items())
+        norm = sum(released.float().pow(2).sum() for released in self.released.values())
+        return {"relative_change": [[(change / norm).sqrt().item()]]}
+
+    def remove(self) -> None:
+        self.load_state_dict(self.released)
+        self.requires_grad_(False)
+
+
 LEARNED_WRITES = {"gate": LearnedWriteGate, "null": LearnedNullWrite, "writes": FinetunedWrites,
-                  "canvas_attention": FinetunedCanvasAttention}
+                  "canvas_attention": FinetunedCanvasAttention, "canvit": FinetunedCanViT}
 
 
 def load_learned_writes(canvit: CanViT, path, *, canvas_grid_size: int, device: torch.device) -> nn.Module:

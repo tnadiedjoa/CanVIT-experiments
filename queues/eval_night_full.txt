@@ -1,0 +1,7 @@
+# All of CanViT fine-tuned on long rollouts, alone and with local Writes.
+results/reconstruction/c2f_c32_t85_s0_canvit_finetune_c2f_riid.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/canvit_finetune_c2f_riid.pt
+results/c2f_c64_t85_s0_canvit_finetune_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/canvit_finetune_c2f_riid.pt
+results/c2f_c64_t85_s0_canvit_finetune_c2f_riid_local21.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/canvit_finetune_c2f_riid.pt --local-writes-from 21
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_canvit_finetune_c2f_riid.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --write-gate probes/canvit_finetune_c2f_riid.pt
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_canvit_finetune_c2f_riid_local5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --write-gate probes/canvit_finetune_c2f_riid.pt --local-writes-from 5
+results/reconstruction/c2f_c32_t85_s0_canvit_finetune_c2f_riid_local21.json scripts/reconstruction_rollouts.py --policy coarse_to_fine --write-gate probes/canvit_finetune_c2f_riid.pt --local-writes-from 21
