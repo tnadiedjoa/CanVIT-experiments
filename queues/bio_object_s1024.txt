@@ -2,3 +2,6 @@
 # the Writes in the crop from glimpse 5 (C2F 67.16, EG-C2F 67.57 at t = 84).
 results/cityscapes/s1024exp_c2f_c64_t85_native_s0_object0.97_from5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --object-writes-threshold 0.97 --object-writes-from 5
 results/cityscapes/s1024exp_egc2f_c64_t85_native_object0.97_from5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --policy entropy_coarse_to_fine --object-writes-threshold 0.97 --object-writes-from 5
+# Seed 1 (EG-C2F's order is deterministic; C2F's is not).
+results/cityscapes/s1024exp_c2f_c64_t85_native_s1_object0.97_from5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --object-writes-threshold 0.97 --object-writes-from 5 --seed 1
+results/cityscapes/s1024exp_c2f_c64_t85_native_s1_local5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s1024exp_s1024_c64.pt --detail native --local-writes-from 5 --seed 1

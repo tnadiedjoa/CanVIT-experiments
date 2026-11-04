@@ -43,6 +43,7 @@ from canvit_pytorch.teacher import DINOV3_REPOS, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
 from cityscapes import CanvasMaps, DINOv3Maps, normalize  # noqa: E402
+from bio_vision import ObjectWrites  # noqa: E402
 from local_writes import LocalWrites  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -296,6 +297,10 @@ class Rollouts:
     local_writes_from: int | None = None
     """When set, from this glimpse on, the Write residuals into the canvas cells outside the glimpse's crop are dropped
     (scripts/local_writes.py)."""
+    object_writes_threshold: float | None = None
+    """When set, from glimpse object_writes_from on, a Write reaches a cell outside the crop only if its canvas content
+    resembles a cell inside it (bio_vision.ObjectWrites, cosine at least this threshold)."""
+    object_writes_from: int = 5
     seed: int = 0
     batch_size: int = 8
     device: str = "cuda"
@@ -311,6 +316,9 @@ def rollouts(exp: Rollouts) -> None:
     local_writes = (LocalWrites(canvit, canvas_grid_size=exp.canvas_grid_size, device=device,
                                 start=exp.local_writes_from)
                     if exp.local_writes_from is not None else None)
+    objects = (ObjectWrites(canvit, canvas_grid_size=exp.canvas_grid_size, threshold=exp.object_writes_threshold,
+                            start=exp.object_writes_from, num_glimpses=exp.num_glimpses, device=device)
+               if exp.object_writes_threshold is not None else None)
     images, depths = load_split("test")
     errors = [DepthErrors() for _ in range(exp.num_glimpses)]
     start = time.monotonic()
@@ -326,6 +334,8 @@ def rollouts(exp: Rollouts) -> None:
                 viewpoint = policy.step(t, state)
                 if local_writes is not None:
                     local_writes.before_glimpse(t, viewpoint)
+                if objects is not None:
+                    objects.before_glimpse(t, viewpoint, state.canvas)
                 glimpse = sample_at_viewpoint(spatial=scenes, viewpoint=viewpoint,
                                               glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
                 state = canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state

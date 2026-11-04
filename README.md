@@ -891,6 +891,16 @@ looser thresholds, object Writes only match local Writes or lose. From glimpse 5
 and 62.96 / 63.57 at 0.9. From glimpse 21 at 0.95, it ends at 63.52 (crop only: 63.57). At 0.98 from glimpse 5,
 it gives 63.46 / 64.86. So the threshold 0.97 from glimpse 5 suits both datasets: 46.25 / 46.40 on ADE20K (seed 1: 46.28 / 46.37).
 
+The same setting helps the Hub's experimental 1024 px CanViT-B a little, on native Cityscapes scenes. C2F gives
+66.23 / 67.23 against 66.02 / 67.16 for local Writes from glimpse 5 (seed 1: 66.12 / 67.11 against 65.96 / 67.09).
+EG-C2F's order gives 67.72 at t = 84 (local Writes: 67.57), the best Cityscapes result here.
+
+On NYU Depth v2 (C2F, t = 20; RMSE in m / AbsRel / δ < 1.25 in %), local Writes lower AbsRel but raise the RMSE.
+Object Writes from glimpse 5 at 0.9 lower both: 0.522 / 0.146 / 80.25, against 0.524 / 0.149 / 79.94 for the
+released Writes and 0.527 / 0.146 / 79.95 for local ones. Seed 1 gives the same picture: 0.522 / 0.146 / 80.26,
+against 0.523 / 0.149 / 79.95 and 0.526 / 0.146 / 80.00. The changes are small, as are all changes after the first
+glimpse on depth (above).
+
 ![Object Writes](outputs/bio_object_writes.png)
 
 **What did not help:**
@@ -905,8 +915,8 @@ it gives 63.46 / 64.86. So the threshold 0.97 from glimpse 5 suits both datasets
 ### Limits
 
 - Three datasets. On Cityscapes and NYU Depth v2, the probes are trained here. Every Cityscapes run uses one seed,
-  except the comparison of released Writes with Writes kept in the crop from level 2 (three seeds). Each depth
-  probe is trained once.
+  except the comparison of released Writes with Writes kept in the crop from level 2 (three seeds) and the object
+  Writes from glimpse 5 at 0.97 (two seeds). Each depth probe is trained once.
 - Deterministic policies (RFS, EG-C2F and the scored tile orders) ran once; the others ran over the seeds shown.
   Variants of C2F use seed 0.
 - Apart from the section Learned Writes (at most 400 steps on ADE20K, against 2 million steps of pretraining),
@@ -943,7 +953,7 @@ defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the
 | `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share, and the learned changes: a distance gate on the Writes, a zero-value key, the Writes' own parameters, the Reads' too, or all of CanViT's. |
 | `scripts/train_write_gate.py` | Trains one of those learned changes, the rest of CanViT frozen, on the pretraining objective with long rollouts, optionally with local Writes applied during training. |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
-| `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT and for DINOv3 at several input sizes. |
+| `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT (with released, local or object Writes) and for DINOv3 at several input sizes. |
 | `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released, local or object Writes), of microsaccades, and of DINOv3 at several input sizes. |
 | `scripts/bio_vision.py` | The primate-vision mechanisms: CanViT's forward with free glimpse and canvas positions, microsaccade and central-gaze policies, foveated and learned retinas, patchwork glimpses, a canvas of learned Gaussian receptive fields (with a Write footprint, coarser cells, a per-scene reshaping, or a smooth warp), a canvas that grows where the eye zooms in, repetition-suppressing and object-shaped Writes, learned RoPE wavelengths. |
 | `scripts/bio_rollouts.py`, `scripts/bio_reconstruction.py` | ADE20K mIoU and the paper's reconstruction metric after every glimpse with those mechanisms, or with a training of `train_retina.py`. |

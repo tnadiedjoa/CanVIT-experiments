@@ -1,0 +1,8 @@
+# Object Writes on NYU Depth v2 (C2F, 21 glimpses), against Writes kept in the crop from glimpse 5.
+results/nyu_depth/nyu_c2f_c64_t21_s0_object0.97_from5.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --object-writes-threshold 0.97 --object-writes-from 5
+results/nyu_depth/nyu_c2f_c64_t21_s0_object0.9_from5.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --object-writes-threshold 0.9 --object-writes-from 5
+# Seed 1 and threshold 0.95.
+results/nyu_depth/nyu_c2f_c64_t21_s0_object0.95_from5.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --object-writes-threshold 0.95 --object-writes-from 5
+results/nyu_depth/nyu_c2f_c64_t21_s1.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --seed 1
+results/nyu_depth/nyu_c2f_c64_t21_s1_local5.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --local-writes-from 5 --seed 1
+results/nyu_depth/nyu_c2f_c64_t21_s1_object0.9_from5.json scripts/nyu_depth.py rollouts --probe probes/nyu_depth_canvas_c64.pt --object-writes-threshold 0.9 --object-writes-from 5 --seed 1
