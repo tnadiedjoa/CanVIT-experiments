@@ -1,0 +1,4 @@
+# Evaluations of queues/bio_seeds.txt's retinas, and the released model under saccades of scale 0.25.
+results/bio/saccades_s0.25_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21 --microsaccade-scale 0.25
+results/bio/saccades_s0.5_c64_t21_retina_frozen_s0.5_seed1.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21 --microsaccade-scale 0.5 --trained probes/retina_frozen_s0.5_seed1.pt
+results/bio/saccades_s0.25_c64_t21_retina_frozen_s0.25.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21 --microsaccade-scale 0.25 --trained probes/retina_frozen_s0.25.pt

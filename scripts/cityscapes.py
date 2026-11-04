@@ -47,7 +47,7 @@ from canvit_pytorch.probes import SegmentationProbe
 from canvit_pytorch.teacher import DINOV3_REPOS, DINOv3Teacher, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
-from bio_vision import microsaccades  # noqa: E402
+from bio_vision import ObjectWrites, microsaccades  # noqa: E402
 from local_writes import (DroppedWriteToken, FinetunedCanViT, FinetunedModules, LocalWrites,  # noqa: E402
                           OutsideWrites, load_learned_writes)
 
@@ -371,6 +371,12 @@ class Rollouts:
     num_glimpses: int = 85
     """85 glimpses: C2F down to level 3, whose tiles are 128 px of a 1024 px scene."""
     canvas_grid_size: int = 64
+    object_writes_threshold: float | None = None
+    """When set, from glimpse object_writes_from on, a Write reaches a cell outside the crop only if its canvas content
+    resembles a cell inside it (bio_vision.ObjectWrites, cosine at least this threshold)."""
+    object_writes_from: int = 21
+    object_writes_late_threshold: float | None = None
+    """When set, the object Writes' threshold from glimpse 21 on (C2F's level 2 at the native resolution)."""
     local_writes_from: int | None = None
     """When set, from this glimpse on, the Write residuals into the canvas cells outside the glimpse's crop are dropped
     (the canvas registers keep theirs), so that a glimpse changes only the part of the canvas it saw; 21 restricts
@@ -426,6 +432,10 @@ def rollouts(exp: Rollouts) -> None:
     assert record["config"]["features"] == "canvas", exp.probe
     canvit = CanViTForPretraining.from_pretrained(record["config"]["pretrained_repo"]).canvit
     seg = CanViTForSemanticSegmentation(canvit=canvit, probe=probe).to(device).eval()
+    objects = (ObjectWrites(seg.canvit, canvas_grid_size=exp.canvas_grid_size, threshold=exp.object_writes_threshold,
+                            start=exp.object_writes_from, num_glimpses=exp.num_glimpses, device=device,
+                            late_threshold=exp.object_writes_late_threshold)
+               if exp.object_writes_threshold is not None else None)
     local_writes = (LocalWrites(seg.canvit, canvas_grid_size=exp.canvas_grid_size, device=device,
                                 start=exp.local_writes_from, outside=exp.outside_writes,
                                 max_scale=exp.local_writes_max_scale, margin=exp.local_writes_margin,
@@ -458,6 +468,8 @@ def rollouts(exp: Rollouts) -> None:
                 glimpse = sample(scene_1024, scene_512, viewpoint, exp.detail)
                 if local_writes is not None:
                     local_writes.before_glimpse(t, viewpoint)
+                if objects is not None:
+                    objects.before_glimpse(t, viewpoint, state.canvas)
                 if write_gate is not None:
                     write_gate.before_glimpse(t, viewpoint)
                 if dropped_token is not None:

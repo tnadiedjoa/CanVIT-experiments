@@ -1,0 +1,5 @@
+# At the 16×16 budget, learned shapes beat their start on Cityscapes and under central gaze: from the moved centers,
+# or only from the widened Gaussians? The widths-only controls, and the starting 16×16 grid on ADE20K.
+probes/city_canvas16_sigma.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --canvas-grid-size 16 --canvas-fixed-centers
+probes/gaze3_canvas16_sigma.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas --canvas-grid-size 16 --canvas-fixed-centers
+probes/canvas16_init.pt scripts/train_retina.py --learn-canvas --canvas-grid-size 16 --num-steps 0

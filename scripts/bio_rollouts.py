@@ -1,7 +1,7 @@
 """ADE20K validation mIoU after every glimpse with the primate-vision mechanisms of scripts/bio_vision.py: foveated or
-learned retinas, repetition suppression in the Writes, object-shaped Writes, a canvas spread by a density, and
-microsaccades. Everything else is scripts/ade20k_rollouts.py's (released model, probes, scenes and metric), so the
-released settings give the same numbers.
+learned retinas, repetition suppression in the Writes, object-shaped Writes, a canvas spread by a density,
+microsaccades, and glimpses shaped by uncertainty. Everything else is scripts/ade20k_rollouts.py's (released model,
+probes, scenes and metric), so the released settings give the same numbers.
 
     .venv/bin/python -P scripts/bio_rollouts.py --policy repeated_full_scene --num-glimpses 85 --canvas-grid-size 64 \
         --novelty project --novelty-strength 1 --output results/bio/rfs_c64_t85_novelty_project1.json
@@ -32,12 +32,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with
 from ade20k_rollouts import load_validation_scenes, normalize  # noqa: E402
 from local_writes import LocalWrites  # noqa: E402
 from bio_vision import (AdaptiveCanvas, FoveatedRetina, FreePositions, GaussianCanvas, LearnedPeriods,  # noqa: E402
-                        NoveltyWrites, ObjectWrites, PatchRetina, UniformRetina, WriteFootprint, boundary_density,
-                        c2f_then_jittered_level2, image_edge_density, microsaccades, take_glimpse)
+                        NoveltyWrites, ObjectWrites, PatchRetina, Patchwork, UniformRetina, WriteFootprint,
+                        boundary_density, c2f_then_jittered_level2, image_edge_density, microsaccades,
+                        patchwork_glimpse, take_glimpse)
 
 log = logging.getLogger(__name__)
 
-BioPolicy = PolicyName | Literal["microsaccades", "c2f_then_jittered_level2"]
+BioPolicy = PolicyName | Literal["microsaccades", "c2f_then_jittered_level2", "entropy_patchwork", "random_patchwork"]
+"""entropy_patchwork and random_patchwork: C2F's levels 0 and 1, then glimpses gathering level-2 patches by
+uncertainty or at random (bio_vision.Patchwork)."""
 Density = Literal["oracle_boundaries", "glimpse_edges", "entropy"]
 """What spreads an adaptive canvas's cells: the ground truth's boundaries (an upper reference, not a method); the
 intensity edges of the first, full-scene glimpse (set before it, from its pixels alone); or the probe's entropy after
@@ -64,9 +67,11 @@ class Experiment:
     novelty_from: int = 1
     object_writes_threshold: float | None = None
     object_writes_from: int = 21
+    object_writes_late_threshold: float | None = None
+    """When set, the object Writes' threshold from glimpse 21 on (C2F's level 3)."""
     local_writes_from: int | None = None
     """When set, from this glimpse on, the Writes are kept in the glimpse's crop (local_writes.LocalWrites, the README's
-    fix for C2F's level 3)."""
+    fix for C2F's level 3); with a patchwork, in its patches."""
     density: Density | None = None
     density_mix: float = 0.5
     microsaccade_scale: float = 0.875
@@ -79,6 +84,8 @@ class Experiment:
     microsaccade_first_full_scene: bool = True
     """microsaccades: start with the full scene; with --no-microsaccade-first-full-scene and a jitter of 1, every
     glimpse is at a random valid center, the fixed-scale saccades of scripts/train_retina.py's --scale."""
+    patchwork_block: int = 1
+    """entropy_patchwork and random_patchwork: the side of the blocks of patches they gather (bio_vision.Patchwork)."""
     seed: int = 0
     batch_size: int = 8
     cache: Path = Path("/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt")
@@ -87,6 +94,9 @@ class Experiment:
 
 
 def build_policy(exp: Experiment, batch_size: int, device: torch.device, canvas_logits=None):
+    if exp.policy.endswith("_patchwork"):  # C2F until the patchwork starts
+        return make_policy("coarse_to_fine", batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses,
+                           canvas_grid_size=exp.canvas_grid_size)
     if exp.policy in get_args(PolicyName):
         return make_policy(exp.policy, batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses,
                            canvas_grid_size=exp.canvas_grid_size, canvas_logits=canvas_logits)
@@ -120,7 +130,8 @@ def load_retina(exp: Experiment, canvit: CanViT, device: torch.device, free: Fre
             shape = GaussianCanvas(canvas_grid_size=config.get("canvas_grid_size") or 32, canvas_dim=canvit.canvas_dim,
                                    device=device, adaptive=config["canvas_adaptive"],
                                    coarse_grid_size=config.get("canvas_coarse_grid_size"),
-                                   surround=config.get("canvas_surround", False))
+                                   surround=config.get("canvas_surround", False),
+                                   warp=config.get("canvas_warp", False))
             shape.load_state_dict(saved["canvas_shape_state"])
             shape.requires_grad_(False)
             if saved.get("write_footprint_state") is not None:
@@ -149,7 +160,8 @@ def main(exp: Experiment) -> None:
     novelty = (NoveltyWrites(seg.canvit, mode=exp.novelty, strength=exp.novelty_strength, start=exp.novelty_from,
                              num_glimpses=T, device=device) if exp.novelty is not None else None)
     objects = (ObjectWrites(seg.canvit, canvas_grid_size=G, threshold=exp.object_writes_threshold,
-                            start=exp.object_writes_from, num_glimpses=T, device=device)
+                            start=exp.object_writes_from, num_glimpses=T, device=device,
+                            late_threshold=exp.object_writes_late_threshold)
                if exp.object_writes_threshold is not None else None)
     local_writes = (LocalWrites(seg.canvit, canvas_grid_size=G, device=device, start=exp.local_writes_from)
                     if exp.local_writes_from is not None else None)
@@ -166,6 +178,11 @@ def main(exp: Experiment) -> None:
         B = images.shape[0]
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
             policy = build_policy(exp, B, device, canvas_logits=seg.logits)
+            patchwork = None
+            if exp.policy.endswith("_patchwork"):
+                order = "entropy" if exp.policy == "entropy_patchwork" else "random"
+                patchwork = Patchwork(batch_size=B, device=device, order=order, block=exp.patchwork_block,
+                                      glimpse_grid=RELEASED_GLIMPSE_SIZE_PX // seg.canvit.patch_size)
             state = (seg.init_state(batch_size=B, canvas_grid_size=G) if shape is None
                      else shape.init_state(seg.canvit, B))
             canvas = None
@@ -176,8 +193,13 @@ def main(exp: Experiment) -> None:
                 free.canvas = shape.reset(B)
             previous = normalized_cells(seg, state.canvas)
             for t in range(T):
-                viewpoint = policy.step(t, state)
-                glimpse, free.glimpse = take_glimpse(images, viewpoint, retina)
+                if patchwork is not None and t >= Patchwork.FIRST:
+                    viewpoint, free.glimpse = patchwork.step(seg.logits(state.canvas))
+                    glimpse = patchwork_glimpse(images, free.glimpse, half_side=patchwork.half_side,
+                                                patch_px=seg.canvit.patch_size)
+                else:
+                    viewpoint = policy.step(t, state)
+                    glimpse, free.glimpse = take_glimpse(images, viewpoint, retina)
                 if t == 0 and exp.density == "glimpse_edges":
                     edges = F.interpolate(image_edge_density(glimpse).unsqueeze(1), size=(scene_px, scene_px),
                                           mode="bilinear", align_corners=False)[:, 0]
@@ -189,6 +211,10 @@ def main(exp: Experiment) -> None:
                     objects.before_glimpse(t, viewpoint, state.canvas)
                 if local_writes is not None:
                     local_writes.before_glimpse(t, viewpoint)
+                    if patchwork is not None and t >= Patchwork.FIRST and local_writes.mask is not None:
+                        inside = patchwork.inside(local_writes.cell_centers.flatten(0, 1), free.glimpse)
+                        registers = inside.new_ones(B, seg.canvit.config.num_canvas_registers)
+                        local_writes.mask = torch.cat([registers, inside], dim=1).unsqueeze(-1)
                 state = seg.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 if t == 0 and exp.density == "entropy":
                     entropy = predictive_entropy(seg.logits(state.canvas)).float()  # [B, G, G]

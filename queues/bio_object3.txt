@@ -1,0 +1,6 @@
+# Writes spread along the object from glimpse 5 (threshold 0.9): the best t = 20 so far (46.29). Another seed, other
+# thresholds and starts, and Cityscapes.
+results/bio/c2f_c64_t85_object0.9_from5_s1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.9 --object-writes-from 5 --seed 1
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_object0.9_from5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --object-writes-threshold 0.9 --object-writes-from 5
+results/bio/c2f_c64_t85_object0.85_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.85 --object-writes-from 5
+results/bio/c2f_c64_t85_object0.9_from1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.9 --object-writes-from 1

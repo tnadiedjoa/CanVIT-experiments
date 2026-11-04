@@ -1,0 +1,4 @@
+# The smooth warp at the 16×16 budget gains on Cityscapes as much as wider Gaussians: the controls on ADE20K and under
+# central gaze (starts: canvas16_init, gaze3_canvas16_init).
+probes/canvas_warp16.pt scripts/train_retina.py --learn-canvas --canvas-warp --canvas-grid-size 16
+probes/gaze3_warp16.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas --canvas-warp --canvas-grid-size 16

@@ -1,0 +1,4 @@
+# Object-shaped Writes on Cityscapes (1024 px scenes, own probe, C2F to level 3 at native resolution): from glimpse 21 and from glimpse 5 (the crop-only rule is best from 5 there), then a neighboring ADE20K threshold.
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_object0.95_from21.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --object-writes-threshold 0.95 --object-writes-from 21
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_object0.95_from5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --object-writes-threshold 0.95 --object-writes-from 5
+results/bio/c2f_c64_t85_object0.93_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.93 --object-writes-from 21

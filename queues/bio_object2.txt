@@ -1,0 +1,4 @@
+# Object-shaped Writes (bio_vision.ObjectWrites), follow-ups of the 0.95 threshold from glimpse 21 (46.53 at t = 84 against 46.40 for the crop): another seed, neighboring thresholds, with microsaccade revisits.
+results/bio/c2f_c64_t85_object0.95_from21_s1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.95 --object-writes-from 21 --seed 1
+results/bio/c2f_c64_t85_object0.97_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.97 --object-writes-from 21
+results/bio/c2f_then_jittered_level2_j0.03125_object0.95_from21_c64_t85.json scripts/bio_rollouts.py --policy c2f_then_jittered_level2 --num-glimpses 85 --microsaccade-jitter 0.03125 --object-writes-threshold 0.95 --object-writes-from 21

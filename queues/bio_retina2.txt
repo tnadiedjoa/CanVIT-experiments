@@ -1,0 +1,2 @@
+# The learned no-zoom retina, CanViT frozen, trained twice as long: does the fovea strengthen?
+probes/retina_frozen_s0.5_long.pt scripts/train_retina.py --learn-retina --scale 0.5 --retina-lr 1e-3 --num-steps 2000

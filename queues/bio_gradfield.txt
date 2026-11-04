@@ -1,0 +1,6 @@
+# Which way do the canvas cells want to move? The gradient on their centers and widths at the starting 32×32 grid,
+# over 500 steps of training without learning (train_retina.py --gradient-field), on ADE20K, on Cityscapes, and on
+# ADE20K under gaze biased to the center.
+probes/gradfield_ade32.pt scripts/train_retina.py --learn-canvas --gradient-field --num-steps 500 --validation-images 32
+probes/gradfield_city32.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --gradient-field --num-steps 500 --validation-images 32
+probes/gradfield_gaze3_32.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas --gradient-field --num-steps 500 --validation-images 32

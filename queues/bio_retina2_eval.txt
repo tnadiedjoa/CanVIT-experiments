@@ -1,0 +1,3 @@
+# The long no-zoom retina under saccades, and the no-zoom retina under C2F (does its weak fovea cost anything when zooming?).
+results/bio/c2f_c64_t21_retina_frozen_s0.5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --trained probes/retina_frozen_s0.5.pt
+results/bio/saccades_s0.5_c64_t21_retina_frozen_s0.5_long.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21 --microsaccade-scale 0.5 --trained probes/retina_frozen_s0.5_long.pt

@@ -1,0 +1,4 @@
+# Object Writes with EG-C2F's tile order; on Cityscapes, a stricter threshold and two thresholds.
+results/bio/egc2f_c64_t21_object0.9_from5.json scripts/bio_rollouts.py --policy entropy_coarse_to_fine --num-glimpses 21 --object-writes-threshold 0.9 --object-writes-from 5
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_object0.97_from5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --object-writes-threshold 0.97 --object-writes-from 5
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_object0.95_from5_late0.97.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --object-writes-threshold 0.95 --object-writes-from 5 --object-writes-late-threshold 0.97

@@ -1,0 +1,8 @@
+# The canvas learns a smooth shape (GaussianCanvas's warp: a height per row, a width per column), on Cityscapes
+# (does it follow the pull of the gradient field?), ADE20K (the control) and under central gaze; the starting grids
+# are city_canvas32_init, canvas_init, gaze3_canvas_init and city_canvas16_init.
+probes/city_warp32.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --canvas-warp
+probes/canvas_warp32.pt scripts/train_retina.py --learn-canvas --canvas-warp
+probes/gaze3_warp32.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas --canvas-warp
+probes/city_warp32_lr1e-2.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --canvas-warp --canvas-lr 1e-2
+probes/city_warp16.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --canvas-warp --canvas-grid-size 16

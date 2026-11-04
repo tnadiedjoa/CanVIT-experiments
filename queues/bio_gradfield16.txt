@@ -1,0 +1,4 @@
+# The gradient field at the 16×16 budget, where the cells' positions should matter most.
+probes/gradfield_city16.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --canvas-grid-size 16 --gradient-field --num-steps 500 --validation-images 32
+probes/gradfield_gaze3_16.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas --canvas-grid-size 16 --gradient-field --num-steps 500 --validation-images 32
+probes/gradfield_ade16.pt scripts/train_retina.py --learn-canvas --canvas-grid-size 16 --gradient-field --num-steps 500 --validation-images 32

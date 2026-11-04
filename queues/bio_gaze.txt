@@ -1,0 +1,6 @@
+# The canvas learns its shape under gaze biased to the center (bio_vision.central_gaze, bias 3): does it gather its
+# cells there (use-dependent plasticity)? The starting grid (0 steps) is the control; 32×32 and a 16×16 budget.
+probes/gaze3_canvas_init.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas --num-steps 0
+probes/gaze3_canvas.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas
+probes/gaze3_canvas16_init.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas --canvas-grid-size 16 --num-steps 0
+probes/gaze3_canvas16.pt scripts/train_retina.py --gaze-bias 3 --learn-canvas --canvas-grid-size 16

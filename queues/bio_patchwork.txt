@@ -1,0 +1,7 @@
+# Glimpses shaped by uncertainty (bio_vision.Patchwork): after C2F's levels 0 and 1, each glimpse gathers the 64
+# level-2 patches where the probe is most uncertain, wherever they are; random_patchwork takes them at random (the
+# control for the shape alone). Same pixels as C2F's level 2 by t = 20.
+results/bio/entropy_patchwork_c64_t21.json scripts/bio_rollouts.py --policy entropy_patchwork --num-glimpses 21
+results/bio/random_patchwork_c64_t21.json scripts/bio_rollouts.py --policy random_patchwork --num-glimpses 21
+# The patchwork with Writes kept in its patches from glimpse 5 (C2F with Writes in the crop from 5: local5).
+results/bio/entropy_patchwork_local5_c64_t21.json scripts/bio_rollouts.py --policy entropy_patchwork --num-glimpses 21 --local-writes-from 5

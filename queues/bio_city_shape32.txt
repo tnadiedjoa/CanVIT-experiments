@@ -1,0 +1,7 @@
+# The canvas learns its shape on Cityscapes street views, whose detail lies along the horizon (a visual streak?);
+# the starting grid (0 steps) is the control, as canvas_init for ADE20K. 32×32 and a 16×16 budget, read at the
+# teacher's 32×32 patches; validation cosine only (the Cityscapes probe is for the 64×64 canvas).
+probes/city_canvas32_init.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --num-steps 0
+probes/city_canvas32.pt scripts/train_retina.py --scenes cityscapes --learn-canvas
+probes/city_canvas16_init.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --canvas-grid-size 16 --num-steps 0
+probes/city_canvas16.pt scripts/train_retina.py --scenes cityscapes --learn-canvas --canvas-grid-size 16

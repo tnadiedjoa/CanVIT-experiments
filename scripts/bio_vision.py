@@ -36,6 +36,7 @@ from canvit_pytorch.model.multihead import to_multihead as to_heads
 from canvit_pytorch.model.rope import apply_2d_rope as apply_rope
 from canvit_pytorch.model.rope import compute_2d_rope, make_rope_periods
 from canvit_pytorch.policies import FixedSequence
+from canvit_pytorch.policies.entropy import predictive_entropy
 from canvit_pytorch.policies.quadtree import quadtree_level, quadtree_level_z_order, shuffled_levels
 from canvit_pytorch.viewpoint import grid_coords, viewpoint_grid_coords
 
@@ -271,12 +272,14 @@ class NoveltyWrites:
 class ObjectWrites:
     """Object-based attention: from glimpse `start` on, a Write reaches a canvas cell outside the crop only when the
     cell's layer-normalized content has a cosine similarity of at least `threshold` with one of the cells inside the
-    crop, as they were before the glimpse; the canvas registers keep their residuals. `reached` accumulates, per
-    glimpse, the fraction of the outside cells that are written."""
+    crop, as they were before the glimpse; the canvas registers keep their residuals. With late_threshold, that
+    threshold applies from glimpse late_from on instead (C2F's level 3 from 21). `reached` accumulates, per glimpse,
+    the fraction of the outside cells that are written."""
 
     def __init__(self, canvit: CanViT, *, canvas_grid_size: int, threshold: float, start: int, num_glimpses: int,
-                 device: torch.device) -> None:
+                 device: torch.device, late_threshold: float | None = None, late_from: int = 21) -> None:
         self.canvit, self.threshold, self.start = canvit, threshold, start
+        self.late_threshold, self.late_from = late_threshold, late_from
         self.num_registers = canvit.config.num_canvas_registers
         self.cell_centers = grid_coords(size=canvas_grid_size, device=device).flatten(0, 1)  # [G*G, 2]
         self.mask: Tensor | None = None
@@ -291,10 +294,13 @@ class ObjectWrites:
         inside = offsets <= viewpoint.scales.view(-1, 1)  # [B, G*G]
         cells = F.layer_norm(self.canvit.canvas_patches(canvas).float(), (canvas.shape[-1],))
         cells = F.normalize(cells, dim=-1)
+        threshold = self.threshold
+        if self.late_threshold is not None and t >= self.late_from:
+            threshold = self.late_threshold
         similar = torch.zeros_like(inside)
         for b in range(cells.shape[0]):
             seen = cells[b, inside[b]]  # [n_inside, D]
-            similar[b] = (cells[b] @ seen.T).amax(dim=1) >= self.threshold
+            similar[b] = (cells[b] @ seen.T).amax(dim=1) >= threshold
         written = inside | similar
         outside = (~inside).float()
         self.reached[t] += ((written.float() * outside).sum(dim=1) / outside.sum(dim=1).clamp(min=1)).sum().double()
@@ -310,6 +316,11 @@ class ObjectWrites:
 
 
 # Learned canvas shape
+
+
+def crossings(rows: Tensor, cols: Tensor) -> Tensor:
+    """[G] values per row and [G] per column -> [G*G, 2], (row's, column's) for every cell, row-major."""
+    return torch.stack(torch.broadcast_tensors(rows.view(-1, 1), cols.view(1, -1)), dim=-1).reshape(-1, 2)
 
 
 class GaussianCanvas(nn.Module):
@@ -329,12 +340,18 @@ class GaussianCanvas(nn.Module):
       and the canvas is resampled at the new centers through the cells' Gaussians;
     - surround: each cell also has an inhibitory surround, a wider Gaussian (3 times at the start) subtracted with a
       learned weight (about 0 at the start), the center-surround receptive fields of retinal ganglion cells and the
-      LGN: the reading at p is A + alpha·(A − S), A and S the averages under the centers and the surrounds."""
+      LGN: the reading at p is A + alpha·(A − S), A and S the averages under the centers and the surrounds;
+    - warp: the cells do not move one by one, the grid deforms smoothly instead, as a cortical magnification map: a
+      learned height per row and width per column (2G numbers, softmax-normalized to cover the scene), every cell at
+      the crossing of its row and column, its Gaussian 0.3 times its row's height and column's width (the per-cell
+      shapes are fixed). Each number sums the gradient of G cells, where per-cell centers each get their own noisy
+      one."""
 
     def __init__(self, *, canvas_grid_size: int, canvas_dim: int, device: torch.device, adaptive: bool = False,
                  max_shift: float = 2.0, sigma: float = 0.3, coarse_grid_size: int | None = None,
-                 learn_centers: bool = True, surround: bool = False) -> None:
+                 learn_centers: bool = True, surround: bool = False, warp: bool = False) -> None:
         super().__init__()
+        assert not warp or (coarse_grid_size is None and learn_centers and not adaptive), "warp is a fine grid alone"
         grids = [canvas_grid_size] + ([coarse_grid_size] if coarse_grid_size is not None else [])
         centers = torch.cat([grid_coords(size=g, device=device).flatten(0, 1) for g in grids])
         spacings = torch.cat([torch.full((g * g,), 2 / g, device=device) for g in grids])
@@ -352,6 +369,12 @@ class GaussianCanvas(nn.Module):
         if surround:
             self.log_surround_scales = nn.Parameter(torch.full((centers.shape[0],), math.log(3.0), device=device))
             self.raw_surround_weights = nn.Parameter(torch.full((centers.shape[0],), -4.0, device=device))
+        self.warp = warp
+        if warp:
+            for fixed in (self.centers, self.log_sigmas, self.angles):
+                fixed.requires_grad_(False)
+            self.row_logits = nn.Parameter(torch.zeros(canvas_grid_size, device=device))
+            self.col_logits = nn.Parameter(torch.zeros(canvas_grid_size, device=device))
         self.G, self.spacing = canvas_grid_size, 2 / canvas_grid_size
         self.max_shift = max_shift * self.spacing
         self.num_fine = canvas_grid_size ** 2
@@ -375,9 +398,25 @@ class GaussianCanvas(nn.Module):
         self.batch_size, self.offset = batch_size, None
         return self.positions()
 
+    def cell_centers(self) -> Tensor:
+        """The learned centers [N, 2], before any move by content."""
+        if not self.warp:
+            return self.centers
+        rows, cols = (2 * torch.softmax(logits, dim=0) for logits in (self.row_logits, self.col_logits))
+        row_centers, col_centers = rows.cumsum(0) - rows / 2 - 1, cols.cumsum(0) - cols / 2 - 1
+        return crossings(row_centers, col_centers)
+
+    def sigmas(self) -> Tensor:
+        """The Gaussians' half widths [N, 2] along their axes."""
+        sigmas = self.log_sigmas.exp()
+        if self.warp:
+            rows, cols = (self.G * torch.softmax(logits, dim=0) for logits in (self.row_logits, self.col_logits))
+            sigmas = sigmas * crossings(rows, cols)
+        return sigmas
+
     def positions(self) -> Tensor:
         """The centers of the rollout in progress, [B, N, 2]."""
-        centers = self.centers.unsqueeze(0).expand(self.batch_size, -1, -1)
+        centers = self.cell_centers().unsqueeze(0).expand(self.batch_size, -1, -1)
         return centers if self.offset is None else (centers + self.offset).clamp(-1, 1)
 
     def detach(self) -> None:
@@ -391,7 +430,7 @@ class GaussianCanvas(nn.Module):
         cos, sin = self.angles.cos(), self.angles.sin()
         u = cos * d[..., 0] + sin * d[..., 1]
         v = -sin * d[..., 0] + cos * d[..., 1]
-        sigmas = self.log_sigmas.exp()
+        sigmas = self.sigmas()
         if widen is not None:
             sigmas = sigmas * widen.unsqueeze(1)
         return -0.5 * ((u / sigmas[:, 0]) ** 2 + (v / sigmas[:, 1]) ** 2)
@@ -436,8 +475,9 @@ class GaussianCanvas(nn.Module):
         displacement from the start and the mean half width, in spacings of their grid; the same means for the
         coarse cells, if any."""
         n, G = self.num_fine, self.G
-        moved = (self.centers.detach() - self.initial_centers).norm(dim=-1) / self.spacings
-        sigmas = self.log_sigmas.detach().exp() / self.spacings.unsqueeze(1)
+        centers = self.cell_centers().detach()
+        moved = (centers - self.initial_centers).norm(dim=-1) / self.spacings
+        sigmas = self.sigmas().detach() / self.spacings.unsqueeze(1)
         ring = (self.initial_centers[:n].abs().amax(dim=-1) * G / 2).floor().clamp(max=G // 2 - 1) // max(1, G // 16)
         rings = range(int(ring.max().item()) + 1)
         out = {"mean_displacement_spacings": moved[:n].mean().item(),
@@ -445,6 +485,11 @@ class GaussianCanvas(nn.Module):
                "sigma_by_ring": [sigmas[:n][ring == r].mean().item() for r in rings],
                "displacement_by_ring": [moved[:n][ring == r].mean().item() for r in rings],
                "anisotropy": (sigmas[:n].amax(dim=1) / sigmas[:n].amin(dim=1)).mean().item()}
+        # From the top row of the starting grid down: the distance between the mean heights of consecutive rows, and
+        # the rows' mean vertical half width, in spacings (1 and 0.3 at the start; a visual streak packs the rows).
+        rows = centers[:n, 0].view(G, G).mean(dim=1)
+        out["row_spacing_by_row"] = (rows.diff() / self.spacing).tolist()
+        out["vertical_sigma_by_row"] = sigmas[:n, 0].view(G, G).mean(dim=1).tolist()
         if self.num_cells > n:
             out["coarse_mean_sigma_spacings"] = sigmas[n:].mean().item()
             out["coarse_mean_displacement_spacings"] = moved[n:].mean().item()
@@ -636,6 +681,83 @@ def microsaccades(*, batch_size: int, device: torch.device, num_glimpses: int, s
         centers = (unit * 2 - 1) * limit
         viewpoints.append(Viewpoint(centers=centers, scales=torch.full((batch_size,), scale, device=device)))
     return FixedSequence(viewpoints)
+
+
+def central_gaze(*, batch_size: int, device: torch.device, num_glimpses: int, bias: float,
+                 first_full_scene: bool = True) -> FixedSequence:
+    """R-IID (F-IID with first_full_scene) with gaze biased to the center, as human fixations cluster near the center
+    of images: the scale s = 1 − √A with A uniform in [0, (1 − 0.05)²], as R-IID, and the center
+    (1 − s)·sign(u)·|u|^bias per axis for u uniform in [−1, 1] (bias = 1 is R-IID; with bias = 3 each coordinate
+    falls within a tenth of the valid box 46% of the time)."""
+    viewpoints = [Viewpoint.full_scene(batch_size=batch_size, device=device)] if first_full_scene else []
+    while len(viewpoints) < num_glimpses:
+        scales = 1 - (torch.rand(batch_size, device=device) * (1 - 0.05) ** 2).sqrt()
+        unit = torch.rand(batch_size, 2, device=device) * 2 - 1
+        centers = (1 - scales).unsqueeze(1) * unit.sign() * unit.abs() ** bias
+        viewpoints.append(Viewpoint(centers=centers, scales=scales))
+    return FixedSequence(viewpoints)
+
+
+def patchwork_glimpse(images: Tensor, positions: Tensor, *, half_side: float, patch_px: int) -> Tensor:
+    """A glimpse that is not a square crop: patch k of its grid (row-major) shows the square of half side `half_side`
+    centered at positions[:, k] (scene coordinates, (row, col)), sampled bilinearly as take_glimpse.
+    [B, 3, H, W], [B, g*g, 2] -> [B, 3, g*patch_px, g*patch_px]. The patches of a crop of scale s, at half side s/g,
+    give exactly take_glimpse's glimpse."""
+    B, g = images.shape[0], math.isqrt(positions.shape[1])
+    local = grid_coords(size=patch_px, device=images.device)  # [p, p, 2], pixel centers in units of the half side
+    xy = positions.view(B, g, 1, g, 1, 2) + half_side * local.view(1, 1, patch_px, 1, patch_px, 2)
+    xy = xy.reshape(B, g * patch_px, g * patch_px, 2).flip(-1)
+    return F.grid_sample(images.float(), xy.float(), mode="bilinear", align_corners=False).to(images.dtype)
+
+
+class Patchwork:
+    """Glimpses shaped by the model's uncertainty instead of square tiles (attention takes the shape of what it
+    attends to, as in object-based attention). After C2F's levels 0 and 1 (5 glimpses), every glimpse gathers the 64
+    level-2 patches (a 32×32 grid over the scene, 16 px of the 512 px scene each) where the canvas's segmentation is
+    most uncertain (the probe's predictive entropy, averaged over each patch), among those not taken yet, wherever they
+    are. SR-RoPE places each patch at its own position, sorted row-major in the glimpse; the VPE token gets level 2's
+    scale and the patches' mean position. order = random takes them at random instead (the control for the shape
+    alone). After 16 such glimpses every level-2 patch has been taken once, as after C2F's level 2. With block = b,
+    the glimpse gathers aligned b×b blocks of patches instead, contiguous in the glimpse as in the scene, by mean
+    entropy: from single patches (b = 1) to whole level-2 tiles (b = 8, the order of EG-C2F's level 2)."""
+
+    LEVEL2_GRID = 32
+    FIRST = 5
+
+    def __init__(self, *, batch_size: int, device: torch.device, glimpse_grid: int,
+                 order: Literal["entropy", "random"], block: int = 1) -> None:
+        assert glimpse_grid % block == 0 and self.LEVEL2_GRID % block == 0, (glimpse_grid, block)
+        self.order, self.g, self.block = order, glimpse_grid, block
+        K = self.LEVEL2_GRID // block
+        cells = grid_coords(size=self.LEVEL2_GRID, device=device)  # [32, 32, 2]
+        self.blocks = cells.view(K, block, K, block, 2).permute(0, 2, 1, 3, 4).reshape(K * K, block * block, 2)
+        self.taken = torch.zeros(batch_size, K * K, dtype=torch.bool, device=device)
+        self.half_side = 1 / self.LEVEL2_GRID
+
+    def step(self, logits: Tensor) -> tuple[Viewpoint, Tensor]:
+        """Canvas logits [B, C, G, G] -> (viewpoint for the VPE token, patch positions [B, g*g, 2])."""
+        B = logits.shape[0]
+        K, b, m = self.LEVEL2_GRID // self.block, self.block, self.g // self.block
+        if self.order == "entropy":
+            entropy = predictive_entropy(logits.float()).unsqueeze(1)  # [B, 1, G, G]
+            scores = F.adaptive_avg_pool2d(entropy, K).flatten(1)
+        else:
+            scores = torch.rand(B, K * K, device=logits.device)
+        scores = scores.masked_fill(self.taken, -math.inf)
+        chosen = scores.topk(m * m, dim=1).indices.sort(dim=1).values  # [B, m*m] blocks, row-major
+        assert not self.taken.gather(1, chosen).any(), "more patchwork glimpses than level-2 patches"
+        self.taken.scatter_(1, chosen, True)
+        # Block (qi, qj) of the glimpse holds chosen block qi*m + qj, its patch (a, c) at row qi*b + a, column qj*b + c.
+        positions = self.blocks[chosen].view(B, m, m, b, b, 2).permute(0, 1, 3, 2, 4, 5).reshape(B, self.g ** 2, 2)
+        scale = self.half_side * self.g  # 0.25, level 2
+        center = positions.mean(dim=1).clamp(-(1 - scale), 1 - scale)
+        return Viewpoint(centers=center, scales=torch.full((B,), scale, device=logits.device)), positions
+
+    def inside(self, cell_centers: Tensor, positions: Tensor) -> Tensor:
+        """Canvas cell centers [N, 2], patch positions [B, P, 2] -> [B, N], the cells inside one of the patches (for
+        Writes kept in the glimpse, local_writes.LocalWrites)."""
+        offsets = (cell_centers.view(1, -1, 1, 2) - positions.unsqueeze(1)).abs().amax(dim=-1)  # [B, N, P]
+        return (offsets <= self.half_side).any(dim=-1)
 
 
 def c2f_then_jittered_level2(*, batch_size: int, device: torch.device, num_glimpses: int, jitter: float) -> FixedSequence:

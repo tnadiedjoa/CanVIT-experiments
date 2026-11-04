@@ -1,0 +1,7 @@
+# How contiguous must a glimpse be? Patchworks of aligned 2×2 and 4×4 blocks of level-2 patches, by uncertainty or
+# at random; 8×8 blocks are whole level-2 tiles (the entropy order is EG-C2F's level 2, the random one C2F's).
+results/bio/entropy_patchwork_b4_c64_t21.json scripts/bio_rollouts.py --policy entropy_patchwork --patchwork-block 4 --num-glimpses 21
+results/bio/random_patchwork_b4_c64_t21.json scripts/bio_rollouts.py --policy random_patchwork --patchwork-block 4 --num-glimpses 21
+results/bio/entropy_patchwork_b2_c64_t21.json scripts/bio_rollouts.py --policy entropy_patchwork --patchwork-block 2 --num-glimpses 21
+results/bio/random_patchwork_b2_c64_t21.json scripts/bio_rollouts.py --policy random_patchwork --patchwork-block 2 --num-glimpses 21
+results/bio/entropy_patchwork_b8_c64_t21.json scripts/bio_rollouts.py --policy entropy_patchwork --patchwork-block 8 --num-glimpses 21

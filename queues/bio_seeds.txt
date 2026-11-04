@@ -1,0 +1,5 @@
+# Replicates of the positive results: microsaccades with other seeds; the learned no-zoom retina (CanViT frozen) with another training seed, and with smaller fixed-scale saccades (0.25).
+results/bio/micro_s0.875_j0.125_c64_t21_s1.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.875 --microsaccade-jitter 0.125 --seed 1
+results/bio/micro_s0.875_j0.125_c64_t21_s2.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.875 --microsaccade-jitter 0.125 --seed 2
+probes/retina_frozen_s0.5_seed1.pt scripts/train_retina.py --learn-retina --scale 0.5 --retina-lr 1e-3 --seed 1
+probes/retina_frozen_s0.25.pt scripts/train_retina.py --learn-retina --scale 0.25 --retina-lr 1e-3
