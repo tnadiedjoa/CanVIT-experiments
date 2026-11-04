@@ -1,0 +1,3 @@
+results/bio/random_patchwork_c64_t21_patchwork_ft_long.json scripts/bio_rollouts.py --policy random_patchwork --num-glimpses 21 --trained probes/patchwork_ft_long.pt
+results/bio/c2f_c64_t21_patchwork_ft_long.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --trained probes/patchwork_ft_long.pt
+results/bio/entropy_patchwork_c64_t21_patchwork_ft_long.json scripts/bio_rollouts.py --policy entropy_patchwork --num-glimpses 21 --trained probes/patchwork_ft_long.pt

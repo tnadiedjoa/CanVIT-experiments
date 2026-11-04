@@ -765,7 +765,7 @@ central gaze, F-IID with central gaze):
 | 32×32: centers and ellipses | 0.8292 | 0.7510 | 0.8145 |
 | 32×32: smooth warp | 0.8314 | 0.7536 | 0.8162 |
 | 16×16: start / widths only / centers and ellipses | 0.8105 / 0.8147 / 0.8148 | 0.7349 / 0.7385 / 0.7389 | 0.7979 / 0.8020 / 0.8027 |
-| 16×16: smooth warp | 0.8154 | 0.7389 | |
+| 16×16: smooth warp | 0.8154 | 0.7389 | 0.8029 |
 
 No canvas gathers its cells along the horizon or at the center. On a 16×16 budget, every learned shape gains about
 0.004, on ADE20K as much as elsewhere. The gain comes from reading the 32×32 targets more smoothly: wider Gaussians,
@@ -852,6 +852,11 @@ The first patchwork glimpse beats EG-C2F's first tile (45.15 against 44.94). Aft
 the more the canvas degrades: at random, single patches lose 3.1 points by t = 20. The model was pretrained on square
 crops. Keeping the Writes inside the patches stops the decline, but the canvas saturates below C2F.
 
+Fine-tuning CanViT for 1000 steps with half of the rollouts as random patchworks (blocks of 1, 2 or 4 patches) helps
+in part. At t = 20, random single patches reach 43.42 and the most uncertain ones 44.24, against 42.46 and 43.82 for
+the same fine-tuning without patchworks. C2F is unchanged (45.69 against 45.73). Three times longer adds little:
+43.52 for random single patches, while C2F falls to 45.50.
+
 ![Patchwork glimpses](outputs/bio_patchwork.png)
 
 ![A patchwork glimpse](outputs/bio_patchwork_example.png)
@@ -868,18 +873,25 @@ cell; local Writes (above) into the crop only. ADE20K mIoU, C2F to level 3, 64×
 | into the crop only, from glimpse 21 | | 45.93 | 46.40 | none |
 | into the crop and one crop width around it, from glimpse 1 | | 46.14 | 46.14 | |
 | object, from glimpse 21 | 0.9 / 0.93 / 0.95 / 0.97 | 45.93 | 46.23 / 46.42 / 46.53 / 46.57 | 35 / 24 / 17 / 10% |
-| object, from glimpse 5 | 0.85 / 0.9 | 46.20 / 46.29 | 46.08 / 46.45 | 48 / 34% |
+| object, from glimpse 5 | 0.85 / 0.9 / 0.95 / 0.97 | 46.20 / 46.29 / 46.29 / 46.25 | 46.08 / 46.45 / 46.53 / 46.40 | 48 / 34 / 16 / 9% |
 | object, from glimpse 1 | 0.9 / 0.95 | 46.24 / 46.14 | 46.37 / 46.36 | 33 / 16% |
 | object, 0.9 from glimpse 5, then 0.97 from glimpse 21 | | 46.29 | 46.61 | 10% |
 
-From glimpse 5 at 0.9, the object Writes give the best t = 20 of every ADE20K run here, fine-tuned ones included:
-0.36 above C2F. With a stricter threshold for level 3, they also give the best t = 84 of all the changes to the
+From glimpse 5 at 0.9 or 0.95, the object Writes give the best t = 20 of every ADE20K run here, fine-tuned ones
+included: 0.36 above C2F. With a stricter threshold for level 3, they also give the best t = 84 of all the changes to the
 Writes here, fine-tuned ones included (at most 46.54). Seed 1 confirms both: 46.30 at t = 20 (C2F: 45.89) and 46.55
-at t = 84 (crop only from glimpse 21: 46.31); from glimpse 21 at 0.95, it gives 46.42. Microsaccades instead of level 3, with object Writes, end at
-46.47.
+at t = 84 (crop only from glimpse 21: 46.31). With seed 1, 0.95 from glimpse 5 gives 46.31 / 46.46, and 0.95 from
+glimpse 21 gives 46.42 at t = 84. With EG-C2F's tile order, object Writes from glimpse 5 at 0.9 reach 46.21 at
+t = 20 (EG-C2F: 45.75). Microsaccades instead of level 3, with object Writes, end at 46.47.
 
-On Cityscapes they only match local Writes. From glimpse 21 at 0.95, C2F ends at 63.52 (crop only: 63.57). From
-glimpse 5 at 0.95, it gives 63.35 at t = 20 and 64.53 at t = 84 (crop only: 63.04 / 64.70).
+On Cityscapes the threshold must be stricter. From glimpse 5 at 0.97, C2F gives 63.46 at t = 20 and 64.81 at
+t = 84, against 63.04 and 64.70 with Writes kept in the crop from glimpse 5. With seed 1 the numbers are 63.45 /
+64.75, against 63.03 / 64.59. At t = 20 the gain (0.42) is more than ten times the spread of local Writes over three seeds. With
+looser thresholds, object Writes only match local Writes or lose. From glimpse 5, C2F gives 63.35 / 64.53 at 0.95
+and 62.96 / 63.57 at 0.9. From glimpse 21 at 0.95, it ends at 63.52 (crop only: 63.57). At 0.98 from glimpse 5,
+it gives 63.46 / 64.86. So the threshold 0.97 from glimpse 5 suits both datasets: 46.25 / 46.40 on ADE20K (seed 1: 46.28 / 46.37).
+
+![Object Writes](outputs/bio_object_writes.png)
 
 **What did not help:**
 

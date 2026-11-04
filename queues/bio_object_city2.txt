@@ -1,0 +1,4 @@
+# Cityscapes, object Writes from glimpse 5 with a stricter threshold (0.97: 63.46 at t = 20 against 63.04 for local5):
+# seed 1, and 0.98.
+results/cityscapes/c2f_c64_t85_s512_then_native_s1_object0.97_from5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --object-writes-threshold 0.97 --object-writes-from 5 --seed 1
+results/cityscapes/c2f_c64_t85_s512_then_native_s0_object0.98_from5.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512_then_native --object-writes-threshold 0.98 --object-writes-from 5

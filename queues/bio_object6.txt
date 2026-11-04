@@ -1,0 +1,6 @@
+# ADE20K, object Writes from glimpse 5 with the stricter thresholds that suit Cityscapes: one setting for both?
+results/bio/c2f_c64_t85_object0.97_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.97 --object-writes-from 5
+results/bio/c2f_c64_t85_object0.95_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.95 --object-writes-from 5
+# Seed 1 of the best single setting on ADE20K (0.95 from glimpse 5).
+results/bio/c2f_c64_t85_object0.95_from5_s1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.95 --object-writes-from 5 --seed 1
+results/bio/c2f_c64_t85_object0.97_from5_s1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.97 --object-writes-from 5 --seed 1

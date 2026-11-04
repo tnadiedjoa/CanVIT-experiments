@@ -1,3 +1,5 @@
 # Can CanViT learn to fuse patchwork glimpses? Fine-tuned with half of the rollouts as random patchworks (blocks of
 # 1, 2 or 4 level-2 patches), as probes/uniform_ft_zoom.pt (the control) otherwise.
 probes/patchwork_ft.pt scripts/train_retina.py --finetune-canvit --patchwork-fraction 0.5
+# Three times longer: does the gap between patchworks and square tiles keep closing?
+probes/patchwork_ft_long.pt scripts/train_retina.py --finetune-canvit --patchwork-fraction 0.5 --num-steps 3000

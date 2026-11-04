@@ -175,6 +175,46 @@ def learned_retinas() -> None:
     plt.close(fig)
 
 
+def object_writes() -> None:
+    """C2F to level 3 with the released Writes, Writes kept in the crop, and Writes that spread along the object
+    (bio_vision.ObjectWrites), on ADE20K and Cityscapes."""
+    panels = {
+        "ADE20K (64×64 canvas)": {
+            "released Writes": ROOT / "results/c2f_c64_t85_s0.json",
+            "Writes in the crop from glimpse 21": ROOT / "results/c2f_c64_t85_s0_local21.json",
+            "object Writes, 0.95 from glimpse 5": BIO / "c2f_c64_t85_object0.95_from5.json",
+            "object Writes, 0.9 from 5, then 0.97 from 21": BIO / "c2f_c64_t85_object0.9_from5_late0.97.json",
+        },
+        "Cityscapes (1024 px scenes)": {
+            "released Writes": CITY / "c2f_c64_t85_s512_then_native_s0.json",
+            "Writes in the crop from glimpse 5": CITY / "c2f_c64_t85_s512_then_native_s0_local5.json",
+            "object Writes, 0.97 from glimpse 5": CITY / "c2f_c64_t85_s512_then_native_s0_object0.97_from5.json",
+        },
+    }
+    if not all(path.exists() for curves in panels.values() for path in curves.values()):
+        return
+    colors = [COLORS["C2F"], SAME_VIEW, MICRO, PHASE]
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+    for ax, (title, curves) in zip(axes, panels.items()):
+        for (label, path), color in zip(curves.items(), colors):
+            values = miou(path)
+            t = np.arange(len(values))
+            released = label == "released Writes"
+            ax.plot(t[4:], values[4:], "--" if released else "-", color=color,
+                    label=f"{label}: {values[20]:.2f} / {values[-1]:.2f}", linewidth=1.6 if released else 2)
+        ax.axvline(20.5, color=GRID, linewidth=1)
+        ax.set_title(f"{title}, mIoU at t = 20 / 84", fontsize=9, loc="left", color=INK)
+        ax.set_xlabel("glimpse t (level 3 from t = 21)")
+        ax.set_xlim(3, 86)
+        ax.legend(fontsize=7.5, loc="lower left")
+    axes[0].set_ylabel("mIoU (%)")
+    fig.suptitle("Writes that reach only the cells resembling the crop keep C2F improving through level 3",
+                 fontsize=9, x=0.01, ha="left", color=MUTED)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "bio_object_writes.png", bbox_inches="tight")
+    plt.close(fig)
+
+
 def gradient_fields() -> None:
     """Where the canvas cells would move at the starting grid (train_retina.py --gradient-field): the descent direction
     of the loss on the centers of each 2×2 block of cells, in standard errors over the training steps, on ADE20K and
@@ -184,7 +224,8 @@ def gradient_fields() -> None:
         return
     fig, axes = plt.subplots(1, 2, figsize=(8.4, 4.4))
     for ax, (title, name) in zip(axes, names.items()):
-        steps = torch.load(ROOT / f"probes/{name}.pt", map_location="cpu", weights_only=False)["gradient_steps"]["centers"]
+        saved = torch.load(ROOT / f"probes/{name}.pt", map_location="cpu", weights_only=False)
+        steps = saved["gradient_steps"]["centers"]
         S, N, _ = steps.shape
         G = math.isqrt(N)
         blocks = steps.view(S, G // 2, 2, G // 2, 2, 2).mean(dim=(2, 4))  # [S, G/2, G/2, (row, col)]
@@ -202,8 +243,8 @@ def gradient_fields() -> None:
         ax.set_yticks([])
         ax.set_title(f"{title}: {100 * share:.0f}% of components beyond 3 standard errors", fontsize=8.5, loc="left",
                      color=INK)
-    fig.suptitle("Pull on the canvas cells at the released grid (arrow length: standard errors; pure noise: 0.3% beyond 3)",
-                 fontsize=8.5, x=0.01, ha="left", color=MUTED)
+    fig.suptitle("Pull on the canvas cells at the released grid (arrow length: standard errors; pure noise: 0.3% "
+                 "beyond 3)", fontsize=8.5, x=0.01, ha="left", color=MUTED)
     fig.tight_layout()
     fig.savefig(FIGURES / "bio_gradient_fields.png", bbox_inches="tight")
     plt.close(fig)
@@ -268,8 +309,9 @@ def patchwork_example(scene: int = 4) -> None:
         return
     torch.manual_seed(0)
     device = torch.device("cpu")
-    seg = CanViTForSemanticSegmentation.from_pretrained_with_probe(
-        pretrained_repo=FLAGSHIP, probe_repo=released_ade20k_probe("in21k", scene_size_px=512, canvas_grid_size=64)).eval()
+    probe_repo = released_ade20k_probe("in21k", scene_size_px=512, canvas_grid_size=64)
+    seg = CanViTForSemanticSegmentation.from_pretrained_with_probe(pretrained_repo=FLAGSHIP, probe_repo=probe_repo)
+    seg = seg.eval()
     free = FreePositions(seg.canvit)
     images_u8, _ = load_validation_scenes(cache, size_px=512)
     image = normalize(images_u8[scene:scene + 1])
@@ -314,6 +356,7 @@ def main() -> None:
     learned_canvas()
     learned_retinas()
     gradient_fields()
+    object_writes()
     patchwork()
     patchwork_example()
 
