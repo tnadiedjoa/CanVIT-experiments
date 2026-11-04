@@ -1,0 +1,5 @@
+# Object-shaped Writes (bio_vision.ObjectWrites): outside the crop, only cells whose canvas content resembles a cell inside it (cosine >= threshold; on 16 scenes, 0.9 reaches about a third of the outside cells at level 3 with 89% of them of a class seen in the crop, 0.95 a sixth with 95%).
+results/bio/c2f_c64_t85_object0.9_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.9 --object-writes-from 21
+results/bio/c2f_c64_t85_object0.95_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.95 --object-writes-from 21
+results/bio/c2f_c64_t85_object0.95_from1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.95 --object-writes-from 1
+results/bio/c2f_c64_t85_object0.9_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --object-writes-threshold 0.9 --object-writes-from 5

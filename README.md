@@ -4,7 +4,9 @@ Experiments with the released [CanViT](https://github.com/m2b3/CanViT) (Canvas V
 arXiv:2603.22570) active-vision model: reproducing its ADE20K results and testing it in settings the paper does not
 cover. Everything here uses the published `canvit-pytorch` package and the released checkpoints from the Hugging
 Face Hub. CanViT stays frozen, and only linear probes are trained where none is released (Cityscapes), except in the
-section [Learned Writes](#learned-writes), which fine-tunes parts of it.
+sections [Learned Writes](#learned-writes) and
+[Primate vision](#primate-vision-eye-movements-retinas-and-a-canvas-that-learns-its-shape), which fine-tune parts of
+it.
 
 ## Results
 
@@ -663,6 +665,140 @@ The released model has no learned projections on the canvas side; the QKVO ablat
 FLOPs are analytic (`canvit_pytorch.flops`). Latency is measured on an RTX 3090 with bfloat16 autocast. At batch
 size 1, both variants take 15-23 ms, a time bounded by kernel launches.
 
+### Primate vision: eye movements, retinas and a canvas that learns its shape
+
+CanViT samples a scene differently from a primate eye. The eye never holds still: fixational eye movements shift
+the image by a fraction of a receptor, and they sharpen fine detail (Rucci et al., Nature 2007). The retina is
+foveated, and receptive fields have their own positions, shapes and sizes. The population receptive field model of
+fMRI fits one Gaussian per voxel (Dumoulin & Wandell 2008). Cortical maps also give more cells to what is used.
+`scripts/bio_vision.py` builds each of these as a change to CanViT, most of them training-free:
+
+- free positions: SR-RoPE computes every attention from scene positions alone, so glimpse patches and canvas cells
+  can sit anywhere;
+- microsaccade policies;
+- foveated and learned retinas;
+- a canvas of learned Gaussian receptive fields;
+- a canvas that grows fine cells where the eye zooms in;
+- Writes that keep only what the cell does not hold yet (repetition suppression);
+- Writes that spread along the seen object;
+- learned RoPE wavelengths.
+
+Four scripts use it:
+
+- `scripts/bio_rollouts.py` measures ADE20K mIoU;
+- `scripts/bio_reconstruction.py` computes the paper's reconstruction metric;
+- `scripts/train_retina.py` trains a retina or canvas shape on the paper's objective and short rollouts, for 1000
+  steps on ADE20K training scenes, with CanViT frozen or fine-tuned;
+- `scripts/growing_canvas.py` runs the growing canvas.
+
+With every mechanism off, `bio_rollouts.py` and `bio_reconstruction.py` give exactly the numbers of
+`ade20k_rollouts.py` and `reconstruction_rollouts.py`.
+
+**Microsaccades make repeated views useful.** Repeating the full scene degrades the canvas (RFS, above). Repeating a
+view shifted by a fraction of a patch improves it and keeps it stable. ADE20K mIoU after 21 glimpses, 64×64 canvas:
+
+| After the full scene, every glimpse is | t = 1 | t = 20 |
+|---|---|---|
+| the full scene again (RFS) | 41.06 | 39.32 |
+| a centered view of scale 7/8 (control) | 42.13 | 40.16 |
+| a view of scale 7/8 shifted by up to ±1/8 | 42.00 | 43.90 |
+| a view of scale 0.75 shifted by up to ±0.25 | 42.28 | 44.22 |
+| the full scene shifted by up to ±⅛ / ±¼ / ±½ patch | 41.49 / 41.57 / 41.96 | 41.31 / 42.32 / 43.03 |
+| C2F (with zoom), for reference | 41.45 | 45.94 |
+
+The full scene shifted by under a patch adds nothing to the crop; only the sampling phase changes. Even so, it gains
+up to 3.7 points over RFS, more for larger shifts, much like the hyperacuity that eye movements give.
+
+The effect holds elsewhere:
+
+- With 85 glimpses, the shifted 7/8 views stay at 43.58 (RFS: 37.55).
+- On Cityscapes they reach 55.31 against 48.55 for RFS (C2F: 61.80).
+- On the reconstruction metric (scene, standardized cosine at t = 20) they reach 0.8169 against 0.7716 for RFS
+  (control: 0.7758).
+
+Some variants add nothing: sampling the views from the native 1024 px Cityscapes scene (aliased) instead of 512 px
+(55.34), and a Halton sequence of shifts instead of random ones (43.80).
+
+Shifts do not beat zoom. After C2F's 21 glimpses, revisiting the level-2 tiles with shifts of up to ±½ of their patch
+ends at 45.05 at t = 84, against 44.68 without shifts and 43.65 for C2F's level 3. Its maximum (45.94, and 45.97 with
+shifts of up to a full patch) only matches C2F's (45.93). With Writes kept in the crop from glimpse 21, shifted revisits end at 46.33, unshifted ones at 45.79, and C2F
+at 46.40.
+
+![Microsaccades on ADE20K and Cityscapes](outputs/bio_microsaccades.png)
+
+**A canvas that learns its shape falls back to the grid.** Each canvas cell gets a learned center and an elliptical
+Gaussian. The center is its SR-RoPE position in the Reads and Writes. The Gaussian says which part of the scene the
+cell stands for: the scene is read at any point as the cells' predictions weighted by their Gaussians. The canvas
+starts as the released 32×32 grid with narrow Gaussians, where this reading is almost the identity. The variants are
+trained on the paper's objective and read at the teacher's patch centers:
+
+| Canvas (CanViT frozen unless noted) | Validation cosine, C2F / R-IID (t = 9) | ADE20K C2F, 32×32 probe (t = 20) |
+|---|---|---|
+| start (the released grid) | 0.8315 / 0.7865 | 44.31 |
+| widths only (centers fixed) | 0.8314 / 0.7865 | 44.30 |
+| centers and ellipses | 0.8292 / 0.7848 | 44.06 |
+| reshaped for each scene (cells move by their content after the first glimpse) | 0.8279 / 0.7839 | 43.97 |
+| the ellipse also weights what the cell receives in the Writes | 0.8242 / 0.7810 | 43.60 |
+| plus an 8×8 grid of wider cells | 0.8286 / 0.7842 | 43.78 |
+| 16×16 cells: widths only / centers and ellipses / reshaped for each scene | 0.8147 / 0.8148 / 0.8085 (C2F) | 41.58 / 41.72 / 41.19 |
+| CanViT fine-tuned: uniform grid / centers and ellipses / reshaped for each scene | 0.8362 / 0.8341 / 0.8329 (C2F) | 44.01 / 43.98 / 43.89 |
+
+No learned shape beats the grid, even with four times fewer cells than the targets. The cells move by about a
+quarter of a spacing, with no structure. The model leaves the Write weighting unused: its strength stays at 0.017.
+The wide cells shrink.
+
+**A canvas that grows where the eye zooms in.** The canvas starts at 32×32. The first glimpses of C2F's level 2
+(native resolution) recruit cells at 64×64 density in their crop, which inherit the coarse canvas there. mIoU at
+t = 20:
+
+| Fine tiles | Cells | Random tile order | Most uncertain tiles first (EG-C2F order) |
+|---|---|---|---|
+| 0 | 1,024 | 44.16 | 44.05 |
+| 4 | 2,048 | 44.48 | 44.54 |
+| 8 | 3,072 | 44.82 | 44.92 |
+| 16 | 5,120 | 45.43 | 45.30 |
+| uniform 64×64 canvas from the start | 4,096 | 45.94 | 45.75 |
+
+The gain grows about in proportion to the area made fine. Putting the fine cells where the model is uncertain helps a
+little more: at t = 8, 44.36 against 43.76 for random tiles. But a canvas grown during the rollout stays below one that
+is fine from the start. Cells recruited at level 2 have missed the first five glimpses.
+
+**Learned retinas: a weak fovea emerges only without zoom.** Each of the 64 glimpse patches gets a learned center and
+size (192 parameters). This is the question of Cheung, Weiss & Olshausen (ICLR 2017): their learned sampling lattice
+became foveated when the model could only move its glimpse, not when it could also zoom.
+
+- **With zoom** (F-IID and R-IID), the retina stays the released grid. Its rings are 0.252 / 0.240 / 0.256 apart,
+  against 0.25 on the grid.
+- **Without zoom** (every glimpse of scale 0.5 at a random center), the rings grow apart outward: 0.246 / 0.264 /
+  0.285. The outer patches leave the crop, so the retina covers 1.10 to 1.12 times the crop.
+
+Both models (frozen, and fine-tuned with the retina) learn this geometry.
+
+Saccades at scale 0.5, ADE20K mIoU:
+
+| Model | t = 0 | t = 20 |
+|---|---|---|
+| released | 24.80 | 43.75 |
+| released, uniform views of scale 0.55 / 0.56 (wider field, control) | 26.79 / 27.16 | 43.92 / 43.83 |
+| learned retina, CanViT frozen | 25.60 | 44.32 |
+| CanViT fine-tuned: uniform / learned / foveal warp | 24.84 / 25.79 / 21.56 | 43.67 / 44.01 / 40.93 |
+
+A wider field explains only part of the gain. A foveal warp imposed by hand (log-polar, central patches 2.5 times
+finer) loses with zoom too: C2F at t = 20 gives 43.32, against 45.73 for the same fine-tuning on the uniform grid.
+
+![Learned retinas](outputs/bio_learned_retinas.png)
+
+**What did not help:**
+
+- *Repetition suppression.* Removing from each Write the part along what the cell already holds removes about 60% of
+  it. It lowers RFS at t = 84 from 37.55 to 35.53.
+- *A canvas spread by a hand-set density.* With the ground truth's boundaries, it gains 0.22 at t = 20.
+- *Writes that spread from the crop to cells resembling it.* With a cosine threshold of 0.9 from glimpse 21, they
+  reach a third of the outside cells, and C2F ends at 46.23 at t = 84 (crop only: 46.40).
+- *Learned RoPE wavelengths, fine-tuned.* The finest shrink by 2–3%, and C2F gives 45.74 at t = 20 (uniform
+  fine-tuning: 45.73).
+- *Fine-tuning with a third of the rollouts as microsaccades.* Shifted views give 43.46 at t = 20 (43.52 without).
+
 ### Limits
 
 - Three datasets. On Cityscapes and NYU Depth v2, the probes are trained here. Every Cityscapes run uses one seed,
@@ -675,6 +811,9 @@ size 1, both variants take 15-23 ms, a time bounded by kernel launches.
   inference only; a model pretrained with them may behave differently.
 - Most segmentation probes were trained on the released canvas. A probe trained on a fine-tuned canvas reads it
   better (0.4 to 0.9 points on Cityscapes).
+- The primate-vision trainings (learned retinas, canvas shapes, RoPE wavelengths) run 1000 steps of short rollouts on
+  ADE20K training scenes, once each, from the released model. A model pretrained with a learned retina or canvas
+  from the start may settle elsewhere.
 
 ## Setup
 
@@ -702,7 +841,12 @@ defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the
 | `scripts/train_write_gate.py` | Trains one of those learned changes, the rest of CanViT frozen, on the pretraining objective with long rollouts, optionally with local Writes applied during training. |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
 | `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT and for DINOv3 at several input sizes. |
-| `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released or local Writes), and of DINOv3 at several input sizes. |
+| `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released or local Writes), of microsaccades, and of DINOv3 at several input sizes. |
+| `scripts/bio_vision.py` | The primate-vision mechanisms: CanViT's forward with free glimpse and canvas positions, microsaccade policies, foveated and learned retinas, a canvas of learned Gaussian receptive fields (with a Write footprint, coarser cells, or a per-scene reshaping), a canvas that grows where the eye zooms in, repetition-suppressing and object-shaped Writes, learned RoPE wavelengths. |
+| `scripts/bio_rollouts.py`, `scripts/bio_reconstruction.py` | ADE20K mIoU and the paper's reconstruction metric after every glimpse with those mechanisms, or with a training of `train_retina.py`. |
+| `scripts/train_retina.py` | Learns a retina, a canvas shape or RoPE wavelengths, with CanViT frozen or fine-tuned, on the paper's objective and short rollouts (with or without zoom, optionally with microsaccade rollouts). |
+| `scripts/growing_canvas.py` | ADE20K mIoU of a 32×32 canvas that recruits 64×64-density cells in the crops of the first level-2 glimpses. |
+| `scripts/plot_bio.py` | The primate-vision figures in `outputs/bio_*.png`. |
 | `scripts/convert_legacy_checkpoint.py` | Converts a checkpoint in the canvit-pytorch 0.1 format (the Hub's experimental 1024 px CanViT-B) to the current format. |
 | `scripts/run_queue.sh`, `scripts/run_official_queue.sh`, `scripts/run_commands.sh`, `queues/` | Run a list of experiments one after another, skipping finished ones: `ade20k_rollouts.py` runs, official `canvit_pytorch.evaluate` runs, and any Python command. |
 | `scripts/plot_results.py` | Figures in `outputs/` and the table `results/summary.md` from the saved results. |

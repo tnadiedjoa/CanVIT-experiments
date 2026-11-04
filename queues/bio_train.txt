@@ -1,0 +1,9 @@
+# Learned and foveated retinas (scripts/train_retina.py), 1000 steps of the paper's objective on ADE20K training scenes. With zoom: the paper's F-IID and R-IID policies; s0.5: fixed-scale saccades.
+probes/uniform_ft_zoom.pt scripts/train_retina.py --finetune-canvit --retina-lr 1e-3
+probes/fovea0.25_ft_zoom.pt scripts/train_retina.py --finetune-canvit --fovea 0.25 --retina-lr 1e-3
+probes/retina_ft_zoom.pt scripts/train_retina.py --learn-retina --finetune-canvit --retina-lr 1e-3
+probes/uniform_ft_s0.5.pt scripts/train_retina.py --finetune-canvit --scale 0.5 --retina-lr 1e-3
+probes/fovea0.25_ft_s0.5.pt scripts/train_retina.py --finetune-canvit --fovea 0.25 --scale 0.5 --retina-lr 1e-3
+probes/retina_ft_s0.5.pt scripts/train_retina.py --learn-retina --finetune-canvit --scale 0.5 --retina-lr 1e-3
+probes/retina_frozen_zoom.pt scripts/train_retina.py --learn-retina --retina-lr 1e-3
+probes/retina_frozen_s0.5.pt scripts/train_retina.py --learn-retina --scale 0.5 --retina-lr 1e-3

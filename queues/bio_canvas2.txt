@@ -1,0 +1,6 @@
+# The canvas learns its shape, stream 2 (see queues/bio_canvas.txt). adaptive: the cells also move by their own content after the first glimpse, for each scene.
+probes/canvas_adaptive_frozen.pt scripts/train_retina.py --learn-canvas --canvas-adaptive --num-steps 1000
+probes/canvas_sigma.pt scripts/train_retina.py --learn-canvas --canvas-fixed-centers --num-steps 1000
+probes/canvas16_adaptive.pt scripts/train_retina.py --learn-canvas --canvas-grid-size 16 --canvas-adaptive --num-steps 1000
+probes/canvas16_footprint.pt scripts/train_retina.py --learn-canvas --canvas-grid-size 16 --canvas-write-footprint --num-steps 1000
+probes/canvas_adaptive_ft.pt scripts/train_retina.py --learn-canvas --canvas-adaptive --finetune-canvit --num-steps 1000

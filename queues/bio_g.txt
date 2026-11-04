@@ -1,0 +1,4 @@
+# Microsaccade follow-ups: Halton offsets instead of random ones, and C2F's level-2 revisits with microsaccades combined with the README's local Writes.
+results/bio/micro_s0.875_j0.125_halton_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.875 --microsaccade-jitter 0.125 --microsaccade-sequence halton
+results/bio/c2f_then_jittered_level2_j0.03125_local21_c64_t85.json scripts/bio_rollouts.py --policy c2f_then_jittered_level2 --num-glimpses 85 --microsaccade-jitter 0.03125 --local-writes-from 21
+results/bio/c2f_then_jittered_level2_j0_local21_c64_t85.json scripts/bio_rollouts.py --policy c2f_then_jittered_level2 --num-glimpses 85 --microsaccade-jitter 0 --local-writes-from 21

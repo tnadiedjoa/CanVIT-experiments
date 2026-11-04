@@ -1,0 +1,15 @@
+# The learned canvas shapes of queues/bio_canvas.txt and bio_canvas2.txt, beyond those of bio_canvas_eval.txt: ADE20K C2F (32×32 teacher grid, logits read through the cells' Gaussians) and reconstruction under R-IID.
+results/bio/c2f_c32_t21_canvas_sigma.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas_sigma.pt
+results/bio/reconstruction/riid_c32_t21_canvas_sigma.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas_sigma.pt
+results/bio/c2f_c32_t21_canvas16_sigma.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas16_sigma.pt
+results/bio/reconstruction/riid_c32_t21_canvas16_sigma.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas16_sigma.pt
+results/bio/c2f_c32_t21_canvas16.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas16.pt
+results/bio/reconstruction/riid_c32_t21_canvas16.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas16.pt
+results/bio/c2f_c32_t21_canvas16_adaptive.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas16_adaptive.pt
+results/bio/reconstruction/riid_c32_t21_canvas16_adaptive.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas16_adaptive.pt
+results/bio/c2f_c32_t21_canvas_footprint.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas_footprint.pt
+results/bio/reconstruction/riid_c32_t21_canvas_footprint.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas_footprint.pt
+results/bio/c2f_c32_t21_canvas_multiscale.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas_multiscale.pt
+results/bio/reconstruction/riid_c32_t21_canvas_multiscale.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas_multiscale.pt
+results/bio/c2f_c32_t21_canvas16_footprint.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas16_footprint.pt
+results/bio/reconstruction/riid_c32_t21_canvas16_footprint.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas16_footprint.pt

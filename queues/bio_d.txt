@@ -1,0 +1,5 @@
+# Microsaccades at full scale: the whole scene every time, shifted by under a patch (a patch is 0.25 at scale 1), so only the sampling phase is new; then the bio_rollouts baselines for C2F at 85 glimpses.
+results/bio/micro_s1_j0.0625_out_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 1 --microsaccade-jitter 0.0625 --microsaccade-outside
+results/bio/micro_s1_j0.125_out_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 1 --microsaccade-jitter 0.125 --microsaccade-outside
+results/bio/micro_s1_j0.03125_out_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 1 --microsaccade-jitter 0.03125 --microsaccade-outside
+results/bio/c2f_c64_t85_s0.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85

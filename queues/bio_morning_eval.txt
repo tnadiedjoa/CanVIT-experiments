@@ -1,0 +1,9 @@
+# The morning fine-tunes and their control under C2F (21 and 85 glimpses) and microsaccades, 64×64 canvas.
+results/bio/c2f_c64_t85_uniform_ft_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --trained probes/uniform_ft_zoom.pt
+results/bio/micro_s0.875_j0.125_c64_t21_uniform_ft_zoom.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --trained probes/uniform_ft_zoom.pt
+results/bio/c2f_c64_t21_periods_ft_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --trained probes/periods_ft_zoom.pt
+results/bio/c2f_c64_t85_periods_ft_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --trained probes/periods_ft_zoom.pt
+results/bio/micro_s0.875_j0.125_c64_t21_micro_ft_zoom.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --trained probes/micro_ft_zoom.pt
+results/bio/c2f_c64_t21_micro_ft_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --trained probes/micro_ft_zoom.pt
+results/bio/micro_s1_j0.125_out_c64_t21_micro_ft_zoom.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 1 --microsaccade-jitter 0.125 --microsaccade-outside --trained probes/micro_ft_zoom.pt
+results/bio/micro_s1_j0.125_out_c64_t21_uniform_ft_zoom.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 1 --microsaccade-jitter 0.125 --microsaccade-outside --trained probes/uniform_ft_zoom.pt

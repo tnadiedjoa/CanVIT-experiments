@@ -1,0 +1,9 @@
+# The growing canvas (scripts/growing_canvas.py): a 32×32 canvas that recruits 64×64-density cells in the crops of the first 'budget' level-2 glimpses of C2F (random tile order) or EG-C2F (entropy order under the coarse canvas). 0 = the 32×32 canvas; 16 = everywhere.
+results/bio/grow_random_b0_t21.json scripts/growing_canvas.py --budget 0 --order random
+results/bio/grow_random_b4_t21.json scripts/growing_canvas.py --budget 4 --order random
+results/bio/grow_random_b8_t21.json scripts/growing_canvas.py --budget 8 --order random
+results/bio/grow_random_b16_t21.json scripts/growing_canvas.py --budget 16 --order random
+results/bio/grow_entropy_b0_t21.json scripts/growing_canvas.py --budget 0 --order entropy
+results/bio/grow_entropy_b4_t21.json scripts/growing_canvas.py --budget 4 --order entropy
+results/bio/grow_entropy_b8_t21.json scripts/growing_canvas.py --budget 8 --order entropy
+results/bio/grow_entropy_b16_t21.json scripts/growing_canvas.py --budget 16 --order entropy

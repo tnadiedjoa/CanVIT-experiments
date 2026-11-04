@@ -47,6 +47,7 @@ from canvit_pytorch.probes import SegmentationProbe
 from canvit_pytorch.teacher import DINOV3_REPOS, DINOv3Teacher, load_teacher
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
+from bio_vision import microsaccades  # noqa: E402
 from local_writes import (DroppedWriteToken, FinetunedCanViT, FinetunedModules, LocalWrites,  # noqa: E402
                           OutsideWrites, load_learned_writes)
 
@@ -361,7 +362,12 @@ class Rollouts:
     output: Path
     probe: Path
     detail: Detail = "s512"
-    policy: PolicyName = "coarse_to_fine"
+    policy: PolicyName | Literal["microsaccades"] = "coarse_to_fine"
+    """microsaccades: bio_vision.microsaccades, the full scene and then views of microsaccade_scale jittered by at
+    most microsaccade_jitter (beyond the valid box with microsaccade_outside)."""
+    microsaccade_scale: float = 0.875
+    microsaccade_jitter: float = 0.125
+    microsaccade_outside: bool = False
     num_glimpses: int = 85
     """85 glimpses: C2F down to level 3, whose tiles are 128 px of a 1024 px scene."""
     canvas_grid_size: int = 64
@@ -439,8 +445,13 @@ def rollouts(exp: Rollouts) -> None:
         scene_512, _ = downsample(scene_1024, scene_labels, 512)
         batch_size = scene_1024.shape[0]
         with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
-            policy = make_policy(exp.policy, batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses,
-                                 canvas_grid_size=exp.canvas_grid_size, canvas_logits=seg.logits)
+            if exp.policy == "microsaccades":
+                policy = microsaccades(batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses,
+                                       scale=exp.microsaccade_scale, jitter=exp.microsaccade_jitter,
+                                       outside=exp.microsaccade_outside)
+            else:
+                policy = make_policy(exp.policy, batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses,
+                                     canvas_grid_size=exp.canvas_grid_size, canvas_logits=seg.logits)
             state = seg.init_state(batch_size=batch_size, canvas_grid_size=exp.canvas_grid_size)
             for t in range(exp.num_glimpses):
                 viewpoint = policy.step(t, state)
@@ -458,7 +469,7 @@ def rollouts(exp: Rollouts) -> None:
     write_result(exp.output, {
         "experiment": {k: str(v) if isinstance(v, Path) else v for k, v in asdict(exp).items()},
         "probe_config": record["config"], "probe_selected_step": record["selected_step"],
-        "paper_name": POLICIES[exp.policy].paper_name,
+        "paper_name": POLICIES[exp.policy].paper_name if exp.policy in POLICIES else exp.policy,
         **iou_record(ious), "mean_scale": (scales / num_scenes).tolist(),
         "glimpse_gflops": glimpse_flops(seg.canvit.config, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX,
                                         canvas_grid_size=exp.canvas_grid_size) / 1e9,

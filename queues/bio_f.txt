@@ -1,0 +1,7 @@
+# Microsaccades on Cityscapes (1024 px scenes, own probe on the 64×64 canvas of 512 px scenes): from the 512 px scene (antialiased) and from the native 1024 px scene (each view 8× undersampled with bilinear sampling, so jittered views alias differently: the case of multi-frame super-resolution).
+results/cityscapes/rfs_c64_t21_s512.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512 --policy repeated_full_scene --num-glimpses 21
+results/cityscapes/micro_s0.875_j0.125_c64_t21_s512.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512 --policy microsaccades --num-glimpses 21
+results/cityscapes/micro_s0.875_j0.125_c64_t21_native.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail native --policy microsaccades --num-glimpses 21
+results/cityscapes/rfs_c64_t21_native.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail native --policy repeated_full_scene --num-glimpses 21
+results/cityscapes/micro_s1_j0.0625_out_c64_t21_native.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail native --policy microsaccades --num-glimpses 21 --microsaccade-scale 1 --microsaccade-jitter 0.0625 --microsaccade-outside
+results/cityscapes/micro_s1_j0.0625_out_c64_t21_s512.json scripts/cityscapes.py rollouts --probe probes/cityscapes_canvas_s512_c64.pt --detail s512 --policy microsaccades --num-glimpses 21 --microsaccade-scale 1 --microsaccade-jitter 0.0625 --microsaccade-outside

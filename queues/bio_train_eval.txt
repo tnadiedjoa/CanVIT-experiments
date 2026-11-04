@@ -1,0 +1,14 @@
+# The retinas of queues/bio_train.txt on ADE20K (64×64 canvas): models trained with zoom under C2F and R-IID, models trained with fixed-scale saccades (scale 0.5) under the same saccades; the released model under each for reference.
+results/bio/saccades_s0.5_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-scale 0.5 --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21
+results/bio/c2f_c64_t21_uniform_ft_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --trained probes/uniform_ft_zoom.pt
+results/bio/riid_c64_t21_uniform_ft_zoom.json scripts/bio_rollouts.py --policy random --num-glimpses 21 --trained probes/uniform_ft_zoom.pt
+results/bio/riid_c64_t21_s0.json scripts/bio_rollouts.py --policy random --num-glimpses 21
+results/bio/c2f_c64_t21_fovea0.25_ft_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --trained probes/fovea0.25_ft_zoom.pt
+results/bio/riid_c64_t21_fovea0.25_ft_zoom.json scripts/bio_rollouts.py --policy random --num-glimpses 21 --trained probes/fovea0.25_ft_zoom.pt
+results/bio/c2f_c64_t21_retina_ft_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --trained probes/retina_ft_zoom.pt
+results/bio/riid_c64_t21_retina_ft_zoom.json scripts/bio_rollouts.py --policy random --num-glimpses 21 --trained probes/retina_ft_zoom.pt
+results/bio/saccades_s0.5_c64_t21_uniform_ft_s0.5.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-scale 0.5 --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21 --trained probes/uniform_ft_s0.5.pt
+results/bio/saccades_s0.5_c64_t21_fovea0.25_ft_s0.5.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-scale 0.5 --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21 --trained probes/fovea0.25_ft_s0.5.pt
+results/bio/saccades_s0.5_c64_t21_retina_ft_s0.5.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-scale 0.5 --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21 --trained probes/retina_ft_s0.5.pt
+results/bio/c2f_c64_t21_retina_frozen_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --trained probes/retina_frozen_zoom.pt
+results/bio/saccades_s0.5_c64_t21_retina_frozen_s0.5.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-scale 0.5 --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21 --trained probes/retina_frozen_s0.5.pt

@@ -1,0 +1,8 @@
+# The canvas learns its shape (bio_vision.GaussianCanvas: a center and an elliptical Gaussian per cell, read at the teacher's patch centers) with CanViT frozen, 1000 steps of the paper's objective and rollouts (scripts/train_retina.py), stream 1. canvas_init: no step, the starting point (= released). sigma: only the shapes learn (the control). 16: a 16×16 canvas on a budget (256 cells). footprint: the Gaussian also shapes what the cell receives in the Writes. multiscale: plus an 8×8 grid of wider cells. ft: CanViT fine-tuned with it (control: probes/uniform_ft_zoom.pt, same batches).
+probes/canvas_init.pt scripts/train_retina.py --learn-canvas --num-steps 0
+probes/canvas_frozen.pt scripts/train_retina.py --learn-canvas --num-steps 1000
+probes/canvas16_sigma.pt scripts/train_retina.py --learn-canvas --canvas-grid-size 16 --canvas-fixed-centers --num-steps 1000
+probes/canvas16.pt scripts/train_retina.py --learn-canvas --canvas-grid-size 16 --num-steps 1000
+probes/canvas_footprint.pt scripts/train_retina.py --learn-canvas --canvas-write-footprint --num-steps 1000
+probes/canvas_multiscale.pt scripts/train_retina.py --learn-canvas --canvas-coarse-grid-size 8 --num-steps 1000
+probes/canvas_ft.pt scripts/train_retina.py --learn-canvas --finetune-canvit --num-steps 1000

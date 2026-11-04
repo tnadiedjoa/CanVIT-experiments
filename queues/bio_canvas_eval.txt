@@ -1,0 +1,10 @@
+# The learned canvas shapes (queues/bio_canvas.txt) on ADE20K (32×32 canvas, logits read through the cells' Gaussians) and on the reconstruction metric, against their starting point canvas_init and the uniform fine-tune.
+results/bio/c2f_c32_t21_canvas_init.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas_init.pt
+results/bio/reconstruction/riid_c32_t21_canvas_init.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas_init.pt
+results/bio/c2f_c32_t21_canvas_frozen.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas_frozen.pt
+results/bio/reconstruction/riid_c32_t21_canvas_frozen.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas_frozen.pt
+results/bio/c2f_c32_t21_canvas_adaptive_frozen.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas_adaptive_frozen.pt
+results/bio/reconstruction/riid_c32_t21_canvas_adaptive_frozen.json scripts/bio_reconstruction.py --policy random --num-glimpses 21 --trained probes/canvas_adaptive_frozen.pt
+results/bio/c2f_c32_t21_uniform_ft_zoom.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/uniform_ft_zoom.pt
+results/bio/c2f_c32_t21_canvas_ft.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas_ft.pt
+results/bio/c2f_c32_t21_canvas_adaptive_ft.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --trained probes/canvas_adaptive_ft.pt

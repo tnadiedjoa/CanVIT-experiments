@@ -1,0 +1,3 @@
+# Morning fine-tunes (scripts/train_retina.py, 1000 steps, same batches as probes/uniform_ft_zoom.pt, the control): SR-RoPE's wavelengths learned (grid cells), and a third of the rollouts as microsaccades.
+probes/periods_ft_zoom.pt scripts/train_retina.py --finetune-canvit --learn-periods
+probes/micro_ft_zoom.pt scripts/train_retina.py --finetune-canvit --microsaccade-fraction 0.33

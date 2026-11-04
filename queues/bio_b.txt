@@ -1,0 +1,10 @@
+# Primate-vision mechanisms (scripts/bio_vision.py), stream B: the canvas spread by a density (32×32), repetition suppression, foveated glimpses.
+results/bio/c2f_c32_t21_s0_check.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32
+results/bio/c2f_c32_t21_density_oracle0.5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --density oracle_boundaries --density-mix 0.5
+results/bio/c2f_c32_t21_density_edges0.5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --density glimpse_edges --density-mix 0.5
+results/bio/c2f_c32_t21_density_entropy0.5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --canvas-grid-size 32 --density entropy --density-mix 0.5
+results/bio/rfs_c64_t85_novelty_project1.json scripts/bio_rollouts.py --policy repeated_full_scene --num-glimpses 85 --novelty project --novelty-strength 1
+results/bio/rfs_c64_t85_novelty_project0.5.json scripts/bio_rollouts.py --policy repeated_full_scene --num-glimpses 85 --novelty project --novelty-strength 0.5
+results/bio/c2f_c64_t85_novelty_project1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --novelty project --novelty-strength 1
+results/bio/c2f_c64_t21_fovea1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --fovea 1
+results/bio/c2f_c64_t21_fovea0.25.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 21 --fovea 0.25

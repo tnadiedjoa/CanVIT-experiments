@@ -1,0 +1,2 @@
+# Rerun of the adaptive canvas fine-tune (out of memory at 04:16 while sharing the GPU), and its evaluation.
+probes/canvas_adaptive_ft.pt scripts/train_retina.py --learn-canvas --canvas-adaptive --finetune-canvit --num-steps 1000

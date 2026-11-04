@@ -1,0 +1,3 @@
+# Control for the learned no-zoom retina (field of view 1.1× the crop): the released model and uniform retina with saccades of a slightly larger fixed scale.
+results/bio/saccades_s0.55_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-scale 0.55 --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21
+results/bio/saccades_s0.56_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --microsaccade-scale 0.56 --microsaccade-jitter 1 --no-microsaccade-first-full-scene --num-glimpses 21

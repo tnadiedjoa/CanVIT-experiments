@@ -1,0 +1,9 @@
+# Primate-vision mechanisms (scripts/bio_vision.py), stream A: microsaccades and their controls, then the jittered level-2 revisits.
+results/bio/micro_s0.875_j0.125_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.875 --microsaccade-jitter 0.125
+results/bio/micro_s0.875_j0_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.875 --microsaccade-jitter 0
+results/bio/micro_s0.75_j0.25_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.75 --microsaccade-jitter 0.25
+results/bio/micro_s0.75_j0_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.75 --microsaccade-jitter 0
+results/bio/micro_s0.9375_j0.0625_c64_t21.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.9375 --microsaccade-jitter 0.0625
+results/bio/c2f_then_jittered_level2_j0.03125_c64_t85.json scripts/bio_rollouts.py --policy c2f_then_jittered_level2 --num-glimpses 85 --microsaccade-jitter 0.03125
+results/bio/c2f_then_jittered_level2_j0.0625_c64_t85.json scripts/bio_rollouts.py --policy c2f_then_jittered_level2 --num-glimpses 85 --microsaccade-jitter 0.0625
+results/bio/micro_s0.875_j0.125_c64_t85.json scripts/bio_rollouts.py --policy microsaccades --num-glimpses 85 --microsaccade-scale 0.875 --microsaccade-jitter 0.125

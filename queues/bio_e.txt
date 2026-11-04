@@ -1,0 +1,6 @@
+# The paper's reconstruction metric (scripts/bio_reconstruction.py, 32×32 canvas) for microsaccades and their controls.
+results/bio/reconstruction/rfs_c32_t21.json scripts/bio_reconstruction.py --policy repeated_full_scene --num-glimpses 21
+results/bio/reconstruction/micro_s0.875_j0.125_c32_t21.json scripts/bio_reconstruction.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.875 --microsaccade-jitter 0.125
+results/bio/reconstruction/micro_s0.875_j0_c32_t21.json scripts/bio_reconstruction.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 0.875 --microsaccade-jitter 0
+results/bio/reconstruction/micro_s1_j0.0625_out_c32_t21.json scripts/bio_reconstruction.py --policy microsaccades --num-glimpses 21 --microsaccade-scale 1 --microsaccade-jitter 0.0625 --microsaccade-outside
+results/bio/reconstruction/c2f_c32_t21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 21
