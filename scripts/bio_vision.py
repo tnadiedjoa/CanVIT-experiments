@@ -280,7 +280,8 @@ class ObjectWrites:
     def __init__(self, canvit: CanViT, *, canvas_grid_size: int, threshold: float, start: int, num_glimpses: int,
                  device: torch.device, late_threshold: float | None = None, late_from: int = 21,
                  embed=None, confidence=None, max_confidence: float | None = None,
-                 top_fraction: float | None = None, late_top_fraction: float | None = None) -> None:
+                 top_fraction: float | None = None, late_top_fraction: float | None = None,
+                 connected: bool = False) -> None:
         self.canvit, self.threshold, self.start, self.embed = canvit, threshold, start, embed
         # With max_confidence, an outside cell is written only if `confidence` (canvas -> [B, G*G], such as the
         # probe's top class probability) is below it: the similar cells the model may still get wrong.
@@ -291,6 +292,10 @@ class ObjectWrites:
         # canvas cells are to each other.
         self.top_fraction, self.late_top_fraction = top_fraction, late_top_fraction
         self.late_threshold, self.late_from = late_threshold, late_from
+        # With connected, the similar outside cells are kept only where a chain of similar, 8-adjacent cells joins them
+        # to the crop: the grouping spreads from the attended place along the object (Roelfsema's incremental
+        # grouping), instead of reaching every look-alike cell of the scene.
+        self.connected, self.grid = connected, canvas_grid_size
         self.num_registers = canvit.config.num_canvas_registers
         self.cell_centers = grid_coords(size=canvas_grid_size, device=device).flatten(0, 1)  # [G*G, 2]
         self.mask: Tensor | None = None
@@ -323,6 +328,8 @@ class ObjectWrites:
                 similar[b, outside[best[outside].topk(k).indices]] = True
             else:
                 similar[b] = best >= threshold
+        if self.connected:
+            similar = self.grow(inside, similar)
         if self.confidence is not None:
             similar &= self.confidence(canvas) < self.max_confidence
         written = inside | similar
@@ -330,6 +337,18 @@ class ObjectWrites:
         self.reached[t] += ((written.float() * outside).sum(dim=1) / outside.sum(dim=1).clamp(min=1)).sum().double()
         registers = written.new_ones(written.shape[0], self.num_registers)
         self.mask = torch.cat([registers, written], dim=1).unsqueeze(-1)
+
+    def grow(self, inside: Tensor, similar: Tensor) -> Tensor:
+        """[B, G*G] masks -> the cells of `similar` that a chain of `similar` 8-adjacent cells joins to `inside`."""
+        B, G = inside.shape[0], self.grid
+        allowed = (inside | similar).view(B, 1, G, G).float()
+        grown = inside.view(B, 1, G, G).float()
+        for _ in range(G * G):
+            wider = F.max_pool2d(grown, kernel_size=3, stride=1, padding=1) * allowed
+            if torch.equal(wider, grown):
+                break
+            grown = wider
+        return grown.view(B, -1).bool() & ~inside
 
     def hook(self, module: CanvasAttention, args, output: Tensor) -> Tensor | None:
         return None if self.mask is None else output * self.mask

@@ -27,7 +27,7 @@ MODELS = {
     "abl-no-fiid-2riid": "no F-IID (2 R-IID)",
 }
 WRITES = {"released": ("released Writes", "#8a8985"), "local21": ("local Writes from level 3", "#2a78d6"),
-          "object": ("object Writes", "#6250d6")}
+          "object": ("object Writes", "#6250d6"), "objtop": ("object Writes, fixed reach", "#1baf7a")}
 
 
 def load(path: Path) -> dict | None:
@@ -77,9 +77,9 @@ def family_changes() -> None:
     ax.grid(axis="y", visible=False)
     for w, (label, color) in WRITES.items():
         ax.plot([], [], "o", color=color, label=label, markersize=7)
-    ax.legend(fontsize=7.5, loc="lower center", ncol=3, bbox_to_anchor=(0.4, 1.0))
-    fig.suptitle("Every released pretraining loses mIoU past C2F's level 2; restricted Writes keep improving "
-                 "(in brackets: mIoU at glimpse 20)", fontsize=8.5, x=0.01, ha="left", color=MUTED, y=1.04)
+    ax.legend(fontsize=7.5, loc="lower center", ncol=4, bbox_to_anchor=(0.4, 1.0))
+    fig.suptitle("Every released pretraining loses mIoU past C2F's level 2; local Writes and object Writes with a "
+                 "fixed reach keep improving\n(in brackets: mIoU at glimpse 20)", fontsize=8.5, x=0.01, ha="left", color=MUTED, y=1.04)
     fig.tight_layout()
     fig.savefig(FIGURES / "family_changes.png", bbox_inches="tight")
     plt.close(fig)
@@ -164,6 +164,50 @@ def which_cells() -> None:
     plt.close(fig)
 
 
+def policies() -> None:
+    """Flagship, 64×64 canvas, 85 glimpses: released, local and object Writes under C2F, EG-C2F and R-IID (the C2F
+    settings unchanged), and, on C2F, averaging the probe's probabilities over the glimpses instead."""
+    folder, grouping = ROOT / "results/policies", ROOT / "results/grouping"
+    rules = [("released Writes", "released", "#8a8985"), ("local Writes from glimpse 21", "local21", "#2a78d6"),
+             ("object Writes", "object", "#6250d6")]
+    panels = {"C2F": {label: grouping / f"c2f_c64_t85_{name}.json" for label, name, _ in rules[:2]}
+              | {rules[2][0]: grouping / "c2f_c64_t85_object0.9_from5_late0.97.json"},
+              "EG-C2F (tiles by probe entropy)": {label: folder / f"egc2f_c64_t85_{name}.json" for label, name, _ in rules},
+              "R-IID (the pretraining policy)": {label: folder / f"riid_c64_t85_{name}.json" for label, name, _ in rules}}
+    readout = {"released Writes, mean of the probabilities from glimpse 21":
+               (ROOT / "results/readout/c2f_c64_t85_released_mean_from21.json", "#eb6834", "-"),
+               "released Writes, mean from glimpse 0": (ROOT / "results/readout/c2f_c64_t85_released_mean_from0.json",
+                                                        "#eda100", "-")}
+    if not all(path.exists() for curves in panels.values() for path in curves.values()):
+        return
+    colors = {label: color for label, _, color in rules}
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3.8), sharey=True)
+    for ax, (title, curves) in zip(axes, panels.items()):
+        ends = []
+        for label, path in curves.items():
+            t, values = curve(load(path)["miou"])
+            ax.plot(t, values, color=colors[label], label=label, linewidth=1.8)
+            ends.append((t[-1], values[-1], colors[label]))
+        if title == "C2F":
+            for label, (path, color, style) in readout.items():
+                if path.exists():
+                    t, values = curve(load(path)["miou"])
+                    ax.plot(t, values, style, color=color, label=label, linewidth=1.4)
+                    ends.append((t[-1], values[-1], color))
+        label_ends(ax, ends, gap=0.3)
+        ax.set_xlim(-1, 97)
+        ax.set_ylim(40, 47.5)
+        ax.set_xlabel("glimpse t")
+        ax.set_title(title, fontsize=9, loc="left", color=INK)
+        ax.legend(fontsize=7, loc="lower right")
+    axes[0].set_ylabel("mIoU (%)")
+    fig.suptitle("The Write rules carry over to other policies unchanged; averaging the predictions recovers part of "
+                 "C2F's drop but never rises", fontsize=9, x=0.01, ha="left", color=MUTED)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "policies.png", bbox_inches="tight")
+    plt.close(fig)
+
+
 def imagenet() -> None:
     """ImageNet-1k top-1 by glimpse (fine-tuned classifier, C2F, 32×32 canvas, 10,000 images)."""
     folder = ROOT / "results/imagenet"
@@ -199,4 +243,5 @@ if __name__ == "__main__":
     family_changes()
     family_leak()
     which_cells()
+    policies()
     imagenet()

@@ -1,0 +1,5 @@
+# The readout-side alternative to restricting the Writes: the mean of the probe's class probabilities per cell over
+# the glimpses from readout_from on (no viewpoint, Writes unchanged). Flagship, C2F 85, 64x64 canvas, ADE20K val.
+results/readout/c2f_c64_t85_released_mean_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --readout mean_probs --readout-from 21
+results/readout/c2f_c64_t85_released_mean_from0.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --readout mean_probs --readout-from 0
+results/readout/c2f_c64_t85_object_mean_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97 --readout mean_probs --readout-from 21

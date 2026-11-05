@@ -82,6 +82,7 @@ class Experiment:
     object_writes_from: int = 21
     object_writes_late_threshold: float | None = None
     object_writes_space: Literal["canvas", "probs"] = "canvas"
+    """What the object Writes compare: the layer-normalized canvas cells, or the probe's class probabilities on them."""
     object_writes_top_fraction: float | None = None
     object_writes_late_top_fraction: float | None = None
     """When set, the object Writes reach the most similar this fraction of the outside cells at each glimpse (the late
@@ -89,7 +90,9 @@ class Experiment:
     object_writes_max_confidence: float | None = None
     """When set, the object Writes reach an outside cell only if the probe's top class probability there is below this:
     the similar cells the model may still get wrong (writing into cells it gets right harms them)."""
-    """What the object Writes compare: the layer-normalized canvas cells, or the probe's class probabilities on them."""
+    object_writes_connected: bool = False
+    """When set, the object Writes reach only the similar outside cells joined to the crop by a chain of similar,
+    8-adjacent cells: grouping that spreads from the attended place along the object (incremental grouping)."""
     """When set, the object Writes' threshold from glimpse 21 on (C2F's level 3)."""
     local_writes_from: int | None = None
     """When set, from this glimpse on, the Writes are kept in the glimpse's crop (local_writes.LocalWrites, the README's
@@ -109,6 +112,11 @@ class Experiment:
     only)."""
     sink_writes_from: int = 1
     sink_writes_token: int | None = None
+    readout: Literal["current", "mean_probs"] = "current"
+    """current: the probe's prediction on the canvas after each glimpse; mean_probs: the mean of its class
+    probabilities over the glimpses from readout_from on, per cell (evidence accumulated over the glimpses, with no
+    viewpoint and no change to the Writes: the readout-side alternative to restricting them)."""
+    readout_from: int = 0
     density: Density | None = None
     density_mix: float = 0.5
     microsaccade_scale: float = 0.875
@@ -199,6 +207,7 @@ def main(exp: Experiment) -> None:
     seg = seg.to(device).eval()
     free = FreePositions(seg.canvit)
     retina, shape = load_retina(exp, seg.canvit, device, free)
+    assert exp.readout == "current" or (shape is None and exp.density is None), "mean_probs reads the uniform canvas"
     shape_points = grid_coords(size=exp.shape_readout_px, device=device).flatten(0, 1)
     novelty = (NoveltyWrites(seg.canvit, mode=exp.novelty, strength=exp.novelty_strength, start=exp.novelty_from,
                              num_glimpses=T, device=device) if exp.novelty is not None else None)
@@ -211,7 +220,8 @@ def main(exp: Experiment) -> None:
                                         if exp.object_writes_max_confidence is not None else None),
                             max_confidence=exp.object_writes_max_confidence,
                             top_fraction=exp.object_writes_top_fraction,
-                            late_top_fraction=exp.object_writes_late_top_fraction)
+                            late_top_fraction=exp.object_writes_late_top_fraction,
+                            connected=exp.object_writes_connected)
                if exp.object_writes_threshold is not None else None)
     local_writes = (LocalWrites(seg.canvit, canvas_grid_size=G, device=device, start=exp.local_writes_from)
                     if exp.local_writes_from is not None else None)
@@ -305,6 +315,10 @@ def main(exp: Experiment) -> None:
                 else:
                     patches = seg.canvit.canvas_patch_grid(state.canvas).float()
                 logits = seg.probe(patches)
+                if exp.readout == "mean_probs" and t >= exp.readout_from:
+                    probs = logits.float().softmax(dim=1)
+                    prob_sum = probs if t == exp.readout_from else prob_sum + probs
+                readout = prob_sum if exp.readout == "mean_probs" and t >= exp.readout_from else logits
                 if t not in evaluated:
                     pass
                 elif shape is not None:
@@ -312,7 +326,7 @@ def main(exp: Experiment) -> None:
                     read = shape.read(logits.flatten(2).transpose(1, 2), shape_points)  # [B, n*n, C]
                     predicted = predicted_labels(read.transpose(1, 2).reshape(B, -1, n, n), size_px=scene_px)
                 elif canvas is None:
-                    predicted = predicted_labels(logits, size_px=scene_px)
+                    predicted = predicted_labels(readout, size_px=scene_px)
                 else:
                     predicted = torch.cat([canvas_part.read_back(chunk, scene_px).argmax(dim=1)
                                            for canvas_part, chunk in zip(split(canvas, 2), logits.split(2))])

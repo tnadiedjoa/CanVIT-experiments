@@ -1,0 +1,6 @@
+# Probe-free check of object Writes: the paper's reconstruction metric (DINOv3 teacher features, 500 ADE20K val
+# scenes, 32x32 canvas), C2F 85, flagship thresholds; released and local21 are in queues/ablations.txt.
+results/ablations/reconstruction/in21k_c2f_c32_t85_object.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model in21k --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/ablations/reconstruction/in1k_c2f_c32_t85_object.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model in1k --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/ablations/reconstruction/abl-baseline_c2f_c32_t85_object.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-baseline --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/ablations/reconstruction/abl-no-vpe_c2f_c32_t85_object.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-vpe --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97

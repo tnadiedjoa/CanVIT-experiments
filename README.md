@@ -361,6 +361,34 @@ matches the margin early. Mean over t = 1-20:
 - R-IID: 40.06 (margin 39.86, released 39.60), ending at 45.50 at t = 84;
 - F2C: 35.97 (margin 36.04, released 34.58), ending at 44.16 at t = 20.
 
+**Learned output gates without the viewpoint.** Gated attention (Qiu et al., 2025) multiplies each head's attention
+output by a sigmoid gate, a fix for attention sinks in language models. `local_writes.LearnedOutputGate` puts such a
+gate, per head and per cell, on each Write's residual, the canvas registers left ungated. The gate sees no viewpoint.
+It reads one of two inputs:
+
+- the cell's own content (its layer-normed canvas token, the Write's query; `--kind output_gate_query`);
+- each head's share of attention on the glimpse's patches rather than its prefix tokens
+  (`--kind output_gate_attention`).
+
+Each gate trains as above for 300 steps, its bias starting at 3 (gate 0.95), with learning rate 0.005 (content) or
+0.05 (attention share). C2F, 64×64 canvas, seed 0:
+
+| Writes | mean over t = 1-20 | t = 20 | t = 84 |
+|---|---|---|---|
+| released | 44.89 | 45.93 | 43.65 |
+| output gate from the cell's content | 44.86 | 45.91 | 43.66 |
+| output gate from the attention share | 44.96 | 46.10 | 44.59 |
+| learned distance gate (uses the viewpoint) | 44.97 | 46.10 | 45.61 |
+| object Writes (a rule, no training; primate-vision section) | 45.06 | 46.29 | 46.61 |
+
+- The content gate never learns where the glimpse is. Through training, its mean stays the same inside and outside
+  the crop to within 0.001 (0.95, 0.94 and 0.95 for the three Writes at the end). A cell's content does not say
+  whether the glimpse covers it, so this gate cannot tell the leak from the update, and it changes nothing.
+- The attention-share gate does separate them. At the end, it averages 0.95–0.98 inside the crop and 0.81–0.84
+  outside. It recovers a third of the drop (44.59 at t = 84), but each outside cell still receives 81–84% of its
+  leaked residual. As with the gate on sink attention (in the section on the CanViT family), the outside cells
+  that attend to patches are those whose leak carries content.
+
 **Locality costs the CLS token.** The recurrent CLS token's prediction of the teacher's CLS token also drifts over
 long C2F rollouts: its cosine similarity falls from 0.838 at t = 4 to 0.769 at t = 84 with released Writes. Local
 Writes make it worse, the more so the narrower: 0.692 with Writes kept in the crop from glimpse 1, 0.729 within one
@@ -961,10 +989,45 @@ over level 3 relative to the cell's own.
   t = 84 in all thirteen (flagship 0.8388 to 0.8053, no Reads 0.7122 to 0.6410), and local Writes bring it back to
   its t = 20 level or above (flagship 0.8401, no Reads 0.7122; at most 0.0006 below, for the two QKVO models and
   D_can 256). The CLS prediction falls too, and local Writes do not help it (flagship 0.835 to 0.777, local 0.767).
-- Object Writes with the flagship's thresholds (0.9 from glimpse 5, 0.97 from 21) beat local ones on the flagship
-  (44.68 / 44.69 at t = 20 / 84), IN-1k (42.55 / 42.85), the baseline (38.57 / 38.99), D_can 256 + QKVO (34.92 /
-  35.16) and ViT-S (32.95 / 33.02). On 1 Read / 1 Write they do worse than local (34.11 / 32.99): its canvas cells
-  are much more alike, and the same thresholds reach 95% of the outside cells at level 2 (42% on the flagship).
+
+**Object Writes across the family.** Object Writes keep a Write's residual outside the crop only in the cells whose
+canvas content resembles a cell of the crop (see the primate-vision section). Two variants are run on every model:
+
+- **thresholds:** the flagship's thresholds (cosine 0.9 from glimpse 5, 0.97 from 21);
+- **fixed reach:** each Write reaches the same share of the outside cells as on the flagship, the most similar 42%
+  from glimpse 5 and 9% from glimpse 21 (`--object-writes-top-fraction 0.42 --object-writes-late-top-fraction 0.09`).
+
+*Reach* is the share of the outside cells written at t = 20 and t = 84. The comparisons are with local Writes at
+t = 84.
+
+| Pretraining | thresholds, t = 20 / 84 (reach) | − local | fixed reach, t = 20 / 84 | − local |
+|---|---|---|---|---|
+| flagship (IN-21k) | 44.68 / 44.69 (0.41 / 0.08) | +0.20 [+0.04, +0.42] | 44.57 / 44.55 | +0.06 [−0.09, +0.29] |
+| IN-1k | 42.55 / 42.85 (0.42 / 0.09) | +0.42 [+0.21, +0.66] | 42.47 / 42.82 | +0.39 [+0.17, +0.63] |
+| ablation baseline | 38.57 / 38.99 (0.47 / 0.12) | +0.35 [+0.14, +0.64] | 38.49 / 38.87 | +0.23 [+0.04, +0.52] |
+| D_can 256 + QKVO | 34.92 / 35.16 (0.56 / 0.18) | +0.19 [+0.01, +0.43] | 34.94 / 35.07 | +0.11 [−0.05, +0.37] |
+| D_can 384 + QKVO | 36.55 / 36.65 (0.49 / 0.13) | +0.11 [−0.11, +0.39] | 36.52 / 36.61 | +0.07 [−0.15, +0.35] |
+| D_can 256 | 34.38 / 34.58 (0.59 / 0.16) | −0.04 [−0.20, +0.20] | 34.35 / 34.54 | −0.07 [−0.24, +0.22] |
+| 1 Read / 1 Write | 34.11 / 32.99 (0.95 / 0.47) | −1.52 [−1.85, −1.16] | 34.57 / 34.81 | +0.30 [+0.14, +0.48] |
+| no Reads | 32.07 / 32.34 (0.69 / 0.16) | +0.00 [−0.21, +0.35] | 32.40 / 32.65 | +0.31 [+0.07, +0.67] |
+| no VPE | 37.81 / 38.00 (0.53 / 0.14) | +0.41 [+0.21, +0.67] | 37.86 / 38.05 | +0.46 [+0.24, +0.71] |
+| ViT-S backbone | 32.95 / 33.02 (0.64 / 0.15) | +0.22 [+0.04, +0.57] | 32.98 / 33.19 | +0.39 [+0.20, +0.72] |
+| no BPTT | 34.43 / 34.09 (0.93 / 0.37) | −0.78 [−1.09, −0.40] | 34.82 / 34.96 | +0.09 [−0.22, +0.47] |
+| no dense loss | 19.95 / 20.41 (0.06 / 0.01) | +2.08 [+1.75, +2.52] | 19.42 / 19.79 | +1.47 [+1.17, +1.84] |
+| no F-IID (1 R-IID) | 30.15 / 30.72 (0.52 / 0.11) | +0.25 [−0.04, +0.62] | 30.09 / 30.77 | +0.30 [+0.00, +0.67] |
+| no F-IID (2 R-IID) | 33.12 / 33.79 (0.56 / 0.13) | +0.62 [+0.28, +1.00] | 33.18 / 33.80 | +0.64 [+0.32, +1.05] |
+
+- At t = 20, before local Writes change anything, object Writes beat released ones in all fourteen models.
+  - With the thresholds, the gain is +0.05 to +2.18; the interval excludes 0 in thirteen, and for 1 Read / 1 Write
+    its lower end is 0.00.
+  - With the fixed reach, the gain is +0.09 to +1.66; the interval excludes 0 in thirteen, all but D_can 256.
+- With the thresholds, object Writes end above local ones in eight models, with intervals excluding 0. They do worse
+  in two: 1 Read / 1 Write and no BPTT. The canvas cells of those two models are much more alike, so the same
+  thresholds reach 93–95% of the outside cells at level 2, against 41% on the flagship.
+- The fixed reach repairs those two (34.81 and 34.96 at t = 84). It ends above local Writes in thirteen models, with
+  the interval excluding 0 in eight. The exception is D_can 256, where both variants tie with local Writes.
+- In the ablation without the dense loss, the thresholds reach almost no outside cell (6%, then 1%), yet do best.
+  This model has the weakest probe and the most diffuse sink.
 
 ![The family's change from t = 20 to t = 84](outputs/family_changes.png)
 
@@ -1003,8 +1066,55 @@ t = 84.
   built on the model's own predictions can find. On 32 scenes, 87–89% of the cells object Writes reach are already
   right, and requiring the probe to be unsure there (top probability below 0.7) keeps 45–70% of the wrong ones but
   still writes into right ones (53–60% of the cells it reaches): no better.
+- Keeping only the similar cells joined to the crop by a chain of similar, adjacent cells (incremental grouping,
+  `ObjectWrites(connected=True)`) changes little. On 32 scenes, it lowers the reach by 1 to 2.5 points of the outside
+  cells (at 0.9: from 0.36 to 0.34 at t = 22), with the same class precision: the cells similar to the crop already
+  form regions that touch it. It was not run in full.
+- **Seed 1** (another C2F tile order, every rule run again in the same script): released Writes 45.89 / 43.64 at
+  t = 20 / 84, local ones 45.89 / 46.31, object Writes 46.30 / 46.55, the oracle 46.87 / 47.60, on the cells the probe
+  gets right 45.62 / 45.67, on those it gets wrong 47.33 / 48.36. Object Writes beat released ones by +0.41 [+0.25,
+  +0.66] at t = 20 and +2.91 [+2.44, +3.41] at t = 84, and local ones by +0.24 [+0.06, +0.47] at t = 84. Against local
+  Writes at t = 84, the oracle on right cells loses 0.65 [0.32, 0.87]; on wrong cells, it gains 1.82 [1.60, 2.04] over
+  object Writes.
+- **IN-1k pretraining on the 64×64 canvas** (its released 64×64 probe): released Writes 43.42 at t = 20 and 41.91 at
+  t = 84, local ones 43.85 at t = 84, and object Writes 43.84 and 44.23. Object Writes gain +0.42 [+0.19, +0.63] at
+  t = 20 and +2.32 [+1.83, +2.87] at t = 84 over released Writes, and +0.38 [+0.18, +0.59] at t = 84 over local ones.
+  Their reach is 0.43 / 0.10, as on the flagship.
 
 ![Which outside cells to write](outputs/write_which_cells.png)
+
+**Other policies, the same settings.** The rules carry over without retuning. Flagship, 64×64 canvas, 85 glimpses,
+with local Writes from glimpse 21 and object Writes at 0.9 from glimpse 5, then 0.97 from 21
+([`queues/policies.txt`](queues/policies.txt)):
+
+| Policy | released, t = 20 / 84 | local, t = 84 | object, t = 20 / 84 | object − released, t = 84 | object − local, t = 84 |
+|---|---|---|---|---|---|
+| C2F (above) | 45.93 / 43.65 | 46.40 | 46.29 / 46.61 | +2.97 [+2.50, +3.47] | +0.21 [+0.02, +0.42] |
+| EG-C2F | 45.75 / 43.53 | 46.26 | 46.21 / 46.60 | +3.07 [+2.58, +3.55] | +0.34 [+0.13, +0.55] |
+| R-IID | 43.20 / 45.19 | 45.36 | 43.48 / 45.92 | +0.73 [+0.52, +0.97] | +0.56 [+0.38, +0.73] |
+
+- EG-C2F, which orders each level's tiles by the probe's entropy, drifts like C2F (its best is 45.86 at t = 24).
+  Object Writes gain +0.46 [+0.30, +0.67] at t = 20.
+- R-IID is the pretraining policy. Its random centers and scales keep improving with released Writes up to
+  t = 84, so there is no drop to repair, and local Writes barely help (+0.17 [−0.05, +0.41]). Object Writes still
+  gain, +0.28 [+0.12, +0.40] at t = 20 and +0.73 at t = 84, reaching 61% and then 28% of the outside cells. Choosing
+  which outside cells a Write reaches helps even where the released Writes do not fail.
+
+**Averaging the predictions instead.** A fix on the readout side needs no viewpoint: average each cell's class
+probabilities over the glimpses (`--readout mean_probs`, released Writes; [`queues/readout.txt`](queues/readout.txt)).
+
+- Averaging from glimpse 21 keeps t = 20 unchanged and ends at 45.10: +1.45 [+1.21, +1.69] over released Writes, but
+  −1.52 [−1.88, −1.18] against object Writes.
+- Averaging from glimpse 0 costs 0.58 [0.36, 0.90] at t = 20 and ends at 45.38, −1.24 [−1.58, −0.96] against object
+  Writes.
+- Both curves fall from their peak (45.90 at t = 21 and 45.71 at t = 40), while the object Writes' curve rises to
+  the end.
+- On top of object Writes, averaging from glimpse 21 changes nothing (46.54 at t = 84, −0.07 [−0.19, +0.05]).
+
+At t = 84, averaging recovers 64–76% of the drop, close to the 70% it recovers for ImageNet's recurrent CLS token
+(below). It never makes the curve rise, though: for that, the canvas itself has to stop drifting.
+
+![Write rules under three policies, and averaging the predictions](outputs/policies.png)
 
 **Gating the Writes by their own sink attention fails.** It would need no viewpoint: from some glimpse on, a cell
 keeps a Write's residual only if it puts less than a threshold of its attention on the prefix tokens
@@ -1074,16 +1184,16 @@ subdirectory per class) wherever `IMAGENET_VAL` points; the queue runners and sc
 | `scripts/level3_canvas.py` | The canvas and the probe's prediction after level 3 of C2F with released and local Writes, on a few ADE20K scenes. |
 | `scripts/write_leak_map.py` | Where one glimpse's Writes land on one scene: residual norm and attention on the sink register, per canvas cell. |
 | `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level, and how much of it comes from the glimpse's prefix tokens. |
-| `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share, and the learned changes: a distance gate on the Writes, a zero-value key, the Writes' own parameters, the Reads' too, or all of CanViT's. |
+| `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share, and the learned changes: a distance gate on the Writes, output gates that see no viewpoint (from the cell's content or from its attention share on the glimpse's patches), a zero-value key, the Writes' own parameters, the Reads' too, or all of CanViT's. |
 | `scripts/train_write_gate.py` | Trains one of those learned changes, the rest of CanViT frozen, on the pretraining objective with long rollouts, optionally with local Writes applied during training. |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
 | `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT (with released, local or object Writes) and for DINOv3 at several input sizes. |
 | `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released, local or object Writes), of microsaccades, and of DINOv3 at several input sizes. |
 | `scripts/bio_vision.py` | The primate-vision mechanisms: CanViT's forward with free glimpse and canvas positions, microsaccade and central-gaze policies, foveated and learned retinas, patchwork glimpses, a canvas of learned Gaussian receptive fields (with a Write footprint, coarser cells, a per-scene reshaping, or a smooth warp), a canvas that grows where the eye zooms in, repetition-suppressing and object-shaped Writes, learned RoPE wavelengths. |
-| `scripts/bio_rollouts.py`, `scripts/bio_reconstruction.py` | ADE20K mIoU and the paper's reconstruction metric after every glimpse with those mechanisms, or with a training of `train_retina.py`, for any released pretraining (`--model`); the controls of the object Writes (random cells in their share, the ground-truth oracle and its halves, grouping by the probe), sink-gated Writes, rollouts past C2F; per-image counts for paired bootstraps. |
+| `scripts/bio_rollouts.py`, `scripts/bio_reconstruction.py` | ADE20K mIoU and the paper's reconstruction metric after every glimpse with those mechanisms, or with a training of `train_retina.py`, for any released pretraining (`--model`); object Writes with a fixed reach or kept to regions connected to the crop, and their controls (random cells in their share, the ground-truth oracle and its halves, grouping by the probe), sink-gated Writes, rollouts past C2F, the probe's probabilities averaged over the glimpses (`--readout mean_probs`); per-image counts for paired bootstraps. |
 | `scripts/imagenet_rollouts.py` | ImageNet-1k top-1 after every glimpse from the released fine-tuned classifier's recurrent CLS, with released, local or object Writes, and with its evidence accumulated over the glimpses. |
 | `scripts/paired_bootstrap.py` | Paired bootstrap interval of the difference between two runs on the same images (ADE20K mIoU or ImageNet top-1). |
-| `scripts/plot_family.py` | The family and outside-cell figures in `outputs/family_*.png`, `outputs/write_which_cells.png` and `outputs/imagenet_glimpses.png`. |
+| `scripts/plot_family.py` | The family and outside-cell figures in `outputs/family_*.png`, `outputs/write_which_cells.png`, `outputs/policies.png` and `outputs/imagenet_glimpses.png`. |
 | `scripts/train_retina.py` | Learns a retina, a canvas shape or RoPE wavelengths, with CanViT frozen or fine-tuned, on the paper's objective and short rollouts of ADE20K or Cityscapes scenes (with or without zoom, with gaze biased to the center, optionally with microsaccade rollouts); or saves the gradient on the canvas cells at the starting grid. |
 | `scripts/growing_canvas.py` | ADE20K mIoU of a 32×32 canvas that recruits 64×64-density cells in the crops of the first level-2 glimpses. |
 | `scripts/plot_bio.py` | The primate-vision figures in `outputs/bio_*.png`. |

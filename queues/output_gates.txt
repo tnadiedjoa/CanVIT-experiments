@@ -1,0 +1,7 @@
+# Viewpoint-free learned gates on the Writes' outputs (local_writes.LearnedOutputGate, as Gated Attention, Qiu et al.
+# 2025): from the cell's content (query) or from its per-head attention share on the glimpse's patches (attention),
+# trained as the distance gate (C2F and R-IID 85-glimpse rollouts, 32x32 canvas), 300 steps (query: a 10x lower learning rate, its 1024 inputs move the logit more); then ADE20K C2F 85 at 64x64.
+probes/output_gate_attention_c2f_riid.pt scripts/train_write_gate.py --kind output_gate_attention --batch-size 16 --lr 0.05 --num-steps 300
+results/c2f_c64_t85_s0_output_gate_attention_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/output_gate_attention_c2f_riid.pt
+probes/output_gate_query_c2f_riid.pt scripts/train_write_gate.py --kind output_gate_query --batch-size 16 --lr 0.005 --num-steps 300
+results/c2f_c64_t85_s0_output_gate_query_c2f_riid.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/output_gate_query_c2f_riid.pt

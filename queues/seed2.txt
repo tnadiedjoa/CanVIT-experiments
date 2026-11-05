@@ -1,0 +1,4 @@
+# Third C2F tile order (seed 2) for the main flagship comparison (64x64 canvas, ADE20K val).
+results/grouping/s2/c2f_c64_t85_released.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 2
+results/grouping/s2/c2f_c64_t85_object0.9_from5_late0.97.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 2 --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/grouping/s2/c2f_c64_t85_local21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 2 --local-writes-from 21

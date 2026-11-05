@@ -1,0 +1,10 @@
+# Seed 1 (another C2F tile order) of the flagship's outside-cell comparisons, and the IN-1k pretraining at 64x64.
+results/grouping/s1/c2f_c64_t85_oracle_wrong_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 1 --masked-writes oracle --masked-writes-from 5 --oracle-cells wrong
+results/grouping/s1/c2f_c64_t85_oracle_correct_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 1 --masked-writes oracle --masked-writes-from 5 --oracle-cells correct
+results/grouping/s1/c2f_c64_t85_released.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 1
+results/grouping/s1/c2f_c64_t85_object0.9_from5_late0.97.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 1 --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/grouping/s1/c2f_c64_t85_local21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 1 --local-writes-from 21
+results/grouping/s1/c2f_c64_t85_oracle_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --seed 1 --masked-writes oracle --masked-writes-from 5
+results/ablations/c64/in1k_c2f_c64_t85_released.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --model in1k
+results/ablations/c64/in1k_c2f_c64_t85_local21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --model in1k --local-writes-from 21
+results/ablations/c64/in1k_c2f_c64_t85_object.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --model in1k --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97

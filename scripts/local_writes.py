@@ -302,6 +302,94 @@ class LearnedNullWrite(nn.Module):
             write.forward = forward
 
 
+class LearnedOutputGate(nn.Module):
+    """A sigmoid gate on each Write's output, per head and canvas cell, as Gated Attention does in language models
+    (Qiu et al. 2025), where such a gate removes the attention sinks. It is given nothing about the viewpoint. Its
+    logit is a learned bias plus, with `inputs`:
+
+    - query: a learned linear map of the cell's layer-normalized content (the Write's query input), as in Gated
+      Attention; that content says nothing about where the current glimpse is;
+    - attention: a learned linear map, across heads, of the share of the cell's attention on the glimpse's patch tokens
+      in each head (the rest goes to the prefix tokens, where the sink is);
+    - both.
+
+    The canvas registers keep their residuals; everything else in CanViT stays frozen. Initial gates sigmoid(3) ≈ 0.95.
+    The viewpoint serves only to log the mean gate inside and outside the crop (`describe`)."""
+
+    inputs: str = "query"
+
+    def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device) -> None:
+        super().__init__()
+        writes = canvit.canvas_writes
+        num_writes, heads, dim = len(writes), writes[0].num_heads, canvit.canvas_dim
+        self.query_weight = (nn.Parameter(torch.zeros(num_writes, dim, heads, device=device))
+                             if self.inputs in ("query", "both") else None)
+        self.attention_weight = (nn.Parameter(torch.zeros(num_writes, heads, heads, device=device))
+                                 if self.inputs in ("attention", "both") else None)
+        self.bias = nn.Parameter(torch.full((num_writes, heads), 3.0, device=device))
+        self.num_registers = canvit.config.num_canvas_registers
+        self.cell_centers = grid_coords(size=canvas_grid_size, device=device).flatten(0, 1)  # [G*G, 2]
+        self.inside: Tensor | None = None
+        self.mean_gates = torch.zeros(num_writes, 2, device=device)  # last glimpse: inside, outside the crop
+        self.writes = list(writes)
+        self.released_forwards = [write.forward for write in writes]
+        for index, write in enumerate(writes):
+            write.forward = self.forward_with_gate(write, index)
+
+    def forward_with_gate(self, write: CanvasAttention, index: int):
+        def forward(*, query: Tensor, kv: Tensor, query_rope: RoPE, kv_rope: RoPE) -> Tensor:
+            heads, R = write.num_heads, self.num_registers
+            cells = write.ln_q(query)
+            q = apply_2d_rope(to_multihead(write.q_map(cells), heads), query_rope)
+            kv = write.ln_kv(kv)
+            k = apply_2d_rope(to_multihead(write.k_map(kv), heads), kv_rope).to(q.dtype)
+            v = to_multihead(write.v_map(kv), heads).to(q.dtype)
+            out = F.scaled_dot_product_attention(q, k, v)  # [B, heads, N, head_dim]: the released Write
+            logit = self.bias[index].view(1, 1, heads)
+            if self.query_weight is not None:  # scaled so that one learning rate suits both inputs
+                logit = logit + cells.float() @ self.query_weight[index] / math.sqrt(cells.shape[-1])
+            if self.attention_weight is not None:
+                logits = q.float() @ k.float().transpose(-1, -2) * q.shape[-1] ** -0.5  # [B, heads, N, N_kv]
+                n_prefix = k.shape[2] - kv_rope.sin.shape[2]
+                on_patches = torch.sigmoid(logits[..., n_prefix:].logsumexp(-1) - logits[..., :n_prefix].logsumexp(-1))
+                logit = logit + on_patches.transpose(1, 2) @ self.attention_weight[index]
+            gate = torch.sigmoid(logit.expand(query.shape[0], query.shape[1], -1))  # [B, N, heads]
+            gate = torch.cat([torch.ones_like(gate[:, :R]), gate[:, R:]], dim=1)
+            if self.inside is not None:
+                with torch.no_grad():
+                    mean, inside = gate[:, R:].mean(dim=-1), self.inside.float()
+                    self.mean_gates[index, 0] = (mean * inside).sum() / inside.sum().clamp(min=1)
+                    self.mean_gates[index, 1] = (mean * (1 - inside)).sum() / (1 - inside).sum().clamp(min=1)
+            out = out * gate.transpose(1, 2).unsqueeze(-1).to(out.dtype)
+            return write.o_map(from_multihead(out))
+        return forward
+
+    def before_glimpse(self, t: int, viewpoint: Viewpoint) -> None:
+        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.unsqueeze(1)).abs().amax(dim=-1)
+        self.inside = offsets <= viewpoint.scales.view(-1, 1)  # [B, G*G], for the log only
+
+    def describe(self) -> dict[str, list[list[float]]]:
+        return {"gate_inside": [[g] for g in self.mean_gates[:, 0].tolist()],
+                "gate_outside": [[g] for g in self.mean_gates[:, 1].tolist()],
+                "bias": torch.sigmoid(self.bias).tolist()}
+
+    def remove(self) -> None:
+        for write, forward in zip(self.writes, self.released_forwards):
+            write.forward = forward
+
+
+class QueryOutputGate(LearnedOutputGate):
+    inputs = "query"
+
+
+class AttentionOutputGate(LearnedOutputGate):
+    inputs = "attention"
+
+
+class QueryAttentionOutputGate(LearnedOutputGate):
+    inputs = "both"
+
+
 class FinetunedModules(nn.Module):
     """Some of CanViT's Canvas Attention modules (`groups`: "reads", "writes"), with their own parameters trained
     further while the rest of CanViT stays frozen. Its state dict holds their parameters."""
@@ -373,7 +461,9 @@ class FinetunedCanViT(nn.Module):
 
 
 LEARNED_WRITES = {"gate": LearnedWriteGate, "null": LearnedNullWrite, "writes": FinetunedWrites,
-                  "canvas_attention": FinetunedCanvasAttention, "canvit": FinetunedCanViT}
+                  "canvas_attention": FinetunedCanvasAttention, "canvit": FinetunedCanViT,
+                  "output_gate_query": QueryOutputGate, "output_gate_attention": AttentionOutputGate,
+                  "output_gate_both": QueryAttentionOutputGate}
 
 
 def load_learned_writes(canvit: CanViT, path, *, canvas_grid_size: int, device: torch.device) -> nn.Module:

@@ -1,0 +1,16 @@
+# Do the Write rules transfer to other policies without retuning? Flagship, 64x64 canvas, 85 glimpses, ADE20K val, the
+# C2F settings unchanged (local Writes from glimpse 21; object Writes 0.9 from 5, 0.97 from 21). R-IID is the
+# pretraining policy (random centers and scales); EG-C2F visits each C2F level's tiles by decreasing probe entropy.
+results/policies/riid_c64_t85_released.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy random
+results/policies/riid_c64_t85_local21.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy random --local-writes-from 21
+results/policies/riid_c64_t85_object.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy random --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/policies/egc2f_c64_t85_released.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy entropy_coarse_to_fine
+results/policies/egc2f_c64_t85_local21.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy entropy_coarse_to_fine --local-writes-from 21
+results/policies/egc2f_c64_t85_object.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy entropy_coarse_to_fine --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+# Seed 1 of R-IID, where released Writes do not lose mIoU over 85 glimpses but object Writes still gain.
+results/policies/riid_c64_t85_released_s1.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy random --seed 1
+results/policies/riid_c64_t85_object_s1.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy random --seed 1 --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+# F2C: C2F's sequence reversed (the 64 level-3 tiles first, the full view last).
+results/policies/f2c_c64_t85_released.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy fine_to_coarse
+results/policies/f2c_c64_t85_local21.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy fine_to_coarse --local-writes-from 21
+results/policies/f2c_c64_t85_object.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy fine_to_coarse --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
