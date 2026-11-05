@@ -1134,9 +1134,11 @@ with local Writes from glimpse 21 and object Writes at 0.9 from glimpse 5, then 
   Here local Writes hurt: from glimpse 21 they fall behind released Writes (28.35 against 31.25 at t = 40, 29.65
   against 33.63 at t = 64), and only tie once the coarse glimpses cover everything (37.09 at t = 84). Early on, the
   outside cells need what the Writes leave in them. Object Writes are ahead all along: +0.70 [+0.47, +0.94] at
-  t = 20, 36.35 at t = 64 and 41.20 at t = 84, +4.14 [+3.75, +4.62] over released Writes. This is the clearest case
-  of *which* cells mattering. Writing into none of the outside cells loses, and writing into all of them loses more
-  than writing only into the cells that resemble the crop.
+  t = 20, 36.35 at t = 64 and 41.20 at t = 84, +4.14 [+3.75, +4.62] over released Writes. With seed 1, released
+  Writes give 27.90 / 37.18 at t = 20 / 84 and object Writes 28.79 / 41.75: +0.89 [+0.69, +1.16] and +4.57 [+4.05,
+  +5.14]. This is the clearest case
+  of *which* cells mattering. Through level 3, writing into none of the outside cells does worse than writing into
+  all of them, and both do worse than writing only into the cells that resemble the crop.
 
 **Averaging the predictions instead.** A fix on the readout side needs no viewpoint: average each cell's class
 probabilities over the glimpses (`--readout mean_probs`, released Writes; [`queues/readout.txt`](queues/readout.txt)).
