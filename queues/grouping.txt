@@ -1,0 +1,19 @@
+# Grouping by recognition (bio_vision.MaskedWrites predict): an outside cell is written when its predicted class is
+# predicted inside the crop. ADE20K, C2F 85, 64x64, released flagship; then the references again with per-image counts.
+results/grouping/c2f_c64_t85_predicted_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --masked-writes predicted --masked-writes-from 5
+results/grouping/c2f_c64_t85_predicted_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --masked-writes predicted --masked-writes-from 21
+results/grouping/c2f_c64_t85_released.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4
+results/grouping/c2f_c64_t85_object0.9_from5_late0.97.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/grouping/c2f_c64_t85_oracle_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --masked-writes oracle --masked-writes-from 5
+results/grouping/c2f_c64_t85_local21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --local-writes-from 21
+# cancelled 05:25 (predicted grouping is below object Writes): results/grouping/c2f_c64_t85_predicted_from1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --masked-writes predicted --masked-writes-from 1
+# Object Writes compared in the probe's class probabilities (calibration: reach 0.40-0.55, precision 0.95-0.96 at 0.99).
+results/grouping/c2f_c64_t85_probs0.99_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --object-writes-threshold 0.99 --object-writes-from 5 --object-writes-space probs
+results/grouping/c2f_c64_t85_probs0.995_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --object-writes-threshold 0.995 --object-writes-from 5 --object-writes-space probs
+# Where the oracle's gain comes from: only the same-class outside cells the probe gets right, or only those it gets wrong.
+results/grouping/c2f_c64_t85_oracle_correct_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --masked-writes oracle --masked-writes-from 5 --oracle-cells correct
+results/grouping/c2f_c64_t85_oracle_wrong_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --masked-writes oracle --masked-writes-from 5 --oracle-cells wrong
+# Object Writes into the similar outside cells the probe is unsure of (top class probability below 0.7): the oracle's
+# gain comes from same-class cells the model gets wrong.
+results/grouping/c2f_c64_t85_object0.9_conf0.7_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --object-writes-from 5 --object-writes-threshold 0.9 --object-writes-max-confidence 0.7
+results/grouping/c2f_c64_t85_object0.85_conf0.7_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --object-writes-from 5 --object-writes-threshold 0.85 --object-writes-max-confidence 0.7

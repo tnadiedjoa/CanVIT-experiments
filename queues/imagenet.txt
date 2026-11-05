@@ -1,0 +1,5 @@
+# ImageNet-1k top-1 by glimpse, fine-tuned flagship classifier (recurrent CLS), C2F 85, 32x32 canvas, 10 000 images.
+results/imagenet/c2f_c32_t85_released.json scripts/imagenet_rollouts.py --num-glimpses 85 --stride 5
+results/imagenet/c2f_c32_t85_local21.json scripts/imagenet_rollouts.py --num-glimpses 85 --stride 5 --local-writes-from 21
+results/imagenet/c2f_c32_t85_object.json scripts/imagenet_rollouts.py --num-glimpses 85 --stride 5 --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/imagenet/c2f_c32_t85_released_evidence.json scripts/imagenet_rollouts.py --num-glimpses 85 --stride 5

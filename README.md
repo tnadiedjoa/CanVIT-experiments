@@ -912,9 +912,129 @@ glimpse on depth (above).
   fine-tuning: 45.73).
 - *Fine-tuning with a third of the rollouts as microsaccades.* Shifted views give 43.46 at t = 20 (43.52 without).
 
+### The whole CanViT family: the same leak, the same fix, and which cells a Write should reach
+
+The Hub's `canvit` organization also releases the paper's twelve pretraining ablations (a shorter schedule of
+214,656 steps) and a pretraining on ImageNet-1k, each with an ADE20K probe on the 32×32 canvas: fourteen pretrained
+CanViT-B in all. [`scripts/bio_rollouts.py`](scripts/bio_rollouts.py) loads any of them with `--model in1k` or
+`--model abl-<slug>`. Unless noted, the runs below use C2F for 85 glimpses on the 32×32 canvas, in batches of 32 (the
+batch sets the tile orders, so all the conditions of a model share them), with the mIoU after every glimpse up to
+t = 20 and every fourth one after. Intervals are 95% paired bootstraps over the 2,000 images
+([`scripts/paired_bootstrap.py`](scripts/paired_bootstrap.py), on the per-image counts each run saves next to its
+result, `*.per_image.pt`, which are not kept in the repository).
+
+**Every pretraining drifts past level 2, and local Writes repair every one.** The leak is measured by
+[`scripts/write_leakage.py`](scripts/write_leakage.py) on 128 scenes: the share of the outside cells' attention on
+the glimpse's positionless prefix tokens at level 3, the token that takes most of it, and the leaked residuals summed
+over level 3 relative to the cell's own.
+
+| Pretraining | t = 20 | t = 84, released | t = 84, local Writes from level 3 | prefix share (top token) | leak |
+|---|---|---|---|---|---|
+| flagship (IN-21k) | 44.20 | 41.05 (−7.1%) | 44.48 | 0.95 (register 3: 0.92) | 8.3× |
+| IN-1k | 42.03 | 40.38 (−3.9%) | 42.42 | 0.92 (register 2: 0.77) | 8.7× |
+| ablation baseline | 38.06 | 35.29 (−7.3%) | 38.64 | 0.96 (register 3: 0.79) | 8.5× |
+| D_can 256 + QKVO | 34.66 | 33.64 (−2.9%) | 34.97 | 0.96 (register 1: 0.91) | 6.6× |
+| D_can 384 + QKVO | 36.38 | 35.30 (−3.0%) | 36.54 | 0.97 (register 4: 0.69) | 4.3× |
+| D_can 256 | 34.26 | 33.70 (−1.6%) | 34.61 | 0.97 (VPE: 0.91) | 7.6× |
+| 1 Read / 1 Write | 34.06 | 29.03 (−14.8%) | 34.51 | 0.96 (VPE: 0.28) | 10.5× |
+| no Reads | 31.90 | 26.33 (−17.4%) | 32.33 | 1.00 (VPE: 0.99) | 12.8× |
+| no VPE | 37.11 | 33.01 (−11.0%) | 37.59 | 0.97 (register 3: 0.90) | 10.4× |
+| ViT-S backbone | 32.38 | 27.99 (−13.5%) | 32.81 | 0.97 (register 0: 0.75) | 10.7× |
+| no BPTT | 34.36 | 31.11 (−9.4%) | 34.87 | 0.97 (register 0: 0.50) | 7.5× |
+| no dense loss | 17.77 | 14.61 (−17.8%) | 18.33 | 0.72 (register 2: 0.28) | 22.7× |
+| no F-IID (1 R-IID) | 29.78 | 27.08 (−9.1%) | 30.47 | 0.89 (register 0: 0.39) | 13.7× |
+| no F-IID (2 R-IID) | 32.27 | 29.87 (−7.4%) | 33.17 | 0.90 (register 4: 0.44) | 15.5× |
+
+- All fourteen lose mIoU from t = 20 to t = 84 with released Writes, by 1.6% to 17.8%. With Writes kept in the crop
+  from level 3, all fourteen end above their t = 20.
+- Every model has a sink: the cells the glimpse does not cover put 89–100% of their attention on the positionless
+  prefix (72% without the dense loss). Which token plays the sink is not built in: it is backbone register 0, 1, 2, 3
+  or 4, or the VPE, depending on the run. In every model, 78–96% of the leak's energy is one vector added to every
+  cell.
+- The leak predicts the drop: Spearman ρ = −0.72 (p = 0.004) against the relative change from t = 20 to t = 84
+  (−0.46 in points, as the models' mIoU ranges from 18 to 44). The two ablations trained without F-IID, on random
+  glimpses only, lose less than their leak predicts.
+- An output projection on the Writes (QKVO) does not remove the sink or the drop: at D_can 256, the QKVO model loses
+  2.9%, the model without it 1.6%.
+- **The paper's reconstruction metric agrees, without probes** (500 scenes, 13 models: the ablation without the
+  dense loss has no trained patch head). The canvas's cosine similarity to DINOv3's features falls from t = 20 to
+  t = 84 in all thirteen (flagship 0.8388 to 0.8053, no Reads 0.7122 to 0.6410), and local Writes bring it back to
+  its t = 20 level or above (flagship 0.8401, no Reads 0.7122; at most 0.0006 below, for the two QKVO models and
+  D_can 256). The CLS prediction falls too, and local Writes do not help it (flagship 0.835 to 0.777, local 0.767).
+- Object Writes with the flagship's thresholds (0.9 from glimpse 5, 0.97 from 21) beat local ones on the flagship
+  (44.68 / 44.69 at t = 20 / 84), IN-1k (42.55 / 42.85), the baseline (38.57 / 38.99), D_can 256 + QKVO (34.92 /
+  35.16) and ViT-S (32.95 / 33.02). On 1 Read / 1 Write they do worse than local (34.11 / 32.99): its canvas cells
+  are much more alike, and the same thresholds reach 95% of the outside cells at level 2 (42% on the flagship).
+
+![The family's change from t = 20 to t = 84](outputs/family_changes.png)
+
+![Leak against drop](outputs/family_leak.png)
+
+**Which outside cells a Write should reach.** Flagship, 64×64 canvas, C2F 85, from glimpse 5 unless noted. *Reach*
+is the share of the outside cells written at levels 2 and 3. The last column compares each rule with object Writes at
+t = 84.
+
+| Outside cells a Write reaches | reach | t = 20 | t = 84 | t = 84, against object Writes |
+|---|---|---|---|---|
+| all (released) | 1 / 1 | 45.93 | 43.65 | −2.97 [−3.47, −2.50] |
+| random, in the share of object Writes at 0.95 | 0.23 / 0.16 | 46.08 | 46.30 | |
+| object Writes at 0.95 | 0.23 / 0.16 | 46.29 | 46.53 | |
+| random from level 3, in the share of object Writes at 0.97 | 0 / 0.10 | 45.93 | 46.24 | |
+| object Writes from level 3 at 0.97 | 0 / 0.10 | 45.93 | 46.57 | |
+| none from level 3 (local) | 1 / 0 | 45.93 | 46.40 | −0.21 [−0.42, −0.02] |
+| predicted class shared with the crop | 0.57 / 0.47 | 46.11 | 46.27 | −0.34 [−0.52, −0.15] |
+| probe probabilities similar (cosine ≥ 0.99) | 0.43 / 0.34 | 46.09 | 46.39 | −0.22 [−0.40, −0.05] |
+| object Writes, uncertain cells only (top probability < 0.7) | 0.11 / 0.08 | 46.27 | 46.39 | −0.23 [−0.41, −0.00] |
+| **object Writes** (canvas similarity 0.9, then 0.97) | 0.42 / 0.10 | **46.29** | **46.61** | |
+| *oracle:* ground-truth class shared with the crop | 0.51 / 0.42 | 46.84 | 47.71 | +1.10 [+0.89, +1.44] |
+| *oracle,* only the cells the probe gets right | 0.42 / 0.35 | 45.57 | 45.65 | −0.96 [−1.16, −0.70] |
+| *oracle,* only the cells the probe gets wrong | 0.08 / 0.06 | 47.30 | 48.39 | +1.78 [+1.59, +2.00] |
+
+- Object Writes against released ones: +0.36 [+0.21, +0.55] at t = 20, above the paper's C2F number with no
+  training, and +2.97 [+2.50, +3.47] at t = 84.
+- Random outside cells in the object Writes' share do worse than the object Writes (46.30 against 46.53, and 46.24
+  against 46.57 from level 3), and from level 3 worse than writing none (46.40): which cells, not how many.
+- Grouping by the probe is more precise by class than canvas similarity (on 32 scenes, 95–96% of the cells with
+  similar probabilities share a class with the crop, against 89–92% for canvas similarity 0.9 at a similar reach), yet
+  it does worse.
+- The oracle explains why. Restricted to the same-class cells the probe already gets right, it is worse than writing
+  none (45.65). Restricted to the ones it gets wrong, 6–8% of the outside cells, it beats the full oracle (48.39). A Write into a cell
+  the model gets right harms it, even when the labels agree; its gain is in correcting the others, which no rule
+  built on the model's own predictions can find. On 32 scenes, 87–89% of the cells object Writes reach are already
+  right, and requiring the probe to be unsure there (top probability below 0.7) keeps 45–70% of the wrong ones but
+  still writes into right ones (53–60% of the cells it reaches): no better.
+
+![Which outside cells to write](outputs/write_which_cells.png)
+
+**Gating the Writes by their own sink attention fails.** It would need no viewpoint: from some glimpse on, a cell
+keeps a Write's residual only if it puts less than a threshold of its attention on the prefix tokens
+(`local_writes.SinkGatedWrites`). Inside the crop, the prefix gets 0.24–0.47 of the attention, outside 0.74–0.98, so
+the threshold separates them. Yet from level 3 at 0.9, C2F collapses to 38.96 at t = 84. The outside cells that escape
+the sink are the ones attending to real patches, so the gate keeps exactly the largest, content-bearing leaked
+residuals. Those cells drift, escape the sink more, and the share of outside cells kept grows from 22% at t = 21 to 55%
+at t = 84, while the canvas norm reaches 123k (58k with released Writes). At 0.7 it ends at 45.66, below local Writes;
+from glimpse 5 at 0.9 or from glimpse 1 at 0.97, it ends at 38.85 and 39.66.
+
+**Longer than C2F.** After C2F's 85 glimpses, a second pass over the 64 level-3 tiles, each view shifted by at most
+half a level-3 patch (`--policy c2f_then_jittered_level3`, 32×32 canvas): released Writes keep falling (44.07,
+41.09, 37.58 at t = 20, 84, 148); local Writes stay level (44.07, 44.37, 44.32), and object Writes too (44.55, 44.63,
+44.30).
+
+**ImageNet-1k: the recurrent CLS forgets for another reason.** [`scripts/imagenet_rollouts.py`](scripts/imagenet_rollouts.py)
+runs the released fine-tuned classifier, which reads the recurrent CLS token, on 10,000 validation images (every
+fifth), C2F, 32×32 canvas. Top-1 rises from 80.45 (full view) to 84.98 at t = 11 and falls to 83.45 at t = 84. Local
+Writes barely change it (83.63, +0.18 [−0.06, +0.42]), nor do object Writes (83.42): the CLS sees the canvas only
+through the Reads, and at level 3 each glimpse's tile overwrites it. Accumulating its evidence over the glimpses, as
+sequential-sampling models of decisions do, recovers most of the drop: the mean of the class probabilities so far
+gives 84.96 at t = 20 and 84.52 at t = 84 (+1.07 [+0.78, +1.37] over the CLS alone), with a maximum of 85.07 at
+t = 27; the sum of the log-probabilities gives 84.51 at t = 84.
+
+![ImageNet-1k by glimpse](outputs/imagenet_glimpses.png)
+
 ### Limits
 
-- Three datasets. On Cityscapes and NYU Depth v2, the probes are trained here. Every Cityscapes run uses one seed,
+- Four datasets. On Cityscapes and NYU Depth v2, the probes are trained here; ImageNet-1k uses a fifth of the
+  validation set (10,000 images). Every Cityscapes run uses one seed,
   except the comparison of released Writes with Writes kept in the crop from level 2 (three seeds) and the object
   Writes from glimpse 5 at 0.97 (two seeds). Each depth probe is trained once.
 - Deterministic policies (RFS, EG-C2F and the scored tile orders) ran once; the others ran over the seeds shown.
@@ -927,6 +1047,10 @@ glimpse on depth (above).
 - The primate-vision trainings (learned retinas, canvas shapes, RoPE wavelengths) run 1000 steps of short rollouts on
   ADE20K or Cityscapes training scenes, from the released model, once each except the no-zoom retina (two seeds). A
   model pretrained with a learned retina or canvas from the start may settle elsewhere.
+- The family study uses each model's released 32×32 probe and one C2F tile order per model; the ablations were
+  pretrained on a shorter schedule than the flagship and read lower. The object Writes' thresholds were chosen on the
+  flagship, and the grouping rules and the oracle's halves were compared on the flagship only. The bootstrap
+  intervals cover which images the benchmark holds, not the tile order or the probe.
 
 ## Setup
 
@@ -937,9 +1061,9 @@ git clone https://github.com/m2b3/CanViT external/CanViT   # the paper's exporte
 ```
 
 ADE20K (`ADEChallengeData2016`) goes wherever `ADE20K_ROOT` points, Cityscapes (`gtFine_trainvaltest.zip` and
-`leftImg8bit_trainvaltest.zip`, unzipped) wherever `CITYSCAPES_ROOT` points, and NYU Depth v2
-(`nyu_depth_v2_labeled.mat` and `splits.mat`) wherever `NYU_ROOT` points; the queue runners and scripts set the
-defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
+`leftImg8bit_trainvaltest.zip`, unzipped) wherever `CITYSCAPES_ROOT` points, NYU Depth v2
+(`nyu_depth_v2_labeled.mat` and `splits.mat`) wherever `NYU_ROOT` points, and the ImageNet-1k validation images (one
+subdirectory per class) wherever `IMAGENET_VAL` points; the queue runners and scripts set the defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the Hugging Face Hub: request access, then `hf auth login`.
 
 ## Contents
 
@@ -956,7 +1080,10 @@ defaults. The depth script also needs `h5py` and `scipy`. DINOv3 is gated on the
 | `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT (with released, local or object Writes) and for DINOv3 at several input sizes. |
 | `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released, local or object Writes), of microsaccades, and of DINOv3 at several input sizes. |
 | `scripts/bio_vision.py` | The primate-vision mechanisms: CanViT's forward with free glimpse and canvas positions, microsaccade and central-gaze policies, foveated and learned retinas, patchwork glimpses, a canvas of learned Gaussian receptive fields (with a Write footprint, coarser cells, a per-scene reshaping, or a smooth warp), a canvas that grows where the eye zooms in, repetition-suppressing and object-shaped Writes, learned RoPE wavelengths. |
-| `scripts/bio_rollouts.py`, `scripts/bio_reconstruction.py` | ADE20K mIoU and the paper's reconstruction metric after every glimpse with those mechanisms, or with a training of `train_retina.py`. |
+| `scripts/bio_rollouts.py`, `scripts/bio_reconstruction.py` | ADE20K mIoU and the paper's reconstruction metric after every glimpse with those mechanisms, or with a training of `train_retina.py`, for any released pretraining (`--model`); the controls of the object Writes (random cells in their share, the ground-truth oracle and its halves, grouping by the probe), sink-gated Writes, rollouts past C2F; per-image counts for paired bootstraps. |
+| `scripts/imagenet_rollouts.py` | ImageNet-1k top-1 after every glimpse from the released fine-tuned classifier's recurrent CLS, with released, local or object Writes, and with its evidence accumulated over the glimpses. |
+| `scripts/paired_bootstrap.py` | Paired bootstrap interval of the difference between two runs on the same images (ADE20K mIoU or ImageNet top-1). |
+| `scripts/plot_family.py` | The family and outside-cell figures in `outputs/family_*.png`, `outputs/write_which_cells.png` and `outputs/imagenet_glimpses.png`. |
 | `scripts/train_retina.py` | Learns a retina, a canvas shape or RoPE wavelengths, with CanViT frozen or fine-tuned, on the paper's objective and short rollouts of ADE20K or Cityscapes scenes (with or without zoom, with gaze biased to the center, optionally with microsaccade rollouts); or saves the gradient on the canvas cells at the starting grid. |
 | `scripts/growing_canvas.py` | ADE20K mIoU of a 32×32 canvas that recruits 64×64-density cells in the crops of the first level-2 glimpses. |
 | `scripts/plot_bio.py` | The primate-vision figures in `outputs/bio_*.png`. |

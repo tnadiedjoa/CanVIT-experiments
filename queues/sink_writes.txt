@@ -1,0 +1,9 @@
+# Sink-gated Writes (local_writes.SinkGatedWrites): a cell keeps a Write's residual only if less than a threshold of
+# its attention goes to the glimpse's prefix tokens (the sink). No viewpoint, no similarity. C2F to level 3, ADE20K.
+results/sink/c2f_c64_t85_sink0.9_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --sink-writes-threshold 0.9 --sink-writes-from 21
+results/sink/c2f_c64_t85_sink0.8_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --sink-writes-threshold 0.8 --sink-writes-from 21
+results/sink/c2f_c64_t85_sink0.9_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --sink-writes-threshold 0.9 --sink-writes-from 5
+results/sink/c2f_c64_t85_sink0.97_from1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --sink-writes-threshold 0.97 --sink-writes-from 1
+results/sink/c2f_c64_t85_sink0.95_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --sink-writes-threshold 0.95 --sink-writes-from 5
+results/sink/c2f_c64_t85_sink0.7_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --sink-writes-threshold 0.7 --sink-writes-from 21
+results/sink/c2f_c64_t85_sink0.9_from1.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --sink-writes-threshold 0.9 --sink-writes-from 1

@@ -1,0 +1,252 @@
+{
+ "measurement": {
+  "output": "results/ablations/leak_in21k_c32.json",
+  "num_scenes": 128,
+  "canvas_grid_size": 32,
+  "pretrained_repo": "canvit/canvitb16-add-vpe-pretrain-g128px-s512px-in21k-dv3b16-2026-02-02",
+  "seed": 0,
+  "batch_size": 16,
+  "cache": "/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt",
+  "device": "cuda"
+ },
+ "pretrained_repo": "canvit/canvitb16-add-vpe-pretrain-g128px-s512px-in21k-dv3b16-2026-02-02",
+ "levels": [
+  {
+   "level": 0,
+   "first_glimpse": 0,
+   "glimpses": 1,
+   "residual_norm_inside": 6560.304138183594,
+   "residual_norm_outside": null,
+   "outside_over_inside": null,
+   "outside_by_distance": [],
+   "patch_norm_inside": 5742.3931884765625,
+   "prefix_norm_inside": 1555.39306640625,
+   "prefix_weight_inside": 0.29714346304535866,
+   "prefix_token_weight_inside": {
+    "VPE": 0.048054504208266735,
+    "recurrent CLS": 0.0326560758985579,
+    "backbone register 0": 0.0324792203027755,
+    "backbone register 1": 0.03813077928498387,
+    "backbone register 2": 0.030276776989921927,
+    "backbone register 3": 0.08255826961249113,
+    "backbone register 4": 0.032987830927595496
+   },
+   "prefix_token_weight_outside": null,
+   "per_write_outside_over_inside": null
+  },
+  {
+   "level": 1,
+   "first_glimpse": 1,
+   "glimpses": 4,
+   "residual_norm_inside": 5356.523239135742,
+   "residual_norm_outside": 1523.7313079833984,
+   "outside_over_inside": 0.2844627456949571,
+   "outside_by_distance": [
+    {
+     "crop_widths": [
+      0,
+      0.5
+     ],
+     "cells": 163840,
+     "outside_over_inside": 0.39744405726378407
+    },
+    {
+     "crop_widths": [
+      0.5,
+      1
+     ],
+     "cells": 229376,
+     "outside_over_inside": 0.20376178878999304
+    }
+   ],
+   "patch_norm_inside": 5243.683990478516,
+   "patch_norm_outside": 1078.9117813110352,
+   "prefix_norm_inside": 977.0254020690918,
+   "prefix_norm_outside": 880.9608707427979,
+   "prefix_weight_inside": 0.31240837648510933,
+   "prefix_weight_outside": 0.857888825237751,
+   "prefix_token_weight_inside": {
+    "VPE": 0.008495512593071908,
+    "recurrent CLS": 0.0037231498572509736,
+    "backbone register 0": 0.03577926830621436,
+    "backbone register 1": 0.005891616972803604,
+    "backbone register 2": 0.022104864940047264,
+    "backbone register 3": 0.207559319678694,
+    "backbone register 4": 0.028854645905084908
+   },
+   "prefix_token_weight_outside": {
+    "VPE": 0.028147269797045738,
+    "recurrent CLS": 0.003557816016837023,
+    "backbone register 0": 0.058882975950837135,
+    "backbone register 1": 0.016413469915278256,
+    "backbone register 2": 0.09740850678645074,
+    "backbone register 3": 0.5450936798006296,
+    "backbone register 4": 0.1083851046860218
+   },
+   "per_write_outside_over_inside": [
+    0.4551885400704563,
+    0.5279918492081538,
+    0.3864023088578771
+   ]
+  },
+  {
+   "level": 2,
+   "first_glimpse": 5,
+   "glimpses": 16,
+   "residual_norm_inside": 5177.608659744263,
+   "residual_norm_outside": 920.6632304191589,
+   "outside_over_inside": 0.17781630303141396,
+   "outside_by_distance": [
+    {
+     "crop_widths": [
+      0,
+      0.5
+     ],
+     "cells": 270336,
+     "outside_over_inside": 0.44940017658416254
+    },
+    {
+     "crop_widths": [
+      0.5,
+      1
+     ],
+     "cells": 417792,
+     "outside_over_inside": 0.17895633123664212
+    },
+    {
+     "crop_widths": [
+      1,
+      2
+     ],
+     "cells": 786432,
+     "outside_over_inside": 0.12836302180336023
+    },
+    {
+     "crop_widths": [
+      2,
+      4
+     ],
+     "cells": 491520,
+     "outside_over_inside": 0.10660135819689372
+    }
+   ],
+   "patch_norm_inside": 5192.762626647949,
+   "patch_norm_outside": 619.6587679386139,
+   "prefix_norm_inside": 635.8393445014954,
+   "prefix_norm_outside": 554.5707440376282,
+   "prefix_weight_inside": 0.3414487314876169,
+   "prefix_weight_outside": 0.9093408933840692,
+   "prefix_token_weight_inside": {
+    "VPE": 0.002762286413599213,
+    "recurrent CLS": 0.003117629988992121,
+    "backbone register 0": 0.0123963079713576,
+    "backbone register 1": 0.001931062426592689,
+    "backbone register 2": 0.007547175664512906,
+    "backbone register 3": 0.30335758707951754,
+    "backbone register 4": 0.010336682615161408
+   },
+   "prefix_token_weight_outside": {
+    "VPE": 0.007525782824814087,
+    "recurrent CLS": 0.0016960302300503827,
+    "backbone register 0": 0.016871229658136144,
+    "backbone register 1": 0.004815444037376437,
+    "backbone register 2": 0.029763956874376163,
+    "backbone register 3": 0.8107801680453122,
+    "backbone register 4": 0.03788827173411846
+   },
+   "per_write_outside_over_inside": [
+    0.35360652441005835,
+    0.4022803662115375,
+    0.34348506726229594
+   ]
+  },
+  {
+   "level": 3,
+   "first_glimpse": 21,
+   "glimpses": 64,
+   "residual_norm_inside": 3994.2619109153748,
+   "residual_norm_outside": 644.4833636283875,
+   "outside_over_inside": 0.16135230438123413,
+   "outside_by_distance": [
+    {
+     "crop_widths": [
+      0,
+      0.5
+     ],
+     "cells": 329728,
+     "outside_over_inside": 0.611164853547178
+    },
+    {
+     "crop_widths": [
+      0.5,
+      1
+     ],
+     "cells": 530432,
+     "outside_over_inside": 0.28439831659041237
+    },
+    {
+     "crop_widths": [
+      1,
+      2
+     ],
+     "cells": 1376256,
+     "outside_over_inside": 0.16113386713995445
+    },
+    {
+     "crop_widths": [
+      2,
+      4
+     ],
+     "cells": 3170304,
+     "outside_over_inside": 0.1300743349164279
+    },
+    {
+     "crop_widths": [
+      4,
+      8
+     ],
+     "cells": 2850816,
+     "outside_over_inside": 0.12132091907245181
+    }
+   ],
+   "patch_norm_inside": 4022.122308731079,
+   "patch_norm_outside": 317.71630945801735,
+   "prefix_norm_inside": 495.47981429100037,
+   "prefix_norm_outside": 480.96426033973694,
+   "prefix_weight_inside": 0.4545304986531846,
+   "prefix_weight_outside": 0.9470978621393442,
+   "prefix_token_weight_inside": {
+    "VPE": 0.0008067334514407776,
+    "recurrent CLS": 0.001149151411141247,
+    "backbone register 0": 0.003969793185206072,
+    "backbone register 1": 0.0006942527344335758,
+    "backbone register 2": 0.0019968440182083214,
+    "backbone register 3": 0.4427606718381867,
+    "backbone register 4": 0.003153053778305548
+   },
+   "prefix_token_weight_outside": {
+    "VPE": 0.0022825382407063444,
+    "recurrent CLS": 0.0008833507562258092,
+    "backbone register 0": 0.004619360243395931,
+    "backbone register 1": 0.0017950244732674037,
+    "backbone register 2": 0.005243575651093124,
+    "backbone register 3": 0.9241090116556734,
+    "backbone register 4": 0.008164985520124901
+   },
+   "per_write_outside_over_inside": [
+    0.3921496040428473,
+    0.4500539848088246,
+    0.45377012496973146
+   ]
+  }
+ ],
+ "level3_leaked_sum_norm": 33042.758056640625,
+ "level3_own_sum_norm": 3994.2619018554688,
+ "level3_leaked_over_own": 8.272556699722458,
+ "level3_leaked_common_fraction": 0.8784346207976341,
+ "level3_leaked_prefix_sum_norm": 28534.267578125,
+ "level3_leaked_patch_sum_norm": 16026.751098632812,
+ "level3_leaked_prefix_common_fraction": 0.9741858467459679,
+ "level3_leaked_patch_common_fraction": 0.6393135860562325,
+ "final_canvas_patch_norm": 59111.89697265625
+}

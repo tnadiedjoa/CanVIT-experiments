@@ -1,0 +1,641 @@
+{
+ "experiment": {
+  "output": "results/ablations/reconstruction/abl-baseline_c2f_c32_t85_local21.json",
+  "model": "abl-baseline",
+  "per_image_at": [],
+  "eval_stride_after_20": 1,
+  "policy": "coarse_to_fine",
+  "num_glimpses": 85,
+  "canvas_grid_size": 32,
+  "probe_canvas_grid_size": null,
+  "fovea": null,
+  "trained": null,
+  "shape_readout_px": 128,
+  "novelty": null,
+  "novelty_strength": 1.0,
+  "novelty_from": 1,
+  "object_writes_threshold": null,
+  "object_writes_from": 21,
+  "object_writes_late_threshold": null,
+  "local_writes_from": 21,
+  "masked_writes": null,
+  "masked_writes_from": 5,
+  "masked_writes_reach": null,
+  "sink_writes_threshold": null,
+  "sink_writes_from": 1,
+  "sink_writes_token": null,
+  "density": null,
+  "density_mix": 0.5,
+  "microsaccade_scale": 0.875,
+  "microsaccade_jitter": 0.125,
+  "microsaccade_outside": false,
+  "microsaccade_sequence": "random",
+  "microsaccade_first_full_scene": true,
+  "patchwork_block": 1,
+  "seed": 0,
+  "batch_size": 16,
+  "cache": "/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt",
+  "num_images": 500,
+  "device": "cuda"
+ },
+ "pretrained_repo": "canvit/canvitb16-abl-baseline-2026-03-02",
+ "per_timestep": [
+  {
+   "t": 0,
+   "scene_cos_raw": 0.8507725605964661,
+   "cls_cos_raw": 0.6546813073158264,
+   "scene_cos_norm": 0.7099522814750672,
+   "cls_cos_norm": 0.6652930278778076
+  },
+  {
+   "t": 1,
+   "scene_cos_raw": 0.8592034893035889,
+   "cls_cos_raw": 0.6895789136886596,
+   "scene_cos_norm": 0.7270874443054199,
+   "cls_cos_norm": 0.6998042278289794
+  },
+  {
+   "t": 2,
+   "scene_cos_raw": 0.8646562895774841,
+   "cls_cos_raw": 0.7011977543830872,
+   "scene_cos_norm": 0.7380698404312134,
+   "cls_cos_norm": 0.7107542161941528
+  },
+  {
+   "t": 3,
+   "scene_cos_raw": 0.8692798318862915,
+   "cls_cos_raw": 0.7079993257522583,
+   "scene_cos_norm": 0.7474372148513794,
+   "cls_cos_norm": 0.7170391364097595
+  },
+  {
+   "t": 4,
+   "scene_cos_raw": 0.8735697460174561,
+   "cls_cos_raw": 0.713966404914856,
+   "scene_cos_norm": 0.7560969486236572,
+   "cls_cos_norm": 0.7223824543952941
+  },
+  {
+   "t": 5,
+   "scene_cos_raw": 0.8739494338035584,
+   "cls_cos_raw": 0.714561164855957,
+   "scene_cos_norm": 0.7568135290145874,
+   "cls_cos_norm": 0.7229547472000122
+  },
+  {
+   "t": 6,
+   "scene_cos_raw": 0.874228253364563,
+   "cls_cos_raw": 0.7144646191596985,
+   "scene_cos_norm": 0.7573402528762817,
+   "cls_cos_norm": 0.722841944694519
+  },
+  {
+   "t": 7,
+   "scene_cos_raw": 0.8744615483283996,
+   "cls_cos_raw": 0.7137235879898072,
+   "scene_cos_norm": 0.7577947740554809,
+   "cls_cos_norm": 0.7221114921569824
+  },
+  {
+   "t": 8,
+   "scene_cos_raw": 0.8746019058227539,
+   "cls_cos_raw": 0.7131178684234619,
+   "scene_cos_norm": 0.7580670285224914,
+   "cls_cos_norm": 0.7215023107528686
+  },
+  {
+   "t": 9,
+   "scene_cos_raw": 0.8747770810127258,
+   "cls_cos_raw": 0.7129555487632752,
+   "scene_cos_norm": 0.7584133358001709,
+   "cls_cos_norm": 0.7212940068244934
+  },
+  {
+   "t": 10,
+   "scene_cos_raw": 0.8749163317680358,
+   "cls_cos_raw": 0.7131037197113037,
+   "scene_cos_norm": 0.758676441192627,
+   "cls_cos_norm": 0.7213604264259338
+  },
+  {
+   "t": 11,
+   "scene_cos_raw": 0.8750385146141052,
+   "cls_cos_raw": 0.7129137010574341,
+   "scene_cos_norm": 0.7589095005989075,
+   "cls_cos_norm": 0.7211049127578736
+  },
+  {
+   "t": 12,
+   "scene_cos_raw": 0.8751309871673584,
+   "cls_cos_raw": 0.7126794204711914,
+   "scene_cos_norm": 0.7590711488723755,
+   "cls_cos_norm": 0.7208015866279602
+  },
+  {
+   "t": 13,
+   "scene_cos_raw": 0.875250216960907,
+   "cls_cos_raw": 0.7125034980773925,
+   "scene_cos_norm": 0.7592905693054199,
+   "cls_cos_norm": 0.7205678405761718
+  },
+  {
+   "t": 14,
+   "scene_cos_raw": 0.8753333320617676,
+   "cls_cos_raw": 0.7123252115249634,
+   "scene_cos_norm": 0.7594482183456421,
+   "cls_cos_norm": 0.7203661799430847
+  },
+  {
+   "t": 15,
+   "scene_cos_raw": 0.8754319334030152,
+   "cls_cos_raw": 0.7120344381332397,
+   "scene_cos_norm": 0.759634202003479,
+   "cls_cos_norm": 0.7200459184646606
+  },
+  {
+   "t": 16,
+   "scene_cos_raw": 0.8755451526641845,
+   "cls_cos_raw": 0.7118595881462098,
+   "scene_cos_norm": 0.7598520159721375,
+   "cls_cos_norm": 0.7198369402885437
+  },
+  {
+   "t": 17,
+   "scene_cos_raw": 0.8756713933944702,
+   "cls_cos_raw": 0.7116947951316833,
+   "scene_cos_norm": 0.7600736999511719,
+   "cls_cos_norm": 0.7196273093223572
+  },
+  {
+   "t": 18,
+   "scene_cos_raw": 0.8757447309494019,
+   "cls_cos_raw": 0.7115877389907836,
+   "scene_cos_norm": 0.7602111959457397,
+   "cls_cos_norm": 0.7194769306182861
+  },
+  {
+   "t": 19,
+   "scene_cos_raw": 0.8758767700195312,
+   "cls_cos_raw": 0.7116260085105895,
+   "scene_cos_norm": 0.7604597377777099,
+   "cls_cos_norm": 0.7194719696044922
+  },
+  {
+   "t": 20,
+   "scene_cos_raw": 0.8759808139801025,
+   "cls_cos_raw": 0.7115064001083374,
+   "scene_cos_norm": 0.7606635251045227,
+   "cls_cos_norm": 0.7193144426345826
+  },
+  {
+   "t": 21,
+   "scene_cos_raw": 0.8759891052246094,
+   "cls_cos_raw": 0.7107565412521363,
+   "scene_cos_norm": 0.7606786017417908,
+   "cls_cos_norm": 0.7186109523773193
+  },
+  {
+   "t": 22,
+   "scene_cos_raw": 0.8759944405555725,
+   "cls_cos_raw": 0.7099623441696167,
+   "scene_cos_norm": 0.7606873970031738,
+   "cls_cos_norm": 0.7178470029830932
+  },
+  {
+   "t": 23,
+   "scene_cos_raw": 0.8760032477378845,
+   "cls_cos_raw": 0.7092475690841675,
+   "scene_cos_norm": 0.7607044849395752,
+   "cls_cos_norm": 0.7171650881767273
+  },
+  {
+   "t": 24,
+   "scene_cos_raw": 0.8760087528228759,
+   "cls_cos_raw": 0.7084859809875488,
+   "scene_cos_norm": 0.7607134914398194,
+   "cls_cos_norm": 0.7164404792785645
+  },
+  {
+   "t": 25,
+   "scene_cos_raw": 0.8760120558738709,
+   "cls_cos_raw": 0.7077924432754517,
+   "scene_cos_norm": 0.7607208385467529,
+   "cls_cos_norm": 0.715770679473877
+  },
+  {
+   "t": 26,
+   "scene_cos_raw": 0.87602077293396,
+   "cls_cos_raw": 0.7071546964645385,
+   "scene_cos_norm": 0.7607362422943115,
+   "cls_cos_norm": 0.7151556940078735
+  },
+  {
+   "t": 27,
+   "scene_cos_raw": 0.876026415348053,
+   "cls_cos_raw": 0.7064763669967651,
+   "scene_cos_norm": 0.7607463788986206,
+   "cls_cos_norm": 0.714501841545105
+  },
+  {
+   "t": 28,
+   "scene_cos_raw": 0.876030743598938,
+   "cls_cos_raw": 0.7058327703475952,
+   "scene_cos_norm": 0.7607546033859253,
+   "cls_cos_norm": 0.7138818712234497
+  },
+  {
+   "t": 29,
+   "scene_cos_raw": 0.876035617351532,
+   "cls_cos_raw": 0.7051905817985534,
+   "scene_cos_norm": 0.7607646026611328,
+   "cls_cos_norm": 0.7132609767913818
+  },
+  {
+   "t": 30,
+   "scene_cos_raw": 0.8760406875610351,
+   "cls_cos_raw": 0.7046939253807067,
+   "scene_cos_norm": 0.7607729105949402,
+   "cls_cos_norm": 0.7127688293457031
+  },
+  {
+   "t": 31,
+   "scene_cos_raw": 0.8760450291633606,
+   "cls_cos_raw": 0.7041181192398072,
+   "scene_cos_norm": 0.7607806186676025,
+   "cls_cos_norm": 0.7122054843902588
+  },
+  {
+   "t": 32,
+   "scene_cos_raw": 0.8760485668182373,
+   "cls_cos_raw": 0.7035882134437561,
+   "scene_cos_norm": 0.7607849588394165,
+   "cls_cos_norm": 0.7116853771209717
+  },
+  {
+   "t": 33,
+   "scene_cos_raw": 0.8760562915802002,
+   "cls_cos_raw": 0.7030674753189087,
+   "scene_cos_norm": 0.7607974281311035,
+   "cls_cos_norm": 0.7111748490333557
+  },
+  {
+   "t": 34,
+   "scene_cos_raw": 0.8760667695999146,
+   "cls_cos_raw": 0.7026117467880248,
+   "scene_cos_norm": 0.7608151741027832,
+   "cls_cos_norm": 0.7107177700996399
+  },
+  {
+   "t": 35,
+   "scene_cos_raw": 0.8760735540390014,
+   "cls_cos_raw": 0.7021233539581299,
+   "scene_cos_norm": 0.760827178478241,
+   "cls_cos_norm": 0.7102327375411988
+  },
+  {
+   "t": 36,
+   "scene_cos_raw": 0.8760822792053222,
+   "cls_cos_raw": 0.701647765636444,
+   "scene_cos_norm": 0.7608437852859498,
+   "cls_cos_norm": 0.7097700414657593
+  },
+  {
+   "t": 37,
+   "scene_cos_raw": 0.8760881633758545,
+   "cls_cos_raw": 0.7011845097541809,
+   "scene_cos_norm": 0.7608538298606873,
+   "cls_cos_norm": 0.7093072519302368
+  },
+  {
+   "t": 38,
+   "scene_cos_raw": 0.8760922198295593,
+   "cls_cos_raw": 0.7006974153518677,
+   "scene_cos_norm": 0.7608621230125427,
+   "cls_cos_norm": 0.7088348751068115
+  },
+  {
+   "t": 39,
+   "scene_cos_raw": 0.8761029725074768,
+   "cls_cos_raw": 0.7002761907577515,
+   "scene_cos_norm": 0.7608810844421386,
+   "cls_cos_norm": 0.7084274687767029
+  },
+  {
+   "t": 40,
+   "scene_cos_raw": 0.8761137490272521,
+   "cls_cos_raw": 0.6998774662017823,
+   "scene_cos_norm": 0.7609023041725159,
+   "cls_cos_norm": 0.7080275087356568
+  },
+  {
+   "t": 41,
+   "scene_cos_raw": 0.8761211471557617,
+   "cls_cos_raw": 0.6994864792823792,
+   "scene_cos_norm": 0.760916374206543,
+   "cls_cos_norm": 0.7076331114768982
+  },
+  {
+   "t": 42,
+   "scene_cos_raw": 0.8761295938491821,
+   "cls_cos_raw": 0.6990658159255981,
+   "scene_cos_norm": 0.7609304399490356,
+   "cls_cos_norm": 0.7072137203216553
+  },
+  {
+   "t": 43,
+   "scene_cos_raw": 0.8761355285644531,
+   "cls_cos_raw": 0.6986271433830261,
+   "scene_cos_norm": 0.7609412422180176,
+   "cls_cos_norm": 0.7067827281951904
+  },
+  {
+   "t": 44,
+   "scene_cos_raw": 0.8761442975997925,
+   "cls_cos_raw": 0.698232177734375,
+   "scene_cos_norm": 0.7609588141441346,
+   "cls_cos_norm": 0.706394474029541
+  },
+  {
+   "t": 45,
+   "scene_cos_raw": 0.8761501474380493,
+   "cls_cos_raw": 0.6978428802490234,
+   "scene_cos_norm": 0.7609705114364624,
+   "cls_cos_norm": 0.7060029454231262
+  },
+  {
+   "t": 46,
+   "scene_cos_raw": 0.876158772945404,
+   "cls_cos_raw": 0.6975045642852783,
+   "scene_cos_norm": 0.7609876298904419,
+   "cls_cos_norm": 0.7056732530593872
+  },
+  {
+   "t": 47,
+   "scene_cos_raw": 0.8761614165306091,
+   "cls_cos_raw": 0.697142165184021,
+   "scene_cos_norm": 0.760992660522461,
+   "cls_cos_norm": 0.7053108129501343
+  },
+  {
+   "t": 48,
+   "scene_cos_raw": 0.8761671690940857,
+   "cls_cos_raw": 0.6968334369659424,
+   "scene_cos_norm": 0.7610026988983154,
+   "cls_cos_norm": 0.7050021600723266
+  },
+  {
+   "t": 49,
+   "scene_cos_raw": 0.8761728887557984,
+   "cls_cos_raw": 0.6964789590835572,
+   "scene_cos_norm": 0.7610130138397216,
+   "cls_cos_norm": 0.7046505374908447
+  },
+  {
+   "t": 50,
+   "scene_cos_raw": 0.8761788606643677,
+   "cls_cos_raw": 0.6961341819763184,
+   "scene_cos_norm": 0.7610248823165894,
+   "cls_cos_norm": 0.7043105401992797
+  },
+  {
+   "t": 51,
+   "scene_cos_raw": 0.8761858110427856,
+   "cls_cos_raw": 0.6958370308876037,
+   "scene_cos_norm": 0.7610363326072693,
+   "cls_cos_norm": 0.7040124535560608
+  },
+  {
+   "t": 52,
+   "scene_cos_raw": 0.876196042060852,
+   "cls_cos_raw": 0.6955957689285278,
+   "scene_cos_norm": 0.7610563449859619,
+   "cls_cos_norm": 0.7037657327651977
+  },
+  {
+   "t": 53,
+   "scene_cos_raw": 0.8762037258148193,
+   "cls_cos_raw": 0.6953082723617554,
+   "scene_cos_norm": 0.7610704445838928,
+   "cls_cos_norm": 0.7034826717376709
+  },
+  {
+   "t": 54,
+   "scene_cos_raw": 0.8762108564376831,
+   "cls_cos_raw": 0.6950260486602783,
+   "scene_cos_norm": 0.7610849876403809,
+   "cls_cos_norm": 0.7032059235572815
+  },
+  {
+   "t": 55,
+   "scene_cos_raw": 0.876219066619873,
+   "cls_cos_raw": 0.6947210974693299,
+   "scene_cos_norm": 0.761101595878601,
+   "cls_cos_norm": 0.7029039945602417
+  },
+  {
+   "t": 56,
+   "scene_cos_raw": 0.8762224721908569,
+   "cls_cos_raw": 0.6944422516822815,
+   "scene_cos_norm": 0.7611069283485412,
+   "cls_cos_norm": 0.7026273841857911
+  },
+  {
+   "t": 57,
+   "scene_cos_raw": 0.8762292537689209,
+   "cls_cos_raw": 0.6942425155639649,
+   "scene_cos_norm": 0.761121060848236,
+   "cls_cos_norm": 0.702418791770935
+  },
+  {
+   "t": 58,
+   "scene_cos_raw": 0.8762347888946533,
+   "cls_cos_raw": 0.693954999923706,
+   "scene_cos_norm": 0.761128924369812,
+   "cls_cos_norm": 0.7021413893699646
+  },
+  {
+   "t": 59,
+   "scene_cos_raw": 0.8762394871711731,
+   "cls_cos_raw": 0.6936886215209961,
+   "scene_cos_norm": 0.7611368055343628,
+   "cls_cos_norm": 0.7018762102127075
+  },
+  {
+   "t": 60,
+   "scene_cos_raw": 0.8762467093467713,
+   "cls_cos_raw": 0.6934576215744018,
+   "scene_cos_norm": 0.7611496181488037,
+   "cls_cos_norm": 0.7016347193717957
+  },
+  {
+   "t": 61,
+   "scene_cos_raw": 0.8762521505355835,
+   "cls_cos_raw": 0.6931477932929992,
+   "scene_cos_norm": 0.7611611800193787,
+   "cls_cos_norm": 0.7013327078819275
+  },
+  {
+   "t": 62,
+   "scene_cos_raw": 0.8762571058273315,
+   "cls_cos_raw": 0.6928817338943482,
+   "scene_cos_norm": 0.7611698517799378,
+   "cls_cos_norm": 0.7010677309036255
+  },
+  {
+   "t": 63,
+   "scene_cos_raw": 0.8762644228935241,
+   "cls_cos_raw": 0.6926609396934509,
+   "scene_cos_norm": 0.7611820774078369,
+   "cls_cos_norm": 0.7008426685333252
+  },
+  {
+   "t": 64,
+   "scene_cos_raw": 0.8762683372497558,
+   "cls_cos_raw": 0.6923670463562012,
+   "scene_cos_norm": 0.761189154624939,
+   "cls_cos_norm": 0.7005523948669433
+  },
+  {
+   "t": 65,
+   "scene_cos_raw": 0.8762741050720215,
+   "cls_cos_raw": 0.692136191368103,
+   "scene_cos_norm": 0.7612002329826355,
+   "cls_cos_norm": 0.7003196992874146
+  },
+  {
+   "t": 66,
+   "scene_cos_raw": 0.87627534532547,
+   "cls_cos_raw": 0.6919070611000061,
+   "scene_cos_norm": 0.7612019910812378,
+   "cls_cos_norm": 0.7000879011154175
+  },
+  {
+   "t": 67,
+   "scene_cos_raw": 0.8762844839096069,
+   "cls_cos_raw": 0.6916302189826965,
+   "scene_cos_norm": 0.7612193622589112,
+   "cls_cos_norm": 0.6998170461654664
+  },
+  {
+   "t": 68,
+   "scene_cos_raw": 0.876293396949768,
+   "cls_cos_raw": 0.6914327712059021,
+   "scene_cos_norm": 0.7612360100746155,
+   "cls_cos_norm": 0.6996127519607543
+  },
+  {
+   "t": 69,
+   "scene_cos_raw": 0.8762985744476318,
+   "cls_cos_raw": 0.6911677894592285,
+   "scene_cos_norm": 0.7612442989349365,
+   "cls_cos_norm": 0.6993498868942261
+  },
+  {
+   "t": 70,
+   "scene_cos_raw": 0.876303542137146,
+   "cls_cos_raw": 0.6909606914520263,
+   "scene_cos_norm": 0.7612536292076111,
+   "cls_cos_norm": 0.6991434679031372
+  },
+  {
+   "t": 71,
+   "scene_cos_raw": 0.876308440208435,
+   "cls_cos_raw": 0.6907573537826538,
+   "scene_cos_norm": 0.7612625484466553,
+   "cls_cos_norm": 0.6989458861351013
+  },
+  {
+   "t": 72,
+   "scene_cos_raw": 0.8763163084983826,
+   "cls_cos_raw": 0.6905448865890503,
+   "scene_cos_norm": 0.7612762174606323,
+   "cls_cos_norm": 0.6987339906692505
+  },
+  {
+   "t": 73,
+   "scene_cos_raw": 0.8763239879608155,
+   "cls_cos_raw": 0.690368583202362,
+   "scene_cos_norm": 0.7612912731170655,
+   "cls_cos_norm": 0.698557783126831
+  },
+  {
+   "t": 74,
+   "scene_cos_raw": 0.8763296961784363,
+   "cls_cos_raw": 0.6901837596893311,
+   "scene_cos_norm": 0.7612995815277099,
+   "cls_cos_norm": 0.6983698253631592
+  },
+  {
+   "t": 75,
+   "scene_cos_raw": 0.8763325710296631,
+   "cls_cos_raw": 0.6899698061943054,
+   "scene_cos_norm": 0.7613046245574951,
+   "cls_cos_norm": 0.698153878211975
+  },
+  {
+   "t": 76,
+   "scene_cos_raw": 0.8763425936698913,
+   "cls_cos_raw": 0.6898166646957398,
+   "scene_cos_norm": 0.7613243083953858,
+   "cls_cos_norm": 0.697995141506195
+  },
+  {
+   "t": 77,
+   "scene_cos_raw": 0.8763484792709351,
+   "cls_cos_raw": 0.6896111254692078,
+   "scene_cos_norm": 0.7613348970413208,
+   "cls_cos_norm": 0.6977954645156861
+  },
+  {
+   "t": 78,
+   "scene_cos_raw": 0.8763563613891602,
+   "cls_cos_raw": 0.6893940711021423,
+   "scene_cos_norm": 0.7613492655754089,
+   "cls_cos_norm": 0.6975819668769836
+  },
+  {
+   "t": 79,
+   "scene_cos_raw": 0.8763633098602295,
+   "cls_cos_raw": 0.6892040653228759,
+   "scene_cos_norm": 0.7613623371124267,
+   "cls_cos_norm": 0.6973930115699768
+  },
+  {
+   "t": 80,
+   "scene_cos_raw": 0.8763713393211364,
+   "cls_cos_raw": 0.6890086078643799,
+   "scene_cos_norm": 0.7613767776489258,
+   "cls_cos_norm": 0.6971994752883911
+  },
+  {
+   "t": 81,
+   "scene_cos_raw": 0.8763797993659973,
+   "cls_cos_raw": 0.6888412084579468,
+   "scene_cos_norm": 0.7613925695419311,
+   "cls_cos_norm": 0.6970309143066407
+  },
+  {
+   "t": 82,
+   "scene_cos_raw": 0.8763855876922607,
+   "cls_cos_raw": 0.6886777925491333,
+   "scene_cos_norm": 0.7614025282859802,
+   "cls_cos_norm": 0.696871109008789
+  },
+  {
+   "t": 83,
+   "scene_cos_raw": 0.8763912105560303,
+   "cls_cos_raw": 0.6884842777252197,
+   "scene_cos_norm": 0.761412292957306,
+   "cls_cos_norm": 0.6966808085441589
+  },
+  {
+   "t": 84,
+   "scene_cos_raw": 0.8763962349891663,
+   "cls_cos_raw": 0.6883085813522339,
+   "scene_cos_norm": 0.7614211139678955,
+   "cls_cos_norm": 0.6965096063613891
+  }
+ ],
+ "n_images": 500,
+ "wall_time_seconds": 729.5788192152977
+}

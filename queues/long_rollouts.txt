@@ -1,0 +1,5 @@
+# Rollouts longer than C2F: its 85 glimpses, then a second pass over the 64 level-3 tiles with microsaccades (views
+# shifted by at most half a level-3 patch), 149 glimpses, flagship, 32x32 canvas, ADE20K val.
+results/long/c2f_l3revisit_c32_t149_released.json scripts/bio_rollouts.py --canvas-grid-size 32 --policy c2f_then_jittered_level3 --microsaccade-jitter 0.015625 --num-glimpses 149 --per-image-at 20 84 148 --batch-size 32 --eval-stride-after-20 4
+results/long/c2f_l3revisit_c32_t149_local21.json scripts/bio_rollouts.py --canvas-grid-size 32 --policy c2f_then_jittered_level3 --microsaccade-jitter 0.015625 --num-glimpses 149 --per-image-at 20 84 148 --batch-size 32 --eval-stride-after-20 4 --local-writes-from 21
+results/long/c2f_l3revisit_c32_t149_object.json scripts/bio_rollouts.py --canvas-grid-size 32 --policy c2f_then_jittered_level3 --microsaccade-jitter 0.015625 --num-glimpses 149 --per-image-at 20 84 148 --batch-size 32 --eval-stride-after-20 4 --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97

@@ -274,11 +274,22 @@ class ObjectWrites:
     cell's layer-normalized content has a cosine similarity of at least `threshold` with one of the cells inside the
     crop, as they were before the glimpse; the canvas registers keep their residuals. With late_threshold, that
     threshold applies from glimpse late_from on instead (C2F's level 3 from 21). `reached` accumulates, per glimpse,
-    the fraction of the outside cells that are written."""
+    the fraction of the outside cells that are written. With `embed` (canvas -> [B, G*G, K]), the similarity is the
+    cosine of those embeddings instead, such as the class probabilities of a probe (grouping by recognition)."""
 
     def __init__(self, canvit: CanViT, *, canvas_grid_size: int, threshold: float, start: int, num_glimpses: int,
-                 device: torch.device, late_threshold: float | None = None, late_from: int = 21) -> None:
-        self.canvit, self.threshold, self.start = canvit, threshold, start
+                 device: torch.device, late_threshold: float | None = None, late_from: int = 21,
+                 embed=None, confidence=None, max_confidence: float | None = None,
+                 top_fraction: float | None = None, late_top_fraction: float | None = None) -> None:
+        self.canvit, self.threshold, self.start, self.embed = canvit, threshold, start, embed
+        # With max_confidence, an outside cell is written only if `confidence` (canvas -> [B, G*G], such as the
+        # probe's top class probability) is below it: the similar cells the model may still get wrong.
+        assert (confidence is None) == (max_confidence is None)
+        self.confidence, self.max_confidence = confidence, max_confidence
+        # With top_fraction, no absolute threshold: each glimpse writes the most similar `top_fraction` of the outside
+        # cells (late_top_fraction from late_from on), so that the reach does not depend on how similar a model's
+        # canvas cells are to each other.
+        self.top_fraction, self.late_top_fraction = top_fraction, late_top_fraction
         self.late_threshold, self.late_from = late_threshold, late_from
         self.num_registers = canvit.config.num_canvas_registers
         self.cell_centers = grid_coords(size=canvas_grid_size, device=device).flatten(0, 1)  # [G*G, 2]
@@ -292,15 +303,28 @@ class ObjectWrites:
             return
         offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.unsqueeze(1)).abs().amax(dim=-1)
         inside = offsets <= viewpoint.scales.view(-1, 1)  # [B, G*G]
-        cells = F.layer_norm(self.canvit.canvas_patches(canvas).float(), (canvas.shape[-1],))
-        cells = F.normalize(cells, dim=-1)
+        if self.embed is not None:
+            cells = F.normalize(self.embed(canvas).float(), dim=-1)
+        else:
+            cells = F.normalize(F.layer_norm(self.canvit.canvas_patches(canvas).float(), (canvas.shape[-1],)), dim=-1)
         threshold = self.threshold
         if self.late_threshold is not None and t >= self.late_from:
             threshold = self.late_threshold
+        fraction = self.top_fraction
+        if self.late_top_fraction is not None and t >= self.late_from:
+            fraction = self.late_top_fraction
         similar = torch.zeros_like(inside)
         for b in range(cells.shape[0]):
             seen = cells[b, inside[b]]  # [n_inside, D]
-            similar[b] = (cells[b] @ seen.T).amax(dim=1) >= threshold
+            best = (cells[b] @ seen.T).amax(dim=1)
+            if fraction is not None:
+                outside = (~inside[b]).nonzero().squeeze(1)
+                k = int(round(fraction * outside.numel()))
+                similar[b, outside[best[outside].topk(k).indices]] = True
+            else:
+                similar[b] = best >= threshold
+        if self.confidence is not None:
+            similar &= self.confidence(canvas) < self.max_confidence
         written = inside | similar
         outside = (~inside).float()
         self.reached[t] += ((written.float() * outside).sum(dim=1) / outside.sum(dim=1).clamp(min=1)).sum().double()
@@ -313,6 +337,66 @@ class ObjectWrites:
     def remove(self) -> None:
         for handle in self.handles:
             handle.remove()
+
+
+class MaskedWrites(ObjectWrites):
+    """The controls of ObjectWrites, with the same crop and the same hook: from glimpse `start` on, a Write reaches the
+    cells inside the crop and, outside it, either a random share of the cells (`reach[t]` at glimpse t, the share that
+    object Writes reached, so that only the choice of the cells differs), or the cells whose ground-truth class (at the
+    cell's center) is one of the classes inside the crop (`oracle`: the object Writes that a perfect grouping would
+    give). With `predict` (canvas [B, R + G*G, D] -> class indices [B, G*G]), the classes are the model's own
+    predictions on the canvas before the glimpse instead of the ground truth: grouping by recognition, with no
+    threshold and no label."""
+
+    def __init__(self, canvit: CanViT, *, canvas_grid_size: int, start: int, num_glimpses: int, device: torch.device,
+                 reach: list[float] | None = None, oracle: bool = False, num_classes: int = 150,
+                 seed: int = 0, predict=None, oracle_cells: str = "all", classify=None) -> None:
+        super().__init__(canvit, canvas_grid_size=canvas_grid_size, threshold=1.0, start=start,
+                         num_glimpses=num_glimpses, device=device)
+        assert (reach is not None) + oracle + (predict is not None) == 1, "a random reach, the oracle or predictions"
+        self.predict = predict
+        # With the oracle, oracle_cells "correct" or "wrong" keeps only the outside cells that `classify` (canvas ->
+        # [B, G*G] predicted classes) gets right or wrong before the glimpse: where does the oracle's gain come from?
+        assert oracle_cells == "all" or (oracle and classify is not None), (oracle_cells, oracle)
+        self.oracle_cells, self.classify = oracle_cells, classify
+        oracle = oracle or predict is not None
+        self.reach_schedule, self.oracle, self.num_classes = reach, oracle, num_classes
+        self.generator = torch.Generator(device=device).manual_seed(seed)
+        self.G = canvas_grid_size
+        self.cell_labels: Tensor | None = None  # [B, G*G], set per batch for the oracle
+
+    def set_labels(self, labels: Tensor, ignore_label: int) -> None:
+        """Scene labels [B, H, W] -> each cell's label at its center pixel (ignored pixels get class num_classes)."""
+        step = labels.shape[-1] // self.G
+        cells = labels[:, step // 2::step, step // 2::step].flatten(1)
+        self.cell_labels = cells.masked_fill(cells == ignore_label, self.num_classes)
+
+    def before_glimpse(self, t: int, viewpoint: Viewpoint, canvas: Tensor) -> None:
+        if t < self.start:
+            self.mask = None
+            return
+        offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.unsqueeze(1)).abs().amax(dim=-1)
+        inside = offsets <= viewpoint.scales.view(-1, 1)  # [B, G*G]
+        if self.predict is not None:
+            self.cell_labels = self.predict(canvas)
+        if self.oracle:
+            assert self.cell_labels is not None
+            present = torch.zeros(inside.shape[0], self.num_classes + 1, dtype=torch.bool, device=inside.device)
+            present.scatter_(1, self.cell_labels.masked_fill(~inside, self.num_classes), True)
+            present[:, self.num_classes] = False
+            similar = present.gather(1, self.cell_labels)
+            if self.oracle_cells != "all":
+                right = self.classify(canvas) == self.cell_labels
+                similar &= right if self.oracle_cells == "correct" else ~right
+        else:
+            assert self.reach_schedule is not None
+            draw = torch.rand(inside.shape, generator=self.generator, device=inside.device)
+            similar = draw < self.reach_schedule[t]
+        written = inside | similar
+        outside = (~inside).float()
+        self.reached[t] += ((written.float() * outside).sum(dim=1) / outside.sum(dim=1).clamp(min=1)).sum().double()
+        registers = written.new_ones(written.shape[0], self.num_registers)
+        self.mask = torch.cat([registers, written], dim=1).unsqueeze(-1)
 
 
 # Learned canvas shape
@@ -760,17 +844,20 @@ class Patchwork:
         return (offsets <= self.half_side).any(dim=-1)
 
 
-def c2f_then_jittered_level2(*, batch_size: int, device: torch.device, num_glimpses: int, jitter: float) -> FixedSequence:
-    """C2F's levels 0 to 2, then the level-2 tiles again, each pass in a new random order and each view shifted by a
-    uniform random offset of at most `jitter` per axis (clamped to the valid box): microsaccades in place of the
-    upsampled level 3. jitter = 0 is the README's c2f_then_level2_revisits."""
-    levels = [quadtree_level_z_order(level) for level in range(3)]
-    passes = math.ceil(max(0, num_glimpses - 21) / 16)
-    viewpoints = shuffled_levels(levels + [quadtree_level(2)] * passes, batch_size=batch_size, device=device,
+def c2f_then_jittered_level2(*, batch_size: int, device: torch.device, num_glimpses: int, jitter: float,
+                             level: int = 2) -> FixedSequence:
+    """C2F's levels 0 to `level`, then that level's tiles again, each pass in a new random order and each view shifted
+    by a uniform random offset of at most `jitter` per axis (clamped to the valid box): microsaccades in place of the
+    upsampled next level. jitter = 0 is the README's c2f_then_level2_revisits. With level 3, C2F's 85 glimpses are
+    followed by passes over the 64 level-3 tiles: rollouts longer than C2F's."""
+    levels = [quadtree_level_z_order(lv) for lv in range(level + 1)]
+    first_revisit = sum(4 ** lv for lv in range(level + 1))
+    passes = math.ceil(max(0, num_glimpses - first_revisit) / 4 ** level)
+    viewpoints = shuffled_levels(levels + [quadtree_level(level)] * passes, batch_size=batch_size, device=device,
                                  num_glimpses=num_glimpses)
     out = []
     for t, viewpoint in enumerate(viewpoints):
-        if t >= 21 and jitter > 0:
+        if t >= first_revisit and jitter > 0:
             limit = 1 - viewpoint.scales.view(-1, 1)
             shift = (torch.rand(batch_size, 2, device=device) * 2 - 1) * jitter
             viewpoint = Viewpoint(centers=(viewpoint.centers + shift).clamp(-limit, limit), scales=viewpoint.scales)

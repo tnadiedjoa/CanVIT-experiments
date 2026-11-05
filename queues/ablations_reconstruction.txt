@@ -1,0 +1,27 @@
+# Reconstruction metric (teacher cosine, no probe) for the CanViT family, C2F 85, 32x32, 500 ADE20K val scenes.
+results/ablations/reconstruction/in21k_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model in21k
+results/ablations/reconstruction/in21k_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model in21k --local-writes-from 21
+results/ablations/reconstruction/in1k_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model in1k
+results/ablations/reconstruction/in1k_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model in1k --local-writes-from 21
+results/ablations/reconstruction/abl-baseline_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-baseline
+results/ablations/reconstruction/abl-baseline_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-baseline --local-writes-from 21
+results/ablations/reconstruction/abl-qkvo-dcan256_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-qkvo-dcan256
+results/ablations/reconstruction/abl-qkvo-dcan256_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-qkvo-dcan256 --local-writes-from 21
+results/ablations/reconstruction/abl-qkvo-dcan384_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-qkvo-dcan384
+results/ablations/reconstruction/abl-qkvo-dcan384_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-qkvo-dcan384 --local-writes-from 21
+results/ablations/reconstruction/abl-dcan256_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-dcan256
+results/ablations/reconstruction/abl-dcan256_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-dcan256 --local-writes-from 21
+results/ablations/reconstruction/abl-rw-stride6_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-rw-stride6
+results/ablations/reconstruction/abl-rw-stride6_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-rw-stride6 --local-writes-from 21
+results/ablations/reconstruction/abl-no-reads_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-reads
+results/ablations/reconstruction/abl-no-reads_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-reads --local-writes-from 21
+results/ablations/reconstruction/abl-no-vpe_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-vpe
+results/ablations/reconstruction/abl-no-vpe_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-vpe --local-writes-from 21
+results/ablations/reconstruction/abl-vit-s_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-vit-s
+results/ablations/reconstruction/abl-vit-s_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-vit-s --local-writes-from 21
+results/ablations/reconstruction/abl-no-bptt_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-bptt
+results/ablations/reconstruction/abl-no-bptt_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-bptt --local-writes-from 21
+results/ablations/reconstruction/abl-no-fiid-1riid_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-fiid-1riid
+results/ablations/reconstruction/abl-no-fiid-1riid_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-fiid-1riid --local-writes-from 21
+results/ablations/reconstruction/abl-no-fiid-2riid_c2f_c32_t85_released.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-fiid-2riid
+results/ablations/reconstruction/abl-no-fiid-2riid_c2f_c32_t85_local21.json scripts/bio_reconstruction.py --policy coarse_to_fine --num-glimpses 85 --num-images 500 --model abl-no-fiid-2riid --local-writes-from 21

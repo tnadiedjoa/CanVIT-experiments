@@ -86,7 +86,8 @@ def main(m: Measurement) -> None:
     cells_by_distance = torch.zeros_like(by_distance)
     split = defaultdict(lambda: torch.zeros(num_levels, dtype=torch.float64))  # "<quantity>_<inside|outside>"
     per_write = torch.zeros(2, num_levels, len(canvit.canvas_writes), dtype=torch.float64)  # inside, outside norms
-    token_weight = torch.zeros(2, num_levels, len(PREFIX_TOKENS), dtype=torch.float64)  # inside, outside
+    prefix_tokens = PREFIX_TOKENS if canvit.vpe is not None else PREFIX_TOKENS[1:]  # the no-VPE ablation has 6
+    token_weight = torch.zeros(2, num_levels, len(prefix_tokens), dtype=torch.float64)  # inside, outside
     leaked_sum_norm = own_sum_norm = canvas_norm = common_fraction = 0.0
     leaked_parts_norm, leaked_parts_common = torch.zeros(2, dtype=torch.float64), torch.zeros(2, dtype=torch.float64)
     with torch.inference_mode(), torch.autocast(device_type=device.type, dtype=torch.bfloat16):
@@ -118,7 +119,7 @@ def main(m: Measurement) -> None:
                 glimpse_counts[level] += batch_size
                 prefix, patches = sum(p[0] for p in parts), sum(p[1] for p in parts)
                 token_weights = sum(p[2] for p in parts) / len(parts)  # [B, G*G, prefix tokens], mean over Writes
-                assert token_weights.shape[-1] == len(PREFIX_TOKENS), token_weights.shape
+                assert token_weights.shape[-1] == len(prefix_tokens), token_weights.shape
                 token_weight[0, level] += token_weights[inside].mean(dim=0).double().cpu() * batch_size
                 if (~inside).any():
                     token_weight[1, level] += token_weights[~inside].mean(dim=0).double().cpu() * batch_size
@@ -163,8 +164,8 @@ def main(m: Measurement) -> None:
                                        if cells_by_distance[level, b] > 0],
                **{name: (values[level] / glimpse_counts[level]).item() for name, values in sorted(split.items())
                   if level or name.endswith("_inside")},
-               "prefix_token_weight_inside": dict(zip(PREFIX_TOKENS, (token_weight[0, level] / glimpse_counts[level]).tolist())),
-               "prefix_token_weight_outside": (dict(zip(PREFIX_TOKENS, (token_weight[1, level] / glimpse_counts[level]).tolist()))
+               "prefix_token_weight_inside": dict(zip(prefix_tokens, (token_weight[0, level] / glimpse_counts[level]).tolist())),
+               "prefix_token_weight_outside": (dict(zip(prefix_tokens, (token_weight[1, level] / glimpse_counts[level]).tolist()))
                                                if level else None),
                "per_write_outside_over_inside": (per_write[1, level] / per_write[0, level]).tolist() if level else None}
               for level in range(num_levels)]

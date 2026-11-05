@@ -48,6 +48,8 @@ def write_parts(write: CanvasAttention, *, query: Tensor, kv: Tensor, query_rope
     n_prefix = k.shape[2] - kv_rope.sin.shape[2]
     prefix = write.o_map(from_multihead(weights[..., :n_prefix] @ v[:, :, :n_prefix]))
     patches = write.o_map(from_multihead(weights[..., n_prefix:] @ v[:, :, n_prefix:]))
+    if getattr(write.o_map, "bias", None) is not None:  # QKVO ablations: count the output bias once, in the prefix part
+        patches = patches - write.o_map.bias
     return prefix, patches, weights[..., :n_prefix].mean(dim=1)
 
 
@@ -139,6 +141,65 @@ class DroppedWriteToken:
         if not self.active:
             return None
         return (output.float() - token_part(module, self.token, **kwargs)).to(output.dtype)
+
+    def remove(self) -> None:
+        for handle in self.handles:
+            handle.remove()
+
+
+def prefix_attention(write: CanvasAttention, *, query: Tensor, kv: Tensor, query_rope: RoPE,
+                     kv_rope: RoPE) -> Tensor:
+    """A Write's attention weight on each of the glimpse's prefix tokens, mean over heads, in float32:
+    [B, N_query, n_prefix]."""
+    heads = write.num_heads
+    q = apply_2d_rope(to_multihead(write.q_map(write.ln_q(query)), heads), query_rope).float()
+    k = apply_2d_rope(to_multihead(write.k_map(write.ln_kv(kv)), heads), kv_rope).float()
+    weights = torch.softmax(q @ k.transpose(-1, -2) / math.sqrt(q.shape[-1]), dim=-1)  # [B, heads, N_query, N_kv]
+    n_prefix = k.shape[2] - kv_rope.sin.shape[2]
+    return weights[..., :n_prefix].mean(dim=1)
+
+
+class SinkGatedWrites:
+    """Local Writes without a viewpoint: from glimpse `start` on, a canvas cell keeps a Write's residual only if it puts
+    less than `threshold` of its attention (mean over heads) on the glimpse's prefix tokens, whose keys carry no
+    position (with `token`, on that one prefix token only, an index into PREFIX_TOKENS: 5 is backbone register 3).
+    Cells with nothing to receive from the glimpse attend to the sink instead (scripts/write_leakage.py: 0.95 of their
+    attention on the prefix outside the crop at C2F's level 3, 0.46 inside), so the model's own attention says where
+    not to write, whatever the glimpse's shape. The canvas registers keep their residuals. before_glimpse(t,
+    viewpoint) sets the glimpse; with a viewpoint, `kept_inside` and `kept_outside` accumulate, per glimpse, the
+    fraction of the cells inside and outside its crop that keep their residual (mean over the Writes)."""
+
+    def __init__(self, canvit: CanViT, *, threshold: float, start: int, canvas_grid_size: int, num_glimpses: int,
+                 device: torch.device, token: int | None = None) -> None:
+        self.threshold, self.start, self.token = threshold, start, token
+        self.num_registers = canvit.config.num_canvas_registers
+        self.num_writes = len(canvit.canvas_writes)
+        self.cell_centers = grid_coords(size=canvas_grid_size, device=device).flatten(0, 1)  # [G*G, 2]
+        self.kept_inside = torch.zeros(num_glimpses, dtype=torch.float64, device=device)
+        self.kept_outside = torch.zeros(num_glimpses, dtype=torch.float64, device=device)
+        self.t, self.active, self.inside = 0, False, None
+        self.handles = [write.register_forward_hook(self.hook, with_kwargs=True) for write in canvit.canvas_writes]
+
+    def before_glimpse(self, t: int, viewpoint: Viewpoint | None = None) -> None:
+        self.t, self.active = t, t >= self.start
+        self.inside = None
+        if viewpoint is not None:
+            offsets = (self.cell_centers.unsqueeze(0) - viewpoint.centers.unsqueeze(1)).abs().amax(dim=-1)
+            self.inside = offsets <= viewpoint.scales.view(-1, 1)  # [B, G*G]
+
+    def hook(self, module: CanvasAttention, args, kwargs: dict, output: Tensor) -> Tensor | None:
+        if not self.active:
+            return None
+        weights = prefix_attention(module, **kwargs)
+        sink = weights.sum(dim=-1) if self.token is None else weights[..., self.token]  # [B, N_query]
+        keep = sink < self.threshold
+        keep[:, :self.num_registers] = True
+        if self.inside is not None:
+            cells, inside = keep[:, self.num_registers:].double(), self.inside.double()
+            outside = 1 - inside
+            self.kept_inside[self.t] += ((cells * inside).sum(1) / inside.sum(1).clamp(min=1)).sum() / self.num_writes
+            self.kept_outside[self.t] += ((cells * outside).sum(1) / outside.sum(1).clamp(min=1)).sum() / self.num_writes
+        return output * keep.unsqueeze(-1).to(output.dtype)
 
     def remove(self) -> None:
         for handle in self.handles:

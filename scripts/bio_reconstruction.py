@@ -21,7 +21,6 @@ from torch.utils.data import DataLoader, Subset
 
 from canvit_pytorch.benchmarks import ade20k
 from canvit_pytorch.evaluate.tasks.reconstruction import METRICS, Scenes, cosine_similarities
-from canvit_pytorch.hub.repos import FLAGSHIP
 from canvit_pytorch.model import CanViTForPretraining
 from canvit_pytorch.teacher import TEACHER_REPO, load_teacher
 from canvit_pytorch.viewpoint import grid_coords
@@ -30,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with
 import bio_rollouts  # noqa: E402
 from bio_rollouts import build_policy, load_retina  # noqa: E402
 from bio_vision import AdaptiveCanvas, FreePositions, NoveltyWrites, ObjectWrites, image_edge_density, take_glimpse  # noqa: E402
+from local_writes import LocalWrites, SinkGatedWrites  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -44,7 +44,8 @@ def main(exp: Experiment) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     torch.manual_seed(exp.seed)
     device = torch.device(exp.device)
-    model = CanViTForPretraining.from_pretrained(FLAGSHIP).to(device).eval()
+    pretrained_repo = bio_rollouts.pretrained_repo_of(exp.model)
+    model = CanViTForPretraining.from_pretrained(pretrained_repo).to(device).eval()
     teacher = load_teacher(TEACHER_REPO, device)
     grid = model.teacher_patch_grid
     assert exp.canvas_grid_size == grid, "the metric compares the canvas cell by cell with the teacher's patch grid"
@@ -55,8 +56,14 @@ def main(exp: Experiment) -> None:
     novelty = (NoveltyWrites(model.canvit, mode=exp.novelty, strength=exp.novelty_strength, start=exp.novelty_from,
                              num_glimpses=T, device=device) if exp.novelty is not None else None)
     objects = (ObjectWrites(model.canvit, canvas_grid_size=grid, threshold=exp.object_writes_threshold,
-                            start=exp.object_writes_from, num_glimpses=T, device=device)
+                            start=exp.object_writes_from, num_glimpses=T, device=device,
+                            late_threshold=exp.object_writes_late_threshold)
                if exp.object_writes_threshold is not None else None)
+    local_writes = (LocalWrites(model.canvit, canvas_grid_size=grid, device=device, start=exp.local_writes_from)
+                    if exp.local_writes_from is not None else None)
+    sink_writes = (SinkGatedWrites(model.canvit, threshold=exp.sink_writes_threshold, start=exp.sink_writes_from,
+                                   canvas_grid_size=grid, num_glimpses=T, device=device, token=exp.sink_writes_token)
+                   if exp.sink_writes_threshold is not None else None)
     dataset = Scenes(root=ade20k.dataset_root(), size_px=grid * teacher.patch_size)
     if exp.num_images is not None:
         dataset = Subset(dataset, range(exp.num_images))
@@ -90,6 +97,10 @@ def main(exp: Experiment) -> None:
                     novelty.before_glimpse(t)
                 if objects is not None:
                     objects.before_glimpse(t, viewpoint, state.canvas)
+                if local_writes is not None:
+                    local_writes.before_glimpse(t, viewpoint)
+                if sink_writes is not None:
+                    sink_writes.before_glimpse(t, viewpoint)
                 state = model.canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 if shape is not None and shape.adaptive and t == 0:
                     state, free.canvas = shape.adapt(state, model.canvit)
@@ -113,7 +124,7 @@ def main(exp: Experiment) -> None:
     means = sums / len(dataset)
     result = {
         "experiment": {k: str(v) if isinstance(v, Path) else v for k, v in asdict(exp).items()},
-        "pretrained_repo": FLAGSHIP,
+        "pretrained_repo": pretrained_repo,
         "per_timestep": [{"t": t, **dict(zip(METRICS, row.tolist(), strict=True))} for t, row in enumerate(means)],
         "n_images": len(dataset),
         "wall_time_seconds": time.monotonic() - start,

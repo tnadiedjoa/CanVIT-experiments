@@ -1,0 +1,6 @@
+# Controls of the object Writes (bio_vision.MaskedWrites), C2F to level 3, ADE20K: random outside cells in the share
+# the object Writes reached at each glimpse (0.95 from 5; 0.97 from 21), and the ground-truth oracle.
+results/sink/c2f_c64_t85_random_like_object0.95_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --masked-writes random --masked-writes-from 5 --masked-writes-reach results/bio/c2f_c64_t85_object0.95_from5.json
+results/sink/c2f_c64_t85_oracle_from5.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --masked-writes oracle --masked-writes-from 5
+results/sink/c2f_c64_t85_random_like_object0.97_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --masked-writes random --masked-writes-from 21 --masked-writes-reach results/bio/c2f_c64_t85_object0.97_from21.json
+results/sink/c2f_c64_t85_oracle_from21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --masked-writes oracle --masked-writes-from 21

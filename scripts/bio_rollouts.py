@@ -21,24 +21,28 @@ import tyro
 
 from canvit_pytorch.benchmarks import ade20k
 from canvit_pytorch.evaluate.tasks.ade20k_segmentation import predicted_labels
-from canvit_pytorch.hub.repos import FLAGSHIP, RELEASED_GLIMPSE_SIZE_PX, RELEASED_SCENE_SIZE_PX, released_ade20k_probe
+from canvit_pytorch.benchmarks.ade20k.metrics import per_image_confusion
+from canvit_pytorch.hub.repos import (PRETRAINED, RELEASED_GLIMPSE_SIZE_PX, RELEASED_PROBE_STEPS, RELEASED_SCENE_SIZE_PX,
+                                      ade20k_probe_name, hub_repo)
 from canvit_pytorch.model import CanViT, CanViTForSemanticSegmentation
 from canvit_pytorch.model.canvit import RecurrentState
 from canvit_pytorch.policies import PolicyName, make_policy
 from canvit_pytorch.policies.entropy import predictive_entropy
+from canvit_pytorch.pretrain.ablations import ABLATIONS
 from canvit_pytorch.viewpoint import grid_coords
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
 from ade20k_rollouts import load_validation_scenes, normalize  # noqa: E402
-from local_writes import LocalWrites  # noqa: E402
+from local_writes import LocalWrites, SinkGatedWrites  # noqa: E402
 from bio_vision import (AdaptiveCanvas, FoveatedRetina, FreePositions, GaussianCanvas, LearnedPeriods,  # noqa: E402
-                        NoveltyWrites, ObjectWrites, PatchRetina, Patchwork, UniformRetina, WriteFootprint,
+                        MaskedWrites, NoveltyWrites, ObjectWrites, PatchRetina, Patchwork, UniformRetina, WriteFootprint,
                         boundary_density, c2f_then_jittered_level2, image_edge_density, microsaccades,
                         patchwork_glimpse, take_glimpse)
 
 log = logging.getLogger(__name__)
 
-BioPolicy = PolicyName | Literal["microsaccades", "c2f_then_jittered_level2", "entropy_patchwork", "random_patchwork"]
+BioPolicy = PolicyName | Literal["microsaccades", "c2f_then_jittered_level2", "c2f_then_jittered_level3",
+                                  "entropy_patchwork", "random_patchwork"]
 """entropy_patchwork and random_patchwork: C2F's levels 0 and 1, then glimpses gathering level-2 patches by
 uncertainty or at random (bio_vision.Patchwork)."""
 Density = Literal["oracle_boundaries", "glimpse_edges", "entropy"]
@@ -50,6 +54,15 @@ the first glimpse (the uniform canvas is then resampled at the new cells)."""
 @dataclass(frozen=True)
 class Experiment:
     output: Path
+    model: str = "in21k"
+    """The CanViT and its released ADE20K probe: a pretraining dataset of canvit_pytorch.hub.repos.PRETRAINED (in21k,
+    the flagship, or in1k) or abl-<slug>, an ablation of canvit_pytorch.pretrain.ablations (probes at 32×32 only)."""
+    per_image_at: tuple[int, ...] = ()
+    """Glimpses (0-based) at which to save each image's per-class intersections and unions, for paired bootstraps,
+    next to the output (.per_image.pt)."""
+    eval_stride_after_20: int = 1
+    """After glimpse 20, the mIoU only every this many glimpses (and at the last); the others are null. The scene-size
+    upsampling of the logits costs about as much as the glimpse itself."""
     policy: BioPolicy = "coarse_to_fine"
     num_glimpses: int = 21
     canvas_grid_size: int = 64
@@ -68,10 +81,34 @@ class Experiment:
     object_writes_threshold: float | None = None
     object_writes_from: int = 21
     object_writes_late_threshold: float | None = None
+    object_writes_space: Literal["canvas", "probs"] = "canvas"
+    object_writes_top_fraction: float | None = None
+    object_writes_late_top_fraction: float | None = None
+    """When set, the object Writes reach the most similar this fraction of the outside cells at each glimpse (the late
+    one from glimpse 21), instead of the cells above a similarity threshold: a reach that does not depend on the model."""
+    object_writes_max_confidence: float | None = None
+    """When set, the object Writes reach an outside cell only if the probe's top class probability there is below this:
+    the similar cells the model may still get wrong (writing into cells it gets right harms them)."""
+    """What the object Writes compare: the layer-normalized canvas cells, or the probe's class probabilities on them."""
     """When set, the object Writes' threshold from glimpse 21 on (C2F's level 3)."""
     local_writes_from: int | None = None
     """When set, from this glimpse on, the Writes are kept in the glimpse's crop (local_writes.LocalWrites, the README's
     fix for C2F's level 3); with a patchwork, in its patches."""
+    masked_writes: Literal["random", "oracle", "predicted"] | None = None
+    """The controls of the object Writes (bio_vision.MaskedWrites), from glimpse masked_writes_from on: outside the
+    crop, random cells in the share that the object Writes of masked_writes_reach (a result file) reached at each
+    glimpse, the cells of a ground-truth class present in the crop, or the cells whose predicted class (the probe's
+    argmax on the canvas before the glimpse) is predicted in the crop."""
+    masked_writes_from: int = 5
+    oracle_cells: Literal["all", "correct", "wrong"] = "all"
+    """With the oracle: only the outside cells the probe classifies right (or wrong) before the glimpse."""
+    masked_writes_reach: Path | None = None
+    sink_writes_threshold: float | None = None
+    """When set, from glimpse sink_writes_from on, a cell keeps a Write's residual only if it puts less than this share
+    of its attention on the glimpse's prefix tokens (local_writes.SinkGatedWrites; sink_writes_token: on that token
+    only)."""
+    sink_writes_from: int = 1
+    sink_writes_token: int | None = None
     density: Density | None = None
     density_mix: float = 0.5
     microsaccade_scale: float = 0.875
@@ -93,6 +130,11 @@ class Experiment:
     device: str = "cuda"
 
 
+def pretrained_repo_of(model: str) -> str:
+    """Hub repo of an Experiment.model: a PRETRAINED key or abl-<slug>."""
+    return ABLATIONS[model.removeprefix("abl-")].released_repo if model.startswith("abl-") else PRETRAINED[model]
+
+
 def build_policy(exp: Experiment, batch_size: int, device: torch.device, canvas_logits=None):
     if exp.policy.endswith("_patchwork"):  # C2F until the patchwork starts
         return make_policy("coarse_to_fine", batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses,
@@ -106,7 +148,7 @@ def build_policy(exp: Experiment, batch_size: int, device: torch.device, canvas_
                              first_full_scene=exp.microsaccade_first_full_scene, outside=exp.microsaccade_outside,
                              sequence=exp.microsaccade_sequence)
     return c2f_then_jittered_level2(batch_size=batch_size, device=device, num_glimpses=exp.num_glimpses,
-                                    jitter=exp.microsaccade_jitter)
+                                    jitter=exp.microsaccade_jitter, level=3 if exp.policy.endswith("3") else 2)
 
 
 def load_retina(exp: Experiment, canvit: CanViT, device: torch.device, free: FreePositions):
@@ -150,9 +192,10 @@ def main(exp: Experiment) -> None:
     torch.manual_seed(exp.seed)
     device = torch.device(exp.device)
     scene_px, T, G = RELEASED_SCENE_SIZE_PX, exp.num_glimpses, exp.canvas_grid_size
-    probe_repo = released_ade20k_probe("in21k", scene_size_px=scene_px,
-                                       canvas_grid_size=exp.probe_canvas_grid_size or G)
-    seg = CanViTForSemanticSegmentation.from_pretrained_with_probe(pretrained_repo=FLAGSHIP, probe_repo=probe_repo)
+    pretrained_repo = pretrained_repo_of(exp.model)
+    probe_repo = hub_repo(ade20k_probe_name(exp.model, scene_size_px=scene_px,
+                                            canvas_grid_size=exp.probe_canvas_grid_size or G, steps=RELEASED_PROBE_STEPS))
+    seg = CanViTForSemanticSegmentation.from_pretrained_with_probe(pretrained_repo=pretrained_repo, probe_repo=probe_repo)
     seg = seg.to(device).eval()
     free = FreePositions(seg.canvit)
     retina, shape = load_retina(exp, seg.canvit, device, free)
@@ -161,14 +204,37 @@ def main(exp: Experiment) -> None:
                              num_glimpses=T, device=device) if exp.novelty is not None else None)
     objects = (ObjectWrites(seg.canvit, canvas_grid_size=G, threshold=exp.object_writes_threshold,
                             start=exp.object_writes_from, num_glimpses=T, device=device,
-                            late_threshold=exp.object_writes_late_threshold)
+                            late_threshold=exp.object_writes_late_threshold,
+                            embed=((lambda canvas: seg.logits(canvas).flatten(2).transpose(1, 2).float().softmax(-1))
+                                   if exp.object_writes_space == "probs" else None),
+                            confidence=((lambda canvas: seg.logits(canvas).float().softmax(dim=1).amax(dim=1).flatten(1))
+                                        if exp.object_writes_max_confidence is not None else None),
+                            max_confidence=exp.object_writes_max_confidence,
+                            top_fraction=exp.object_writes_top_fraction,
+                            late_top_fraction=exp.object_writes_late_top_fraction)
                if exp.object_writes_threshold is not None else None)
     local_writes = (LocalWrites(seg.canvit, canvas_grid_size=G, device=device, start=exp.local_writes_from)
                     if exp.local_writes_from is not None else None)
+    masked = None
+    if exp.masked_writes is not None:
+        reach = (json.loads(exp.masked_writes_reach.read_text())["object_writes_reached"]
+                 if exp.masked_writes == "random" and exp.masked_writes_reach is not None else None)
+        predict = ((lambda canvas: seg.logits(canvas).argmax(dim=1).flatten(1))
+                   if exp.masked_writes == "predicted" else None)
+        masked = MaskedWrites(seg.canvit, canvas_grid_size=G, start=exp.masked_writes_from, num_glimpses=T,
+                              device=device, reach=reach, oracle=exp.masked_writes == "oracle", seed=exp.seed,
+                              predict=predict, oracle_cells=exp.oracle_cells,
+                              classify=lambda canvas: seg.logits(canvas).argmax(dim=1).flatten(1))
+    sink_writes = (SinkGatedWrites(seg.canvit, threshold=exp.sink_writes_threshold, start=exp.sink_writes_from,
+                                   canvas_grid_size=G, num_glimpses=T, device=device, token=exp.sink_writes_token)
+                   if exp.sink_writes_threshold is not None else None)
     images_u8, labels_u8 = load_validation_scenes(exp.cache, size_px=scene_px)
     images_u8, labels_u8 = images_u8[:exp.num_images], labels_u8[:exp.num_images]
 
     mious = [ade20k.MeanIoU(device=device) for _ in range(T)]
+    per_image = {t: ([], []) for t in exp.per_image_at}
+    evaluated = {t for t in range(T) if t <= 20 or (t - 20) % exp.eval_stride_after_20 == 0 or t == T - 1}
+    evaluated |= set(exp.per_image_at)
     sums = {name: torch.zeros(T, dtype=torch.float64, device=device)
             for name in ("canvas_patch_norm", "delta_previous", "entropy")}
     start = time.monotonic()
@@ -192,6 +258,8 @@ def main(exp: Experiment) -> None:
             if shape is not None:
                 free.canvas = shape.reset(B)
             previous = normalized_cells(seg, state.canvas)
+            if masked is not None and masked.oracle and masked.predict is None:
+                masked.set_labels(labels, ade20k.IGNORE_LABEL)
             for t in range(T):
                 if patchwork is not None and t >= Patchwork.FIRST:
                     viewpoint, free.glimpse = patchwork.step(seg.logits(state.canvas))
@@ -209,6 +277,10 @@ def main(exp: Experiment) -> None:
                     novelty.before_glimpse(t)
                 if objects is not None:
                     objects.before_glimpse(t, viewpoint, state.canvas)
+                if sink_writes is not None:
+                    sink_writes.before_glimpse(t, viewpoint)
+                if masked is not None:
+                    masked.before_glimpse(t, viewpoint, state.canvas)
                 if local_writes is not None:
                     local_writes.before_glimpse(t, viewpoint)
                     if patchwork is not None and t >= Patchwork.FIRST and local_writes.mask is not None:
@@ -233,7 +305,9 @@ def main(exp: Experiment) -> None:
                 else:
                     patches = seg.canvit.canvas_patch_grid(state.canvas).float()
                 logits = seg.probe(patches)
-                if shape is not None:
+                if t not in evaluated:
+                    pass
+                elif shape is not None:
                     n = exp.shape_readout_px
                     read = shape.read(logits.flatten(2).transpose(1, 2), shape_points)  # [B, n*n, C]
                     predicted = predicted_labels(read.transpose(1, 2).reshape(B, -1, n, n), size_px=scene_px)
@@ -242,7 +316,12 @@ def main(exp: Experiment) -> None:
                 else:
                     predicted = torch.cat([canvas_part.read_back(chunk, scene_px).argmax(dim=1)
                                            for canvas_part, chunk in zip(split(canvas, 2), logits.split(2))])
-                mious[t].update(predicted, labels)
+                if t in evaluated:
+                    mious[t].update(predicted, labels)
+                if t in per_image:
+                    intersection, union, _ = per_image_confusion(predicted, labels, ade20k.NUM_CLASSES)
+                    per_image[t][0].append(intersection.cpu())
+                    per_image[t][1].append(union.cpu())
                 current = normalized_cells(seg, state.canvas)
                 sums["canvas_patch_norm"][t] += patches.norm(dim=-1).mean(dim=(1, 2)).sum().double()
                 sums["delta_previous"][t] += (1 - F.cosine_similarity(current, previous, dim=-1)).mean(dim=1).sum().double()
@@ -253,8 +332,9 @@ def main(exp: Experiment) -> None:
     n = len(images_u8)
     result = {
         "experiment": {k: str(v) if isinstance(v, Path) else v for k, v in asdict(exp).items()},
+        "pretrained_repo": pretrained_repo,
         "probe_repo": probe_repo,
-        "miou": [100 * m.compute() for m in mious],
+        "miou": [100 * m.compute() if t in evaluated else None for t, m in enumerate(mious)],
         **{name: (values / n).tolist() for name, values in sums.items()},
         "n_images": n,
         "wall_time_seconds": time.monotonic() - start,
@@ -263,9 +343,17 @@ def main(exp: Experiment) -> None:
         result["novelty_suppressed"] = (novelty.suppressed / n).tolist()
     if objects is not None:
         result["object_writes_reached"] = (objects.reached / n).tolist()
+    if masked is not None:
+        result["masked_writes_reached"] = (masked.reached / n).tolist()
+    if sink_writes is not None:
+        result["sink_writes_kept_inside"] = (sink_writes.kept_inside / n).tolist()
+        result["sink_writes_kept_outside"] = (sink_writes.kept_outside / n).tolist()
     exp.output.parent.mkdir(parents=True, exist_ok=True)
+    if per_image:
+        torch.save({t: {"intersection": torch.cat(i), "union": torch.cat(u)} for t, (i, u) in per_image.items()},
+                   exp.output.with_suffix(".per_image.pt"))
     exp.output.write_text(json.dumps(result, indent=1))
-    log.info("mIoU by glimpse: %s", " ".join(f"{v:.2f}" for v in result["miou"]))
+    log.info("mIoU by glimpse: %s", " ".join("-" if v is None else f"{v:.2f}" for v in result["miou"]))
     log.info("Wrote %s in %.0f s", exp.output, result["wall_time_seconds"])
 
 
