@@ -57,7 +57,9 @@ def main(exp: Experiment) -> None:
                              num_glimpses=T, device=device) if exp.novelty is not None else None)
     objects = (ObjectWrites(model.canvit, canvas_grid_size=grid, threshold=exp.object_writes_threshold,
                             start=exp.object_writes_from, num_glimpses=T, device=device,
-                            late_threshold=exp.object_writes_late_threshold)
+                            late_threshold=exp.object_writes_late_threshold,
+                            top_fraction=exp.object_writes_top_fraction,
+                            late_top_fraction=exp.object_writes_late_top_fraction)
                if exp.object_writes_threshold is not None else None)
     local_writes = (LocalWrites(model.canvit, canvas_grid_size=grid, device=device, start=exp.local_writes_from)
                     if exp.local_writes_from is not None else None)

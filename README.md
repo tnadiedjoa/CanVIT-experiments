@@ -1028,6 +1028,26 @@ t = 84.
   the interval excluding 0 in eight. The exception is D_can 256, where both variants tie with local Writes.
 - In the ablation without the dense loss, the thresholds reach almost no outside cell (6%, then 1%), yet do best.
   This model has the weakest probe and the most diffuse sink.
+- **The reconstruction metric only partly agrees** (no probe; 500 scenes, 32×32 canvas,
+  [`queues/reconstruction_object.txt`](queues/reconstruction_object.txt)). The table gives the canvas's cosine
+  similarity to DINOv3's features at t = 20 / 84; object Writes use the thresholds, or the fixed reach where marked.
+
+  | Pretraining | released | local | object |
+  |---|---|---|---|
+  | flagship | 0.8388 / 0.8053 | 0.8388 / 0.8401 | 0.8412 / 0.8379 |
+  | IN-1k | 0.8189 / 0.7869 | 0.8189 / 0.8203 | 0.8212 / 0.8178 |
+  | ablation baseline | 0.7607 / 0.7222 | 0.7607 / 0.7614 | 0.7642 / 0.7580 |
+  | no VPE | 0.7568 / 0.6925 | 0.7568 / 0.7583 | 0.7619 / 0.7545 |
+  | 1 Read / 1 Write (fixed reach) | 0.7299 / 0.6916 | 0.7299 / 0.7311 | 0.7332 / 0.7303 |
+  | no BPTT (fixed reach) | 0.7342 / 0.6633 | 0.7342 / 0.7343 | 0.7384 / 0.7310 |
+
+  - Object Writes are the best at t = 20 in all six models.
+  - At t = 84 they stay far above released Writes but end 0.001–0.004 below local ones in all six.
+  - They cost the CLS prediction more: flagship 0.744 at t = 84, against 0.767 with local Writes and 0.777 with
+    released ones.
+
+  So the probe gains more from object Writes than the teacher's features do: at t = 84, part of their gain over
+  local Writes is in what the probe reads, not in DINOv3's features.
 
 ![The family's change from t = 20 to t = 84](outputs/family_changes.png)
 
@@ -1076,6 +1096,9 @@ t = 84.
   +0.66] at t = 20 and +2.91 [+2.44, +3.41] at t = 84, and local ones by +0.24 [+0.06, +0.47] at t = 84. Against local
   Writes at t = 84, the oracle on right cells loses 0.65 [0.32, 0.87]; on wrong cells, it gains 1.82 [1.60, 2.04] over
   object Writes.
+- **Seed 2** (released, local and object Writes only): 45.80 / 43.57, 45.80 / 46.26 and 46.24 / 46.52 at t = 20 / 84.
+  Object Writes beat released ones by +0.44 [+0.30, +0.67] at t = 20 and +2.96 [+2.47, +3.46] at t = 84, and local
+  ones by +0.26 [+0.08, +0.49] at t = 84.
 - **IN-1k pretraining on the 64×64 canvas** (its released 64×64 probe): released Writes 43.42 at t = 20 and 41.91 at
   t = 84, local ones 43.85 at t = 84, and object Writes 43.84 and 44.23. Object Writes gain +0.42 [+0.19, +0.63] at
   t = 20 and +2.32 [+1.83, +2.87] at t = 84 over released Writes, and +0.38 [+0.18, +0.59] at t = 84 over local ones.
@@ -1092,13 +1115,20 @@ with local Writes from glimpse 21 and object Writes at 0.9 from glimpse 5, then 
 | C2F (above) | 45.93 / 43.65 | 46.40 | 46.29 / 46.61 | +2.97 [+2.50, +3.47] | +0.21 [+0.02, +0.42] |
 | EG-C2F | 45.75 / 43.53 | 46.26 | 46.21 / 46.60 | +3.07 [+2.58, +3.55] | +0.34 [+0.13, +0.55] |
 | R-IID | 43.20 / 45.19 | 45.36 | 43.48 / 45.92 | +0.73 [+0.52, +0.97] | +0.56 [+0.38, +0.73] |
+| F-IID | 44.94 / 44.88 | | 45.27 / 45.95 | +1.08 [+0.85, +1.39] | |
 
 - EG-C2F, which orders each level's tiles by the probe's entropy, drifts like C2F (its best is 45.86 at t = 24).
   Object Writes gain +0.46 [+0.30, +0.67] at t = 20.
 - R-IID is the pretraining policy. Its random centers and scales keep improving with released Writes up to
   t = 84, so there is no drop to repair, and local Writes barely help (+0.17 [−0.05, +0.41]). Object Writes still
-  gain, +0.28 [+0.12, +0.40] at t = 20 and +0.73 at t = 84, reaching 61% and then 28% of the outside cells. Choosing
-  which outside cells a Write reaches helps even where the released Writes do not fail.
+  gain, +0.28 [+0.12, +0.40] at t = 20 and +0.73 at t = 84, reaching 61% and then 28% of the outside cells. With
+  seed 1, released Writes give 43.50 / 45.21 and object Writes 43.76 / 45.83, a gain of +0.26 [+0.12, +0.39] at
+  t = 20 and +0.62 [+0.43, +0.83] at t = 84.
+- F-IID, the full view and then R-IID, is the pretraining's main policy. With released Writes it peaks at 45.20
+  (t = 40) and ends at 44.88. Object Writes gain +0.33 [+0.21, +0.48] at t = 20 and end at 45.95, still rising.
+  They reach 56% and then 26% of the outside cells.
+- Under the policies of pretraining, then, choosing which outside cells a Write reaches helps even where the
+  released Writes barely fail.
 
 **Averaging the predictions instead.** A fix on the readout side needs no viewpoint: average each cell's class
 probabilities over the glimpses (`--readout mean_probs`, released Writes; [`queues/readout.txt`](queues/readout.txt)).
@@ -1160,7 +1190,8 @@ t = 27; the sum of the log-probabilities gives 84.51 at t = 84.
 - The family study uses each model's released 32×32 probe and one C2F tile order per model; the ablations were
   pretrained on a shorter schedule than the flagship and read lower. The object Writes' thresholds were chosen on the
   flagship, and the grouping rules and the oracle's halves were compared on the flagship only. The bootstrap
-  intervals cover which images the benchmark holds, not the tile order or the probe.
+  intervals cover which images the benchmark holds, not the tile order or the probe; the flagship's comparison of
+  released, local and object Writes ran with three tile orders (seeds 0–2), the rest of the family with one.
 
 ## Setup
 
