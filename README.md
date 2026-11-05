@@ -1116,6 +1116,7 @@ with local Writes from glimpse 21 and object Writes at 0.9 from glimpse 5, then 
 | EG-C2F | 45.75 / 43.53 | 46.26 | 46.21 / 46.60 | +3.07 [+2.58, +3.55] | +0.34 [+0.13, +0.55] |
 | R-IID | 43.20 / 45.19 | 45.36 | 43.48 / 45.92 | +0.73 [+0.52, +0.97] | +0.56 [+0.38, +0.73] |
 | F-IID | 44.94 / 44.88 | | 45.27 / 45.95 | +1.08 [+0.85, +1.39] | |
+| F2C | 27.41 / 37.06 | 37.09 | 28.11 / 41.20 | +4.14 [+3.75, +4.62] | |
 
 - EG-C2F, which orders each level's tiles by the probe's entropy, drifts like C2F (its best is 45.86 at t = 24).
   Object Writes gain +0.46 [+0.30, +0.67] at t = 20.
@@ -1129,6 +1130,13 @@ with local Writes from glimpse 21 and object Writes at 0.9 from glimpse 5, then 
   They reach 56% and then 26% of the outside cells.
 - Under the policies of pretraining, then, choosing which outside cells a Write reaches helps even where the
   released Writes barely fail.
+- F2C, C2F's sequence reversed, starts with the 64 level-3 tiles on an empty canvas and ends with the full view.
+  Here local Writes hurt: from glimpse 21 they fall behind released Writes (28.35 against 31.25 at t = 40, 29.65
+  against 33.63 at t = 64), and only tie once the coarse glimpses cover everything (37.09 at t = 84). Early on, the
+  outside cells need what the Writes leave in them. Object Writes are ahead all along: +0.70 [+0.47, +0.94] at
+  t = 20, 36.35 at t = 64 and 41.20 at t = 84, +4.14 [+3.75, +4.62] over released Writes. This is the clearest case
+  of *which* cells mattering. Writing into none of the outside cells loses, and writing into all of them loses more
+  than writing only into the cells that resemble the crop.
 
 **Averaging the predictions instead.** A fix on the readout side needs no viewpoint: average each cell's class
 probabilities over the glimpses (`--readout mean_probs`, released Writes; [`queues/readout.txt`](queues/readout.txt)).

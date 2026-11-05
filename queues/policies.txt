@@ -17,3 +17,6 @@ results/policies/f2c_c64_t85_object.json scripts/bio_rollouts.py --num-glimpses 
 # F-IID (the full view, then R-IID), which does not drift either.
 results/policies/fiid_c64_t85_released.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy full_then_random
 results/policies/fiid_c64_t85_object.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy full_then_random --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+# F2C, seed 1.
+results/policies/f2c_c64_t85_released_s1.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy fine_to_coarse --seed 1
+results/policies/f2c_c64_t85_object_s1.json scripts/bio_rollouts.py --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --policy fine_to_coarse --seed 1 --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
