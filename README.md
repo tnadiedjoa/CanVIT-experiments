@@ -1225,14 +1225,14 @@ The short version:
   model keeps writing, but its cells' centered norm, which LayerNorm divides by, barely grows. Keeping the Writes in
   the crop works for every model.
 - A training fix follows from the mechanism: **charge what LayerNorm sees of the write outside the crop**. With a
-  plain softmax and 4-glimpse training, it removes 89–96% of the error's growth from t = 20 to t = 84 in two seeds,
+  plain softmax and 4-glimpse training, it removes 89–96% of the error's growth from t = 20 to t = 84 in three seeds,
   and test-time scaling comes back (F-IID still improves past t = 100). Without the crop, no label-free variant tried
   is reliable. It does not carry over to fine-tuning CanViT either (its Writes or the whole model), which meets the
   penalty by writing less inside the crop too.
-- **None of this needs an image.** A slot memory trained on 4-chunk streams of facts forgets them after 24–38 noise
+- **None of this needs an image.** A slot memory trained on 4-chunk streams of facts forgets them after 15–38 noise
   chunks with a softmax Write, with or without an output projection, an output gate or the delta rule. It recalls
   them perfectly when its Writes are dropped during noise, and keeps them to 256 noise chunks with the same penalty
-  charged during noise. Here a zero-value null key is enough (three seeds), unlike in the canvas.
+  charged during noise (three seeds). Here a zero-value null key is enough too (three seeds), unlike in the canvas.
 
 **Setup.** [`scripts/sink_memory.py`](scripts/sink_memory.py) trains small canvas models with CanViT's design and
 scale ratios.
@@ -1264,6 +1264,7 @@ level 3. *Prefix* is the share of those cells' attention on the prefix tokens.
 |---|---|---|---|---|---|---|---|---|---|
 | softmax | 0 | 0.359 | 0.111 | 0.075 | 0.306 | 0.056 | 0.264 | 5.48 | 0.92 |
 | softmax | 1 | 0.361 | 0.113 | 0.075 | 0.226 | 0.053 | 0.302 | 4.57 | 0.90 |
+| softmax | 2 | – | 0.113 | 0.076 | 0.209 | 0.053 | – | 5.39 | 0.93 |
 | out | 0 | 0.357 | 0.111 | 0.067 | 0.239 | 0.048 | 0.282 | 1.79 | 0.91 |
 | out | 1 | 0.358 | 0.112 | 0.075 | 0.299 | 0.049 | 0.342 | 1.90 | 0.89 |
 | null | 0 | 0.361 | 0.113 | 0.083 | 0.254 | 0.057 | 0.290 | 5.05 | 0.92 |
@@ -1413,9 +1414,9 @@ All six start from 45.93 at t = 20.
   CanViT the mechanism holds for the flagship, but what sets each pretraining's drift is how much it leaks.
 
 **The leak inside the training horizon predicts the drift past it.** No long rollout is needed to tell which model
-will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 24
-toy models with an additive Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.68, p = 2e-4; with the
-two delta models, ρ = 0.60, p = 0.001). The same holds for the fourteen released CanViT-B: the outside-to-inside
+will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 25
+toy models with an additive Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.66, p = 3e-4; with the
+two delta models, ρ = 0.57, p = 0.002). The same holds for the fourteen released CanViT-B: the outside-to-inside
 residual ratio at C2F's level 1 (glimpses 1–4, `write_leakage.py`, 128 scenes) ranks them by their mIoU change from
 t = 20 to t = 84 (ρ = −0.67, p = 0.009).
 
@@ -1469,9 +1470,11 @@ Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/
 |---|---|---|---|---|---|---|---|---|---|---|
 | – | – | scene | 0 | 0.075 | 0.306 | 0.056 | 0.122 (12) | 0.200 | 5.48 | 0.92 |
 | – | – | scene | 1 | 0.075 | 0.226 | 0.053 | – | – | 4.57 | 0.90 |
+| – | – | scene | 2 | 0.076 | 0.209 | 0.053 | 0.120 (15) | 0.143 | 5.39 | 0.93 |
 | outside the crop | 0.1 | scene | 0 | 0.070 | 0.115 | 0.056 | 0.105 (34) | 0.136 | 0.53 | 0.94 |
 | outside the crop | 1 | scene | 0 | 0.078 | 0.087 | 0.065 | 0.104 (153) | 0.105 | 0.10 | 0.97 |
 | outside the crop | 1 | scene | 1 | 0.072 | 0.089 | 0.060 | 0.095 (111) | 0.097 | 0.35 | 0.98 |
+| outside the crop | 1 | scene | 2 | 0.073 | 0.088 | 0.064 | 0.101 (76) | 0.106 | 0.14 | 0.91 |
 | outside the crop | 10 | scene | 0 | 0.080 | 0.094 | 0.075 | 0.109 (41) | 0.143 | 0.18 | 0.99 |
 | – | – | seen | 0 | 0.039 | 0.161 | 0.030 | 0.092 (20) | 0.150 | 6.18 | 0.98 |
 | outside the crop | 1 | seen | 0 | 0.051 | 0.088 | 0.044 | 0.090 (46) | 0.094 | 0.14 | 1.00 |
@@ -1481,15 +1484,18 @@ Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/
 | every cell, part read from the prefix | 1 | scene | 0 | 0.064 | 0.094 | 0.052 | 0.102 (46) | 0.107 | 0.34 | 0.97 |
 | every cell, part read from the prefix | 1 | scene | 1 | 0.066 | 0.120 | 0.060 | 0.105 (34) | 0.130 | 0.50 | 0.95 |
 | every cell, part read from the prefix | 10 | scene | 0 | 0.068 | 0.081 | 0.055 | 0.102 (52) | 0.121 | 0.24 | 0.98 |
+| every cell, part read from the prefix | 10 | scene | 1 | 0.066 | 0.148 | 0.059 | 0.104 (41) | 0.126 | 0.54 | 0.93 |
+| every cell, part read from the prefix | 10 | scene | 2 | 0.068 | 0.211 | 0.056 | 0.108 (36) | 0.158 | 1.18 | 0.85 |
 
-- With λ = 1, in two seeds, C2F ends at 0.087 and 0.089 at t = 84, against 0.306 and 0.226 without the penalty. The
-  leak falls from 4.6–5.5 to 0.10–0.35 per glimpse, while 0.97–0.98 of the outside attention still goes to the prefix:
-  the cells still attend to the sink, but what it writes no longer reaches LayerNorm.
-- Test-time scaling comes back with a plain softmax and 4-glimpse training. F-IID's best error comes at t = 153 and
-  t = 111 (0.104 and 0.095), and the error is 0.105 and 0.097 at t = 256. Without the penalty, the best is at t = 12
-  (0.122) and the error reaches 0.200.
-- The cost is small. The error at t = 20 is 0.078 and 0.072 (0.075 without), and with the Writes kept in the crop
-  0.065 and 0.060 at t = 84 (0.056 and 0.053 without).
+- With λ = 1, in three seeds, C2F ends at 0.087–0.089 at t = 84, against 0.209–0.306 without the penalty: 89–96% of
+  the error's growth from t = 20 is gone. The leak falls from 4.6–5.5 to 0.10–0.35 per glimpse, while 0.91–0.98 of
+  the outside attention still goes to the prefix: the cells still attend to the sink, but what it writes no longer
+  reaches LayerNorm.
+- Test-time scaling comes back with a plain softmax and 4-glimpse training. F-IID's best error comes at t = 153, 111
+  and 76 (0.104, 0.095 and 0.101), and the error is 0.097–0.106 at t = 256. Without the penalty, the best comes at
+  t = 12 and 15 (0.122 and 0.120) and the error reaches 0.200 and 0.143.
+- The cost is small. The error at t = 20 is 0.072–0.078 (0.075–0.076 without), and with the Writes kept in the crop
+  0.060–0.065 at t = 84 (0.053–0.056 without).
 - λ = 0.1 removes only part of the drift (0.115 at t = 84; F-IID best at t = 34). λ = 10 charges the model itself: 0.075 with
   the Writes kept in the crop, and F-IID turns back up after t = 41 (0.109, then 0.143 at t = 256).
 - With the seen loss, the penalty cuts the drift from 0.161 to 0.088 at t = 84, and F-IID ends at 0.094 instead of
@@ -1613,8 +1619,11 @@ CanViT.
 | softmax | – | 4 | 0 | 1.000 | 0.867 | 0.093 | 0.021 | 0.018 | 31 | 1.000 | 0.277 | 0.56 | 8.9 → 113.0 |
 | softmax | – | 4 | 1 | 1.000 | 0.964 | 0.152 | 0.026 | 0.017 | 36 | 1.000 | 0.275 | 0.58 | 8.9 → 116.6 |
 | out | – | 4 | 0 | 1.000 | 0.966 | 0.464 | 0.079 | 0.025 | 38 | 1.000 | 0.233 | 0.45 | 9.1 → 89.6 |
+| out | – | 4 | 1 | 1.000 | 0.960 | 0.134 | 0.024 | 0.018 | 36 | 1.000 | 0.199 | 0.45 | 8.7 → 98.3 |
 | gate | – | 4 | 0 | 1.000 | 0.773 | 0.164 | 0.029 | 0.017 | 27 | 1.000 | 0.325 | 0.64 | 9.5 → 159.1 |
+| gate | – | 4 | 1 | 1.000 | 0.135 | 0.020 | 0.015 | 0.015 | 15 | 1.000 | 0.267 | 0.91 | 9.3 → 220.4 |
 | delta | – | 4 | 0 | 1.000 | 0.480 | 0.017 | 0.015 | 0.015 | 24 | 1.000 | 0.150 | 0.11 | 4.7 → 4.0 |
+| delta | – | 4 | 1 | 1.000 | 0.500 | 0.016 | 0.014 | 0.015 | 23 | 1.000 | 0.147 | 0.12 | 4.8 → 3.9 |
 | null | – | 4 | 0 | 1.000 | 1.000 | 1.000 | 0.998 | 0.988 | – | 1.000 | 0.345 | 0.03 | 9.1 → 11.2 |
 | null | – | 4 | 1 | 1.000 | 1.000 | 1.000 | 0.996 | 0.954 | – | 1.000 | 0.683 | 0.05 | 9.0 → 12.3 |
 | null | – | 4 | 2 | 1.000 | 1.000 | 1.000 | 0.995 | 0.962 | – | 1.000 | 0.270 | 0.07 | 10.3 → 20.7 |
@@ -1622,9 +1631,12 @@ CanViT.
 | null_open | – | 4 | 1 | 1.000 | 1.000 | 1.000 | 0.957 | 0.629 | 157 | 1.000 | 0.357 | 0.06 | 8.5 → 13.7 |
 | sigmoid | – | 4 | 0 | 1.000 | 1.000 | 1.000 | 0.985 | 0.814 | 197 | 1.000 | 0.803 | 0.08 | 9.8 → 16.8 |
 | sigmoid | – | 4 | 1 | 1.000 | 1.000 | 1.000 | 1.000 | 0.982 | – | 1.000 | 0.840 | 0.05 | 9.5 → 13.2 |
+| sigmoid | – | 4 | 2 | 1.000 | 1.000 | 1.000 | 0.998 | 0.944 | – | 1.000 | 0.870 | 0.06 | 9.6 → 13.6 |
 | softmax | – | 8 | 0 | 1.000 | 1.000 | 0.995 | 0.459 | 0.040 | 89 | 1.000 | 0.295 | 0.26 | 8.9 → 36.5 |
 | softmax | – | 16 | 0 | 1.000 | 1.000 | 0.989 | 0.182 | 0.025 | 78 | 1.000 | 0.306 | 0.35 | 10.4 → 70.3 |
 | softmax | noise chunks, λ = 1 | 4 | 0 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | – | 1.000 | 0.280 | 0.05 | 8.8 → 8.8 |
+| softmax | noise chunks, λ = 1 | 4 | 1 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | – | 1.000 | 0.301 | 0.06 | 8.8 → 9.1 |
+| softmax | noise chunks, λ = 1 | 4 | 2 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | – | 1.000 | 0.295 | 0.06 | 8.8 → 9.1 |
 | softmax | every chunk, λ = 0.1 | 4 | 0 | 1.000 | 0.941 | 0.659 | 0.252 | 0.050 | 38 | 1.000 | 0.056 | 0.15 | 8.3 → 15.8 |
 | softmax | every chunk, λ = 1 | 4 | 0 | 1.000 | 1.000 | 1.000 | 0.906 | 0.325 | 130 | 1.000 | 0.612 | 0.07 | 8.0 → 9.0 |
 | softmax | every chunk, λ = 1 | 4 | 1 | 1.000 | 0.964 | 0.708 | 0.311 | 0.105 | 43 | 1.000 | 0.331 | 0.06 | 7.9 → 8.8 |
@@ -1637,21 +1649,21 @@ CanViT.
   then falls below 90% at t = 31 and 36 (two seeds) and near chance at t = 128 (0.021 and 0.026, against 1/64). With
   no Write during noise it still recalls 100% at t = 256, so neither capacity nor the readout loses the facts: the
   writes the noise forces do. A standard cross-attention (with an output projection), an output gate and the delta
-  rule fail the same way (below 90% from t = 38, 27 and 24).
+  rule fail the same way (below 90% from t = 36–38, 15–27 and 23–24, two seeds each).
 - **Mostly the same dilution.** Each noise chunk adds 0.56–0.58 to a softmax slot after removing its mean, and the
-  slots' centered norm grows from 8.9 at t = 3 to 113–117 at t = 256 (8–17-fold for softmax, the output projection,
+  slots' centered norm grows from 8.9 at t = 3 to 113–117 at t = 256 (8–24-fold for softmax, the output projection,
   the gate and null_open seed 0): LayerNorm then shrinks the facts. The delta rule moves a slot toward what it reads
   instead of adding it, so its norm stays put (4.7 → 4.0) and the facts are overwritten instead. Small writes also
   wear the facts down without diluting them: null_open seed 1, sigmoid seed 0 and the penalties on every chunk with
   λ ≥ 1 add 0.01–0.08 per noise chunk, their slots barely grow, and recall still falls late.
 - **Here the zero-value null key is enough, in three seeds out of three.** It writes 0.03–0.08 per noise chunk and
-  still recalls 95–99% at t = 256. Sigmoid holds in one seed of two (0.982 and 0.814), null_open in none (0.811 and
-  0.629, below 90% from t = 198 and 157). One difference with the canvas, where the null key fails: this readout
-  attends over every slot, so no write is hidden from it, whereas the canvas's forced write is mostly hidden from its
-  readout.
-- **The penalty during noise keeps a plain softmax exact to t = 256.** The model still writes 0.36 per noise chunk,
-  but only 0.05 of it is left after removing the mean: it learned to write along the one direction LayerNorm
-  removes, and the slots' centered norm stays at 8.8, as in the toy.
+  still recalls 95–99% at t = 256. Sigmoid holds in two seeds of three (0.982 and 0.944; the third falls below 90%
+  from t = 197), null_open in none of two (0.811 and 0.629, below 90% from t = 198 and 157). One difference with the
+  canvas, where the null key fails: this readout attends over every slot, so no write is hidden from it, whereas the
+  canvas's forced write is mostly hidden from its readout.
+- **The penalty during noise keeps a plain softmax exact to t = 256, in three seeds out of three.** The model still
+  writes 0.26–0.36 per noise chunk, but only about 0.06 of it is left after removing the mean: it learned to write
+  along the one direction LayerNorm removes, and the slots' centered norm stays at 8.8–9.1, as in the toy.
 - **A penalty on every chunk, which needs no labels, only delays the failure**, at any strength: below 90% from
   t = 38 (λ = 0.1), 130 and 43 (λ = 1, two seeds) and 92 (λ = 10), and 0.05–0.33 at t = 256. With null_open it
   reaches t = 145. It makes every write small, the useless ones included, but not zero.

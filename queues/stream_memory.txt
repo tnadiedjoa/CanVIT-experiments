@@ -103,3 +103,16 @@ probes/stream_memory/sigmoid_s2.pt scripts/stream_memory.py train --write sigmoi
 results/stream_memory/sigmoid_s2_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s2.pt
 results/stream_memory/sigmoid_s2_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s2.pt --test-writes abstain
 results/stream_memory/sigmoid_s2_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s2.pt --policy repeat
+# Second seeds of the Writes that forget.
+probes/stream_memory/out_s1.pt scripts/stream_memory.py train --write out --seed 1
+results/stream_memory/out_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/out_s1.pt
+results/stream_memory/out_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/out_s1.pt --test-writes abstain
+results/stream_memory/out_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/out_s1.pt --policy repeat
+probes/stream_memory/gate_s1.pt scripts/stream_memory.py train --write gate --seed 1
+results/stream_memory/gate_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/gate_s1.pt
+results/stream_memory/gate_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/gate_s1.pt --test-writes abstain
+results/stream_memory/gate_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/gate_s1.pt --policy repeat
+probes/stream_memory/delta_s1.pt scripts/stream_memory.py train --write delta --seed 1
+results/stream_memory/delta_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/delta_s1.pt
+results/stream_memory/delta_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/delta_s1.pt --test-writes abstain
+results/stream_memory/delta_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/delta_s1.pt --policy repeat
