@@ -68,3 +68,38 @@ probes/stream_memory/null_open_pall1_s0.pt scripts/stream_memory.py train --writ
 results/stream_memory/null_open_pall1_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_pall1_s0.pt
 results/stream_memory/null_open_pall1_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_pall1_s0.pt --test-writes abstain
 results/stream_memory/null_open_pall1_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_pall1_s0.pt --policy repeat
+# Second seeds of the Writes that can write nothing (null holds to t = 256 in seed 0).
+probes/stream_memory/null_s1.pt scripts/stream_memory.py train --write null --seed 1
+results/stream_memory/null_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s1.pt
+results/stream_memory/null_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s1.pt --test-writes abstain
+results/stream_memory/null_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s1.pt --policy repeat
+probes/stream_memory/sigmoid_s1.pt scripts/stream_memory.py train --write sigmoid --seed 1
+results/stream_memory/sigmoid_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s1.pt
+results/stream_memory/sigmoid_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s1.pt --test-writes abstain
+results/stream_memory/sigmoid_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s1.pt --policy repeat
+probes/stream_memory/null_s2.pt scripts/stream_memory.py train --write null --seed 2
+results/stream_memory/null_s2_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s2.pt
+results/stream_memory/null_s2_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s2.pt --test-writes abstain
+results/stream_memory/null_s2_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s2.pt --policy repeat
+# The penalty on the part of the residual read from the registers only (label free, aimed at the forced write).
+probes/stream_memory/softmax_pprefix1_s0.pt scripts/stream_memory.py train --write softmax --penalty 1 --penalty-on prefix --seed 0
+results/stream_memory/softmax_pprefix1_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pprefix1_s0.pt
+results/stream_memory/softmax_pprefix1_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pprefix1_s0.pt --test-writes abstain
+results/stream_memory/softmax_pprefix1_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pprefix1_s0.pt --policy repeat
+probes/stream_memory/softmax_pprefix1_s1.pt scripts/stream_memory.py train --write softmax --penalty 1 --penalty-on prefix --seed 1
+results/stream_memory/softmax_pprefix1_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pprefix1_s1.pt
+results/stream_memory/softmax_pprefix1_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pprefix1_s1.pt --test-writes abstain
+results/stream_memory/softmax_pprefix1_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pprefix1_s1.pt --policy repeat
+# More seeds of the penalty during noise chunks, and of sigmoid.
+probes/stream_memory/softmax_pnoise1_s1.pt scripts/stream_memory.py train --write softmax --penalty 1 --penalty-on noise --seed 1
+results/stream_memory/softmax_pnoise1_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s1.pt
+results/stream_memory/softmax_pnoise1_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s1.pt --test-writes abstain
+results/stream_memory/softmax_pnoise1_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s1.pt --policy repeat
+probes/stream_memory/softmax_pnoise1_s2.pt scripts/stream_memory.py train --write softmax --penalty 1 --penalty-on noise --seed 2
+results/stream_memory/softmax_pnoise1_s2_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s2.pt
+results/stream_memory/softmax_pnoise1_s2_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s2.pt --test-writes abstain
+results/stream_memory/softmax_pnoise1_s2_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s2.pt --policy repeat
+probes/stream_memory/sigmoid_s2.pt scripts/stream_memory.py train --write sigmoid --seed 2
+results/stream_memory/sigmoid_s2_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s2.pt
+results/stream_memory/sigmoid_s2_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s2.pt --test-writes abstain
+results/stream_memory/sigmoid_s2_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s2.pt --policy repeat

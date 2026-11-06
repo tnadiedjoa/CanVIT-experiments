@@ -4,3 +4,10 @@ probes/write_finetune_short_op1.pt scripts/train_write_gate.py --kind writes --b
 results/c2f_c64_t85_s0_finetune_short_op1.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_short_op1.pt
 probes/write_finetune_short_op10.pt scripts/train_write_gate.py --kind writes --batch-size 16 --lr 5e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400 --stop-probability 0.5 --tbptt-chunk-glimpses 2 --outside-penalty 10
 results/c2f_c64_t85_s0_finetune_short_op10.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/write_finetune_short_op10.pt
+# The whole of CanViT fine-tuned (backbone, Reads, Writes) with the outside penalty, and without it, on pretraining-length rollouts: is the frozen backbone what stops the Writes-only fine-tune?
+probes/canvit_finetune_short_op1.pt scripts/train_write_gate.py --kind canvit --batch-size 16 --lr 1e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400 --stop-probability 0.5 --tbptt-chunk-glimpses 2 --outside-penalty 1
+results/c2f_c64_t85_s0_canvit_finetune_short_op1.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/canvit_finetune_short_op1.pt
+results/leak_visibility/in21k_canvit_finetune_short_op1_c64.json scripts/leak_visibility.py --canvas-grid-size 64 --num-scenes 64 --write-gate probes/canvit_finetune_short_op1.pt
+probes/canvit_finetune_short.pt scripts/train_write_gate.py --kind canvit --batch-size 16 --lr 1e-5 --warmup-steps 20 --grad-clip-norm 1.0 --num-steps 400 --stop-probability 0.5 --tbptt-chunk-glimpses 2
+results/c2f_c64_t85_s0_canvit_finetune_short.json scripts/ade20k_rollouts.py --policy coarse_to_fine --num-glimpses 85 --canvas-grid-size 64 --write-gate probes/canvit_finetune_short.pt
+results/leak_visibility/in21k_canvit_finetune_short_c64.json scripts/leak_visibility.py --canvas-grid-size 64 --num-scenes 64 --write-gate probes/canvit_finetune_short.pt

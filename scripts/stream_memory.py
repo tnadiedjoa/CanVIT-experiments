@@ -21,7 +21,8 @@ attention can go.
 `--penalty λ` charges, as sink_memory's `--outside-penalty`, the Writes' residual after removing its mean over the
 channels, squared, relative to the slot's own (centered, not differentiated): with `--penalty-on noise` during noise
 chunks only (the analogue of outside the crop: it uses the labels), with `all` during every chunk (a cost on writing
-at all, which needs no labels).
+at all, which needs no labels), with `prefix` during every chunk but only on the part of the residual read from the
+registers (no labels either, but aimed at the forced write).
 
 At test, `--test-writes abstain` drops every Write during noise chunks, the analogue of local Writes: it shows whether
 the writes during noise chunks make the drift. The evaluation reports per chunk the accuracy on the stored keys, the
@@ -148,8 +149,10 @@ class Train:
     penalty: float = 0.0
     """When > 0, adds this times the Writes' residual after removing its mean over the channels, squared, over the
     slot's own (centered, not differentiated), averaged over the slots and both Writes."""
-    penalty_on: Literal["noise", "all"] = "noise"
-    """When the penalty charges: during noise chunks only (it uses the labels) or during every chunk (label free)."""
+    penalty_on: Literal["noise", "all", "prefix"] = "noise"
+    """When the penalty charges: during noise chunks only (it uses the labels), during every chunk (label free), or
+    during every chunk but only the part of the residual read from the registers (label free, aimed at the forced
+    write)."""
     lr: float = 1e-3
     warmup: int = 500
     seed: int = 0
@@ -179,6 +182,8 @@ def train(cfg: Train) -> None:
     gen = torch.Generator().manual_seed(cfg.seed)
     dev = torch.device("cuda")
     model = StreamModel(cfg.write).to(dev)
+    for write in model.writes:
+        write.keep_prefix_part = cfg.penalty > 0 and cfg.penalty_on == "prefix"
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=0.05)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(1, (i + 1) / cfg.warmup) * 0.5 * (
         1 + math.cos(math.pi * min(i, cfg.steps) / cfg.steps)))
@@ -200,7 +205,7 @@ def train(cfg: Train) -> None:
                     charged = ~informative[:, t] if cfg.penalty_on == "noise" else torch.ones_like(informative[:, t])
                     c = memory.detach().float()
                     own = (c - c.mean(-1, keepdim=True)).square().sum(-1).clamp(min=1e-6)  # [B, SLOTS]
-                    for r in residuals:
+                    for r in (residuals if cfg.penalty_on != "prefix" else [w.prefix_part for w in model.writes]):
                         r = r.float()
                         ratio = ((r - r.mean(-1, keepdim=True)).square().sum(-1) / own).mean(1)  # [B]
                         cost = cost + (ratio * charged).sum() / charged.sum().clamp(min=1) / len(residuals)

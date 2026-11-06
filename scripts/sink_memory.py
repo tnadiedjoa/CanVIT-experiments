@@ -30,7 +30,8 @@ pixel readout cannot see (defined below): the part of a write that the pixel los
 makes the canvas's scale free, a model can meet that penalty by shrinking the whole canvas; `--hidden-relative`
 divides it by each cell's squared norm. `--outside-penalty λ` charges instead, outside the glimpse's crop only, the
 part of the Writes' residual that a LayerNorm would see (all but its mean over the channels), relative to the cell's;
-with `--penalty-cells all` it charges every cell, a cost on writing at all that needs no knowledge of the crop.
+with `--penalty-cells all` it charges every cell, a cost on writing at all that needs no knowledge of the crop, and
+with `prefix` every cell but only the part of the residual read from the positionless prefix tokens.
 
 With `--loss seen` the training loss covers only the cells seen so far (the union of the glimpses' crops), so the
 model has nothing to gain from writing into the others; with the default `--loss scene` it is trained, as CanViT is,
@@ -204,6 +205,8 @@ class Write(Attention):
             self.gate = nn.Linear(2 * dim, heads)
             nn.init.zeros_(self.gate.weight)
             nn.init.constant_(self.gate.bias, -1.0)
+        self.keep_prefix_part = False  # when True, forward stores the part of the residual read from the prefix
+        self.prefix_part: Tensor | None = None
 
     def forward(self, cells, tokens, rope, cell_pos, patch_pos, raw=None):
         """cells: the normed canvas (queries); raw: the canvas itself, which the delta Write moves toward its output."""
@@ -219,6 +222,10 @@ class Write(Attention):
         else:
             w = logits.softmax(-1)
         out = w.to(v.dtype) @ v  # [B, h, N, dh]
+        if self.keep_prefix_part:
+            assert self.kind in ("softmax", "null", "null_open", "sigmoid"), "an additive Write without projection"
+            part = w[..., : self.n_prefix].to(v.dtype) @ v[..., : self.n_prefix, :]
+            self.prefix_part = part.transpose(1, 2).flatten(2)  # [B, N, D]
         if self.kind == "gate":
             out = out * torch.sigmoid(self.gate(cells)).transpose(1, 2).unsqueeze(-1).to(out.dtype)
         if self.kind == "delta":
@@ -356,9 +363,10 @@ class Train:
     residual after removing its mean over the channels, divided by the cell's own (centered, not differentiated):
     everything a LayerNorm reading the canvas would see of the forced write. Writing along the constant direction,
     which every LayerNorm removes, stays free."""
-    penalty_cells: Literal["outside", "all"] = "outside"
-    """Where `--outside-penalty` charges: outside the crop, or in every cell (a cost on writing at all, which needs no
-    knowledge of where the glimpse is)."""
+    penalty_cells: Literal["outside", "all", "prefix"] = "outside"
+    """Where `--outside-penalty` charges: outside the crop, in every cell (a cost on writing at all, which needs no
+    knowledge of where the glimpse is), or in every cell but only the part of the residual read from the positionless
+    prefix tokens (where the forced attention goes; no knowledge of the crop either)."""
     hidden_relative: bool = False
     """Divides that squared norm, per cell, by the cell's squared norm after the glimpse (not differentiated), so the
     penalty cannot be met by shrinking the whole canvas, which LayerNorm makes free."""
@@ -387,6 +395,8 @@ def train(cfg: Train) -> None:
     dev = torch.device("cuda")
     data = scenes("training").to(dev)
     model = CanvasModel(ModelConfig(write=cfg.write, registers=cfg.registers)).to(dev)
+    for write in model.writes:
+        write.keep_prefix_part = cfg.outside_penalty > 0 and cfg.penalty_cells == "prefix"
     rope, cells = Rope(model.cfg.dim // model.cfg.heads, dev), cell_positions(dev)[None]
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=0.05)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: min(1, (i + 1) / cfg.warmup) * 0.5 * (
@@ -416,11 +426,13 @@ def train(cfg: Train) -> None:
                         hidden = hidden + ((r - (r @ U) @ U.T).square().sum(-1) / scale).mean() / len(residuals)
                 if cfg.outside_penalty > 0:
                     outside = (cells - vp[:, None, :2]).abs().amax(-1) > vp[:, None, 2]  # [B, N]
-                    if cfg.penalty_cells == "all":
+                    if cfg.penalty_cells != "outside":
                         outside = torch.ones_like(outside)
                     c = canvas.detach().float()
                     own = (c - c.mean(-1, keepdim=True)).square().sum(-1).clamp(min=1e-6)
-                    for r in residuals:
+                    charged = (residuals if cfg.penalty_cells != "prefix"
+                               else [w.prefix_part for w in model.writes])
+                    for r in charged:
                         r = r.float()
                         ratio = (r - r.mean(-1, keepdim=True)).square().sum(-1) / own
                         outside_cost = outside_cost + (ratio * outside).sum() / outside.sum().clamp(min=1) / len(residuals)

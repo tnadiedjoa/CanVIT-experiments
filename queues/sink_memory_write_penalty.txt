@@ -14,3 +14,29 @@ results/sink_memory/softmax_wp1_s1_c2f.json scripts/sink_memory.py evaluate --ch
 results/sink_memory/softmax_wp1_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp1_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
 results/sink_memory/softmax_wp1_s1_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp1_s1.pt --policy full_then_random --num-glimpses 257
 results/sink_memory/softmax_wp1_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_wp1_s1.pt
+# Only the part of the residual read from the positionless prefix, in every cell (--penalty-cells prefix): label free, but aimed at the forced write.
+probes/sink_memory/softmax_pp1_s0.pt scripts/sink_memory.py train --write softmax --outside-penalty 1 --penalty-cells prefix --seed 0 --steps 12000
+results/sink_memory/softmax_pp1_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp1_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_pp1_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp1_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_pp1_s0_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp1_s0.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_pp1_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_pp1_s0.pt
+probes/sink_memory/softmax_pp1_s1.pt scripts/sink_memory.py train --write softmax --outside-penalty 1 --penalty-cells prefix --seed 1 --steps 12000
+results/sink_memory/softmax_pp1_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp1_s1.pt --policy coarse_to_fine
+results/sink_memory/softmax_pp1_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp1_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_pp1_s1_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp1_s1.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_pp1_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_pp1_s1.pt
+probes/sink_memory/softmax_pp10_s0.pt scripts/sink_memory.py train --write softmax --outside-penalty 10 --penalty-cells prefix --seed 0 --steps 12000
+results/sink_memory/softmax_pp10_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_pp10_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_pp10_s0_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s0.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_pp10_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_pp10_s0.pt
+probes/sink_memory/softmax_pp10_s1.pt scripts/sink_memory.py train --write softmax --outside-penalty 10 --penalty-cells prefix --seed 1 --steps 12000
+results/sink_memory/softmax_pp10_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s1.pt --policy coarse_to_fine
+results/sink_memory/softmax_pp10_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_pp10_s1_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s1.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_pp10_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_pp10_s1.pt
+probes/sink_memory/softmax_pp10_s2.pt scripts/sink_memory.py train --write softmax --outside-penalty 10 --penalty-cells prefix --seed 2 --steps 12000
+results/sink_memory/softmax_pp10_s2_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s2.pt --policy coarse_to_fine
+results/sink_memory/softmax_pp10_s2_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s2.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_pp10_s2_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s2.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_pp10_s2_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_pp10_s2.pt
