@@ -1143,19 +1143,23 @@ with local Writes from glimpse 21 and object Writes at 0.9 from glimpse 5, then 
 
 **Three times longer: 257 glimpses.** The pretraining policies, run to 257 glimpses (three times C2F's 85; separate
 runs from those above, with the mIoU after every glimpse up to t = 20 and every fourth one after;
-[`queues/scaling.txt`](queues/scaling.txt)). With released Writes, more glimpses stop paying: R-IID levels off
-(45.43 at best, t = 200; 45.40 at t = 256) and F-IID declines after t = 44 (45.09, then 44.22 at t = 256). With
+[`queues/scaling.txt`](queues/scaling.txt), and seed 1, another draw of the random viewpoints,
+[`queues/scaling_seed1.txt`](queues/scaling_seed1.txt)). With released Writes, more glimpses stop paying: R-IID levels
+off (45.43 at best, t = 200; 45.40 at t = 256) and F-IID declines after t = 44 (45.09, then 44.22 at t = 256). With
 object Writes, R-IID is still rising at t = 256 (46.16) and F-IID holds its peak (46.02 at t = 156, 45.96 at
+t = 256). Seed 1 repeats it (F-IID released: 45.00 at t = 56, then 44.33; object: 46.01 at t = 204, 45.97 at
 t = 256). The gain grows with the glimpses:
 
-| Policy | released, t = 20 / 84 / 256 | object, t = 20 / 84 / 256 | object − released, t = 20 | t = 84 | t = 256 |
-|---|---|---|---|---|---|
-| R-IID | 43.07 / 45.17 / 45.40 | 43.34 / 45.77 / 46.16 | +0.27 [+0.11, +0.45] | +0.60 [+0.38, +0.85] | +0.77 [+0.50, +1.09] |
-| F-IID | 44.67 / 44.80 / 44.22 | 44.95 / 45.92 / 45.96 | +0.28 [+0.17, +0.40] | +1.11 [+0.86, +1.40] | +1.74 [+1.43, +2.09] |
+| Policy | seed | released, t = 20 / 84 / 256 | object, t = 20 / 84 / 256 | object − released, t = 20 | t = 84 | t = 256 |
+|---|---|---|---|---|---|---|
+| R-IID | 0 | 43.07 / 45.17 / 45.40 | 43.34 / 45.77 / 46.16 | +0.27 [+0.11, +0.45] | +0.60 [+0.38, +0.85] | +0.77 [+0.50, +1.09] |
+| R-IID | 1 | 42.73 / 44.75 / 45.20 | 43.02 / 45.48 / 46.00 | +0.30 [+0.18, +0.46] | +0.73 [+0.54, +0.97] | +0.81 [+0.57, +1.17] |
+| F-IID | 0 | 44.67 / 44.80 / 44.22 | 44.95 / 45.92 / 45.96 | +0.28 [+0.17, +0.40] | +1.11 [+0.86, +1.40] | +1.74 [+1.43, +2.09] |
+| F-IID | 1 | 44.81 / 44.90 / 44.33 | 45.07 / 45.93 / 45.97 | +0.26 [+0.15, +0.40] | +1.03 [+0.79, +1.32] | +1.65 [+1.33, +2.03] |
 
 ![257 glimpses of R-IID and F-IID](outputs/scaling.png)
 
-*Flagship, 64×64 canvas. R-IID starts below the plotted range (18.60 at t = 0).*
+*Flagship, 64×64 canvas. R-IID starts below the plotted range (18.60 at t = 0 with seed 0, 18.11 with seed 1).*
 
 **Averaging the predictions instead.** A fix on the readout side needs no viewpoint: average each cell's class
 probabilities over the glimpses (`--readout mean_probs`, released Writes; [`queues/readout.txt`](queues/readout.txt)).
@@ -1247,7 +1251,7 @@ level 3. *Prefix* is the share of those cells' attention on the prefix tokens.
 | softmax | 0 | 0.359 | 0.111 | 0.075 | 0.306 | 0.056 | 0.264 | 5.48 | 0.92 |
 | softmax | 1 | 0.361 | 0.113 | 0.075 | 0.226 | – | 0.302 | 4.57 | 0.90 |
 | null | 0 | 0.361 | 0.113 | 0.083 | 0.254 | 0.057 | 0.290 | 5.05 | 0.92 |
-| null | 1 | 0.358 | 0.113 | 0.077 | 0.234 | – | 0.240 | 5.38 | 0.93 |
+| null | 1 | 0.358 | 0.113 | 0.077 | 0.234 | 0.057 | 0.240 | 5.38 | 0.93 |
 | null_open | 0 | 0.360 | 0.110 | 0.061 | 0.123 | – | 0.305 | 0.22 | 0.00 |
 | gate | 0 | 0.357 | 0.111 | 0.084 | 0.251 | 0.050 | 0.256 | 2.53 | 0.87 |
 | gate | 1 | 0.360 | 0.114 | 0.080 | 0.352 | – | 0.265 | 3.17 | 0.79 |
@@ -1299,6 +1303,7 @@ their correlation.
 | delta seed 1 | 0.059 | 0.069 | 0.60 | 0.71 | 3 → 3 | 0.91 / 0.92 / 0.75 / 0.64 | 0.96 / 0.93 |
 | softmax, seen loss seed 0 | 0.057 | 0.181 | 0.80 | 0.87 | 10 → 35 | 0.92 / 0.97 / 0.87 / 0.70 | 0.96 / 0.97 |
 | null, seen loss seed 0 | 0.067 | 0.158 | 0.77 | 0.85 | 11 → 36 | 0.92 / 0.96 / 0.88 / 0.73 | 0.97 / 0.97 |
+| null_open, seen loss seed 0 | 0.129 | 0.153 | 0.68 | 0.73 | 5 → 11 | 0.92 / 0.99 / 0.99 / 0.98 | 0.97 / 0.98 |
 | gate, seen loss seed 0 | 0.273 | 0.143 | 0.65 | 0.66 | 5 → 42 | 0.93 / 0.92 / 0.58 / 0.37 | 0.97 / 0.67 |
 | sigmoid, seen loss seed 0 | 0.084 | 0.092 | 0.81 | 0.86 | 8 → 26 | 0.92 / 0.96 / 0.95 / 0.94 | 0.96 / 0.97 |
 
@@ -1321,13 +1326,16 @@ projection on the complement. C2F at t = 84:
 | model | released | only what the readout sees | only what it does not see | Writes kept in the crop |
 |---|---|---|---|---|
 | softmax seed 0 | 0.306 | 0.095 | 0.491 | 0.056 |
-| null seed 0 | 0.254 | 0.094 | – | 0.057 |
-| null seed 1 | 0.234 | 0.096 | 0.383 | – |
+| null seed 0 | 0.254 | 0.094 | 0.442 | 0.057 |
+| null seed 1 | 0.234 | 0.096 | 0.383 | 0.057 |
+| gate seed 0 | 0.251 | 0.188 | 0.617 | 0.050 |
 
-- Keeping only what the readout sees removes most of the drift (0.094–0.096, against 0.234–0.306 released), and
-  keeping only what it does not see makes it worse (0.38–0.49).
-- The visible part is not harmless either: it ends above the Writes kept in the crop (0.056–0.057). And the hidden
-  part alone does more harm than both together, so the visible part partly offsets it.
+- For softmax and null, keeping only what the readout sees removes most of the drift (0.094–0.096, against
+  0.234–0.306 released). Gate's leak is more visible (0.125 of its energy, against 0.08), and its visible part alone
+  still drifts (0.188, against 0.251).
+- Keeping only what the readout does not see makes every model worse than released (0.38–0.62): the hidden part does
+  more harm alone than with the visible part, which partly offsets it.
+- The visible part is not harmless either: every model ends above its Writes kept in the crop (0.050–0.057).
 
 **In CanViT, neither part alone is harmless.** The same test from level 3 (`bio_rollouts.py --local-writes-outside`,
 flagship, 64×64 canvas, 2,000 scenes), with the ADE20K probe as the readout: its row space has at most 150 of the

@@ -1,0 +1,5 @@
+# queues/scaling.txt with seed 1 (other random viewpoints).
+results/scaling/riid_c64_t257_released_s1.json scripts/bio_rollouts.py --num-glimpses 257 --per-image-at 20 84 256 --eval-stride-after-20 4 --policy random --seed 1
+results/scaling/riid_c64_t257_object_s1.json scripts/bio_rollouts.py --num-glimpses 257 --per-image-at 20 84 256 --eval-stride-after-20 4 --policy random --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97 --seed 1
+results/scaling/fiid_c64_t257_released_s1.json scripts/bio_rollouts.py --num-glimpses 257 --per-image-at 20 84 256 --eval-stride-after-20 4 --policy full_then_random --seed 1
+results/scaling/fiid_c64_t257_object_s1.json scripts/bio_rollouts.py --num-glimpses 257 --per-image-at 20 84 256 --eval-stride-after-20 4 --policy full_then_random --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97 --seed 1

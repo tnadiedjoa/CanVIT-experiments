@@ -221,8 +221,12 @@ def scaling() -> None:
         ends = []
         for label, name, color in rules:
             t, values = curve(load(folder / f"{policy}_c64_t257_{name}.json")["miou"])
-            ax.plot(t + 1, values, color=color, label=label, linewidth=1.8)
+            ax.plot(t + 1, values, color=color, label=f"{label}, seed 0", linewidth=1.8)
             ends.append((t[-1] + 1, values[-1], color))
+            seed1 = folder / f"{policy}_c64_t257_{name}_s1.json"
+            if seed1.exists():
+                t, values = curve(load(seed1)["miou"])
+                ax.plot(t + 1, values, color=color, label=f"{label}, seed 1", linewidth=1.2, linestyle="--")
         label_ends(ax, ends, gap=0.3)
         ax.set_xscale("log")
         ax.set_xticks([1, 5, 21, 85, 257], ["1", "5", "21", "85", "257"])
