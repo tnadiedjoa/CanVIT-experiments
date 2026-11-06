@@ -1,0 +1,6 @@
+# Test-time scaling past the 85 glimpses of C2F: 257 random glimpses (R-IID, the pretraining policy, and F-IID),
+# flagship, 64x64 canvas, ADE20K val, released vs object Writes (the C2F settings unchanged).
+results/scaling/riid_c64_t257_released.json scripts/bio_rollouts.py --num-glimpses 257 --per-image-at 20 84 256 --eval-stride-after-20 4 --policy random
+results/scaling/riid_c64_t257_object.json scripts/bio_rollouts.py --num-glimpses 257 --per-image-at 20 84 256 --eval-stride-after-20 4 --policy random --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97
+results/scaling/fiid_c64_t257_released.json scripts/bio_rollouts.py --num-glimpses 257 --per-image-at 20 84 256 --eval-stride-after-20 4 --policy full_then_random
+results/scaling/fiid_c64_t257_object.json scripts/bio_rollouts.py --num-glimpses 257 --per-image-at 20 84 256 --eval-stride-after-20 4 --policy full_then_random --object-writes-threshold 0.9 --object-writes-from 5 --object-writes-late-threshold 0.97

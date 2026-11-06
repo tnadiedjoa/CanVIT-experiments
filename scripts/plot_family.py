@@ -208,6 +208,37 @@ def policies() -> None:
     plt.close(fig)
 
 
+def scaling() -> None:
+    """Flagship, 64×64 canvas, 257 glimpses of R-IID and F-IID (the pretraining policies): released and object
+    Writes, against the glimpses on a log scale."""
+    folder = ROOT / "results/scaling"
+    rules = [("released Writes", "released", "#8a8985"), ("object Writes", "object", "#6250d6")]
+    panels = {"R-IID": "riid", "F-IID (full view, then R-IID)": "fiid"}
+    if not all((folder / f"{p}_c64_t257_{name}.json").exists() for p in panels.values() for _, name, _ in rules):
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.8), sharey=True)
+    for ax, (title, policy) in zip(axes, panels.items()):
+        ends = []
+        for label, name, color in rules:
+            t, values = curve(load(folder / f"{policy}_c64_t257_{name}.json")["miou"])
+            ax.plot(t + 1, values, color=color, label=label, linewidth=1.8)
+            ends.append((t[-1] + 1, values[-1], color))
+        label_ends(ax, ends, gap=0.3)
+        ax.set_xscale("log")
+        ax.set_xticks([1, 5, 21, 85, 257], ["1", "5", "21", "85", "257"])
+        ax.set_ylim(40, 47)
+        ax.grid(axis="y", color=GRID, linewidth=0.8)
+        ax.set_xlabel("glimpses seen (log scale)")
+        ax.set_title(title, fontsize=9, loc="left", color=INK)
+        ax.legend(fontsize=7, loc="lower right")
+    axes[0].set_ylabel("mIoU (%)")
+    fig.suptitle("Past the training horizon, released Writes stall or decline; object Writes keep improving",
+                 fontsize=9, x=0.01, ha="left", color=MUTED)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "scaling.png", bbox_inches="tight")
+    plt.close(fig)
+
+
 def imagenet() -> None:
     """ImageNet-1k top-1 by glimpse (fine-tuned classifier, C2F, 32×32 canvas, 10,000 images)."""
     folder = ROOT / "results/imagenet"
@@ -244,4 +275,5 @@ if __name__ == "__main__":
     family_leak()
     which_cells()
     policies()
+    scaling()
     imagenet()

@@ -1140,6 +1140,22 @@ with local Writes from glimpse 21 and object Writes at 0.9 from glimpse 5, then 
   of *which* cells mattering. Through level 3, writing into none of the outside cells does worse than writing into
   all of them, and both do worse than writing only into the cells that resemble the crop.
 
+**Three times longer: 257 glimpses.** The pretraining policies, run to 257 glimpses (three times C2F's 85; separate
+runs from those above, with the mIoU after every glimpse up to t = 20 and every fourth one after;
+[`queues/scaling.txt`](queues/scaling.txt)). With released Writes, more glimpses stop paying: R-IID levels off
+(45.43 at best, t = 200; 45.40 at t = 256) and F-IID declines after t = 44 (45.09, then 44.22 at t = 256). With
+object Writes, R-IID is still rising at t = 256 (46.16) and F-IID holds its peak (46.02 at t = 156, 45.96 at
+t = 256). The gain grows with the glimpses:
+
+| Policy | released, t = 20 / 84 / 256 | object, t = 20 / 84 / 256 | object − released, t = 20 | t = 84 | t = 256 |
+|---|---|---|---|---|---|
+| R-IID | 43.07 / 45.17 / 45.40 | 43.34 / 45.77 / 46.16 | +0.27 [+0.11, +0.45] | +0.60 [+0.38, +0.85] | +0.77 [+0.50, +1.09] |
+| F-IID | 44.67 / 44.80 / 44.22 | 44.95 / 45.92 / 45.96 | +0.28 [+0.17, +0.40] | +1.11 [+0.86, +1.40] | +1.74 [+1.43, +2.09] |
+
+![257 glimpses of R-IID and F-IID](outputs/scaling.png)
+
+*Flagship, 64×64 canvas. R-IID starts below the plotted range (18.60 at t = 0).*
+
 **Averaging the predictions instead.** A fix on the readout side needs no viewpoint: average each cell's class
 probabilities over the glimpses (`--readout mean_probs`, released Writes; [`queues/readout.txt`](queues/readout.txt)).
 
@@ -1234,7 +1250,7 @@ subdirectory per class) wherever `IMAGENET_VAL` points; the queue runners and sc
 | `scripts/bio_rollouts.py`, `scripts/bio_reconstruction.py` | ADE20K mIoU and the paper's reconstruction metric after every glimpse with those mechanisms, or with a training of `train_retina.py`, for any released pretraining (`--model`); object Writes with a fixed reach or kept to regions connected to the crop, and their controls (random cells in their share, the ground-truth oracle and its halves, grouping by the probe), sink-gated Writes, rollouts past C2F, the probe's probabilities averaged over the glimpses (`--readout mean_probs`); per-image counts for paired bootstraps. |
 | `scripts/imagenet_rollouts.py` | ImageNet-1k top-1 after every glimpse from the released fine-tuned classifier's recurrent CLS, with released, local or object Writes, and with its evidence accumulated over the glimpses. |
 | `scripts/paired_bootstrap.py` | Paired bootstrap interval of the difference between two runs on the same images (ADE20K mIoU or ImageNet top-1). |
-| `scripts/plot_family.py` | The family and outside-cell figures in `outputs/family_*.png`, `outputs/write_which_cells.png`, `outputs/policies.png` and `outputs/imagenet_glimpses.png`. |
+| `scripts/plot_family.py` | The family and outside-cell figures in `outputs/family_*.png`, `outputs/write_which_cells.png`, `outputs/policies.png`, `outputs/scaling.png` and `outputs/imagenet_glimpses.png`. |
 | `scripts/train_retina.py` | Learns a retina, a canvas shape or RoPE wavelengths, with CanViT frozen or fine-tuned, on the paper's objective and short rollouts of ADE20K or Cityscapes scenes (with or without zoom, with gaze biased to the center, optionally with microsaccade rollouts); or saves the gradient on the canvas cells at the starting grid. |
 | `scripts/growing_canvas.py` | ADE20K mIoU of a 32×32 canvas that recruits 64×64-density cells in the crops of the first level-2 glimpses. |
 | `scripts/plot_bio.py` | The primate-vision figures in `outputs/bio_*.png`. |
