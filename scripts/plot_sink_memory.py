@@ -120,7 +120,8 @@ def short_horizon_leak(run: dict) -> float:
 
 def spearman_note(ax: plt.Axes, text: str, x: list[float], y: list[float], where=(0.97, 0.04)) -> None:
     rho, p = spearmanr(x, y)
-    ax.text(*where, f"{text}Spearman ρ = {rho:.2f} (p = {p:.3f}, n = {len(x)})", transform=ax.transAxes, ha="right",
+    shown = f"p = {p:.3f}" if p >= 0.001 else f"p = {p:.0e}".replace("e-0", "e-")
+    ax.text(*where, f"{text}Spearman ρ = {rho:.2f} ({shown}, n = {len(x)})".replace("-", "−"), transform=ax.transAxes, ha="right",
             va="bottom", fontsize=7, color=MUTED)
 
 
@@ -196,7 +197,7 @@ def toy_projection(ax: plt.Axes) -> None:
                     markeredgewidth=0.8)
     ax.set_yticks(range(len(names)), [n.replace("_seen", ", seen loss").replace("_s", " seed ") for n in names],
                   fontsize=7)
-    ax.set_ylim(len(names) + 1.2, -0.6)  # inverted, with room for the legend below the rows
+    ax.set_ylim(len(names) + 1.8, -0.6)  # inverted, with room for the legend below the rows
     ax.set_xscale("log")
     ax.set_xticks([0.05, 0.1, 0.2, 0.5, 1], ["0.05", "0.1", "0.2", "0.5", "1"])
     ax.set_xticks([], minor=True)

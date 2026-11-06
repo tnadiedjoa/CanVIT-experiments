@@ -10,7 +10,9 @@ the per-glimpse residual in the cells outside the crop and inside it, and the co
 at consecutive glimpses (1 when the leak adds the same vector every time); and per glimpse the visibility of the
 canvas itself (centered) and its norm, with released Writes or, with `--local-writes-from`, Writes kept in the crop.
 It also reports, unweighted, the share of the residuals' energy in each readout's row space
-(local_writes.readout_subspace; `random_share_*` is that of a random direction, the rank over D).
+(local_writes.readout_subspace; `random_share_*` is that of a random direction, the rank over D), the share along
+the constant direction (1, ..., 1), which every LayerNorm reading the canvas removes exactly, and per glimpse the norm
+of the cells after removing their mean (what LayerNorm divides by).
 
     .venv/bin/python -P scripts/leak_visibility.py --output results/leak_visibility/in21k_released.json
 """
@@ -96,10 +98,10 @@ def main(m: Measurement) -> None:
                for w in canvit.canvas_writes]
     T = 85
     sums = {k: torch.zeros(T, dtype=torch.float64) for k in
-            [f"canvas_visibility_{n}" for n in readouts] + ["canvas_norm"]}
+            [f"canvas_visibility_{n}" for n in readouts] + ["canvas_norm", "canvas_centered_norm"]}
     level3 = {k: 0.0 for k in [f"{w}_visibility_{n}" for w in ("outside", "inside") for n in readouts]
               + [f"{w}_share_{n}" for w in ("outside", "inside") for n in readouts]
-              + ["outside_cos_previous", "outside_norm", "inside_norm"]}
+              + ["outside_cos_previous", "outside_norm", "inside_norm", "outside_mean_share", "inside_mean_share"]}
     count3 = 0
     with torch.inference_mode(), torch.autocast(device_type=device.type, dtype=torch.bfloat16):
         for first in range(0, m.num_scenes, m.batch_size):
@@ -118,6 +120,7 @@ def main(m: Measurement) -> None:
                 state = canvit(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 cells = state.canvas[:, num_registers:].float()
                 sums["canvas_norm"][t] += cells.norm(dim=-1).mean(1).sum().item()
+                sums["canvas_centered_norm"][t] += (cells - cells.mean(-1, keepdim=True)).norm(dim=-1).mean(1).sum().item()
                 for n, A in readouts.items():
                     sums[f"canvas_visibility_{n}"][t] += visibility(A, cells).mean(1).sum().item()
                 if t < LEVEL3:
@@ -127,6 +130,8 @@ def main(m: Measurement) -> None:
                 inside = (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)
                 for where, mask in (("outside", ~inside), ("inside", inside)):
                     level3[f"{where}_norm"] += r.norm(dim=-1)[mask].mean().item() * B
+                    mean_share = r.mean(-1).square() * r.shape[-1] / r.square().sum(-1).clamp(min=1e-12)
+                    level3[f"{where}_mean_share"] += mean_share[mask].mean().item() * B
                     for n, A in readouts.items():
                         level3[f"{where}_visibility_{n}"] += visibility(A, r)[mask].mean().item() * B
                         with torch.autocast(device_type=device.type, enabled=False):

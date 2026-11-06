@@ -28,7 +28,8 @@ The Writes differ in how a cell may decline a glimpse:
 With `--hidden-penalty λ` the loss also charges λ times the squared norm of the Writes' residuals in the directions the
 pixel readout cannot see (defined below): the part of a write that the pixel loss alone leaves free. Since LayerNorm
 makes the canvas's scale free, a model can meet that penalty by shrinking the whole canvas; `--hidden-relative`
-divides it by each cell's squared norm.
+divides it by each cell's squared norm. `--outside-penalty λ` charges instead, outside the glimpse's crop only, the
+part of the Writes' residual that a LayerNorm would see (all but its mean over the channels), relative to the cell's.
 
 With `--loss seen` the training loss covers only the cells seen so far (the union of the glimpses' crops), so the
 model has nothing to gain from writing into the others; with the default `--loss scene` it is trained, as CanViT is,
@@ -46,7 +47,10 @@ head(LN(cell)), so up to LN's scale a residual r moves it by A·r with A = head.
 share is that of r in A's row space, 48 of 128 dimensions, so 0.375 for a random direction), and, outside, the cosine
 with the same cell's residual from the previous glimpse and with its mean over level 3; the same cosine for the
 visible and hidden parts separately; and, per part, how much the outside residuals add up over level 3: the norm of
-their sum over the sum of their norms (1 when every glimpse adds the same direction, about 1/8 for 64 random ones).
+their sum over the sum of their norms (1 when every glimpse adds the same direction, about 1/8 for 64 random ones);
+and the share of the outside residual's energy along the constant direction (1, ..., 1), the one direction that every
+LayerNorm reading the canvas removes exactly (1/128 for a random direction). After every glimpse, the mean norm of
+the cells after removing their mean (what LayerNorm divides by) is also reported.
 After every glimpse: the regression slope of the predicted on the true pixels (after removing each image's mean; 1 is
 the right contrast), their correlation, and the predictions' standard deviation.
 
@@ -346,6 +350,11 @@ class Train:
     hidden_penalty: float = 0.0
     """When > 0, adds this times the mean squared norm of the part of the Writes' residuals that the readout cannot see
     (orthogonal to visible_basis), over every cell and both Writes: a cost on what the pixel loss is blind to."""
+    outside_penalty: float = 0.0
+    """When > 0, adds this times, over the cells outside the glimpse's crop and both Writes, the squared norm of the
+    residual after removing its mean over the channels, divided by the cell's own (centered, not differentiated):
+    everything a LayerNorm reading the canvas would see of the forced write. Writing along the constant direction,
+    which every LayerNorm removes, stays free."""
     hidden_relative: bool = False
     """Divides that squared norm, per cell, by the cell's squared norm after the glimpse (not differentiated), so the
     penalty cannot be met by shrinking the whole canvas, which LayerNorm makes free."""
@@ -387,6 +396,7 @@ def train(cfg: Train) -> None:
         full_first = bool(torch.rand(()) < 0.5)
         canvas, loss, hidden = model.init_canvas(cfg.batch_size), 0.0, 0.0
         seen = torch.zeros(cfg.batch_size, GRID * GRID, dtype=torch.bool, device=dev)
+        outside_cost = 0.0
         if cfg.hidden_penalty > 0:
             with torch.no_grad():
                 U = visible_basis(model)
@@ -400,6 +410,14 @@ def train(cfg: Train) -> None:
                     for r in residuals:
                         r = r.float()
                         hidden = hidden + ((r - (r @ U) @ U.T).square().sum(-1) / scale).mean() / len(residuals)
+                if cfg.outside_penalty > 0:
+                    outside = (cells - vp[:, None, :2]).abs().amax(-1) > vp[:, None, 2]  # [B, N]
+                    c = canvas.detach().float()
+                    own = (c - c.mean(-1, keepdim=True)).square().sum(-1).clamp(min=1e-6)
+                    for r in residuals:
+                        r = r.float()
+                        ratio = (r - r.mean(-1, keepdim=True)).square().sum(-1) / own
+                        outside_cost = outside_cost + (ratio * outside).sum() / outside.sum().clamp(min=1) / len(residuals)
                 if cfg.loss == "scene":
                     loss = loss + F.mse_loss(model.decode(canvas).float(), x)
                 else:
@@ -407,15 +425,16 @@ def train(cfg: Train) -> None:
                     m = seen.view(-1, 1, GRID, GRID).repeat_interleave(PATCH_PX, 2).repeat_interleave(PATCH_PX, 3)
                     err = (model.decode(canvas).float() - x).square() * m
                     loss = loss + err.sum() / (3 * m.sum()).clamp(min=1)
-        loss, hidden = loss / cfg.glimpses, hidden / cfg.glimpses
+        loss, hidden, outside_cost = loss / cfg.glimpses, hidden / cfg.glimpses, outside_cost / cfg.glimpses
         opt.zero_grad(set_to_none=True)
-        (loss + cfg.hidden_penalty * hidden).backward()
+        (loss + cfg.hidden_penalty * hidden + cfg.outside_penalty * outside_cost).backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step()
         sched.step()
         if step % 500 == 0 or step == cfg.steps - 1:
-            history.append({"step": step, "loss": loss.item(), "hidden": float(hidden)})
-            log.info("step %d loss %.4f hidden %.3f %.0f s", step, loss.item(), float(hidden), time.time() - start)
+            history.append({"step": step, "loss": loss.item(), "hidden": float(hidden), "outside": float(outside_cost)})
+            log.info("step %d loss %.4f hidden %.3f outside %.3f %.0f s", step, loss.item(), float(hidden),
+                     float(outside_cost), time.time() - start)
     cfg.output.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"config": asdict(cfg) | {"output": str(cfg.output)}, "model": asdict(model.cfg),
                 "state_dict": model.state_dict(), "history": history}, cfg.output)
@@ -525,8 +544,8 @@ def analyze(cfg: Analyze) -> None:
     canvas = model.init_canvas(B)
     P = U @ U.T
     level3 = {k: [] for k in ("visible_share_outside", "visible_share_inside", "cos_previous_outside",
-                              "cos_previous_outside_visible", "cos_previous_outside_hidden")}
-    curves = {k: [] for k in ("mse", "slope", "correlation", "prediction_std")}
+                              "cos_previous_outside_visible", "cos_previous_outside_hidden", "mean_share_outside")}
+    curves = {k: [] for k in ("mse", "slope", "correlation", "prediction_std", "centered_norm")}
     outside_residuals, previous = [], None
     for t, vp in enumerate(vps):
         inside = (cells - vp[:, None, :2]).abs().amax(-1) <= vp[:, None, 2]
@@ -538,12 +557,16 @@ def analyze(cfg: Analyze) -> None:
         curves["slope"].append(((pc * xc).sum() / xc.square().sum()).item())
         curves["correlation"].append(((pc * xc).sum() / (pc.square().sum() * xc.square().sum()).sqrt()).item())
         curves["prediction_std"].append(pc.square().mean().sqrt().item())
+        c = canvas.float()
+        curves["centered_norm"].append((c - c.mean(-1, keepdim=True)).norm(dim=-1).mean().item())
         if t < 21:
             continue
         r = sum(res.float() for res in residuals)  # [B, N, D]
         share = (r @ U).square().sum(-1) / r.square().sum(-1).clamp(min=1e-12)
         level3["visible_share_outside"].append(share[~inside].mean().item())
         level3["visible_share_inside"].append(share[inside].mean().item())
+        mean_share = r.mean(-1).square() * D / r.square().sum(-1).clamp(min=1e-12)
+        level3["mean_share_outside"].append(mean_share[~inside].mean().item())
         if previous is not None:
             both = ~inside & previous[1]
             level3["cos_previous_outside"].append(F.cosine_similarity(r, previous[0], dim=-1)[both].mean().item())

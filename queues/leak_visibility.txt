@@ -1,3 +1,17 @@
 # Is the Writes' leak visible to CanViT's readouts? (scripts/leak_visibility.py; C2F on the 32×32 canvas, 128 scenes)
 results/leak_visibility/in21k_released.json scripts/leak_visibility.py
 results/leak_visibility/in21k_local21.json scripts/leak_visibility.py --local-writes-from 21
+# The rest of the family, released Writes: does the leak's share along the constant direction track the drift?
+results/leak_visibility/in1k_released.json scripts/leak_visibility.py --model in1k
+results/leak_visibility/abl-baseline_released.json scripts/leak_visibility.py --model abl-baseline
+results/leak_visibility/abl-dcan256_released.json scripts/leak_visibility.py --model abl-dcan256
+results/leak_visibility/abl-no-bptt_released.json scripts/leak_visibility.py --model abl-no-bptt
+results/leak_visibility/abl-no-dense_released.json scripts/leak_visibility.py --model abl-no-dense
+results/leak_visibility/abl-no-fiid-1riid_released.json scripts/leak_visibility.py --model abl-no-fiid-1riid
+results/leak_visibility/abl-no-fiid-2riid_released.json scripts/leak_visibility.py --model abl-no-fiid-2riid
+results/leak_visibility/abl-no-reads_released.json scripts/leak_visibility.py --model abl-no-reads
+results/leak_visibility/abl-no-vpe_released.json scripts/leak_visibility.py --model abl-no-vpe
+results/leak_visibility/abl-qkvo-dcan256_released.json scripts/leak_visibility.py --model abl-qkvo-dcan256
+results/leak_visibility/abl-qkvo-dcan384_released.json scripts/leak_visibility.py --model abl-qkvo-dcan384
+results/leak_visibility/abl-rw-stride6_released.json scripts/leak_visibility.py --model abl-rw-stride6
+results/leak_visibility/abl-vit-s_released.json scripts/leak_visibility.py --model abl-vit-s

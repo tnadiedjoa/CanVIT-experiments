@@ -1,0 +1,13 @@
+# A penalty on what a LayerNorm would see of the Writes outside the crop (--outside-penalty): can a softmax Write learn to write along the constant direction?
+probes/sink_memory/softmax_op1_s0.pt scripts/sink_memory.py train --write softmax --outside-penalty 1 --seed 0 --steps 12000
+results/sink_memory/softmax_op1_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_op1_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_op1_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_op1_s0_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s0.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_op1_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_op1_s0.pt
+probes/sink_memory/softmax_op10_s0.pt scripts/sink_memory.py train --write softmax --outside-penalty 10 --seed 0 --steps 12000
+results/sink_memory/softmax_op10_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op10_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_op10_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op10_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_op10_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op10_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_op10_s0_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op10_s0.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_op10_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_op10_s0.pt

@@ -1218,8 +1218,11 @@ and a causal test in CanViT itself. The short version:
   correlation).
 - Its size **inside the training horizon predicts** how much a model drifts past it, in the toy models and across the
   fourteen released CanViT-B.
-- Being able to write nothing (a null key, sigmoid weights, an output gate) is not enough; the model must have a
-  reason to. A null key open by default and a loss on the seen cells only give a model that barely drifts.
+- Being able to write nothing (a null key, sigmoid weights, an output gate, an output projection) is not enough; the
+  model must have a reason to. A null key open by default and a loss on the seen cells only cut the leak about 50-fold,
+  but the rest can still grow (one seed in three drifts). Training on 16-glimpse rollouts works another way: the
+  model keeps writing, but its cells' centered norm, which LayerNorm divides by, barely grows. Keeping the Writes in
+  the crop works for every model.
 
 **Setup.** [`scripts/sink_memory.py`](scripts/sink_memory.py) trains small canvas models with CanViT's design and
 scale ratios.
@@ -1250,14 +1253,17 @@ level 3. *Prefix* is the share of those cells' attention on the prefix tokens.
 | Write | seed | R-IID t = 3 | C2F t = 3 | C2F t = 20 | C2F t = 84 | C2F t = 84, Writes kept in the crop | RFS t = 84 | leak | prefix |
 |---|---|---|---|---|---|---|---|---|---|
 | softmax | 0 | 0.359 | 0.111 | 0.075 | 0.306 | 0.056 | 0.264 | 5.48 | 0.92 |
-| softmax | 1 | 0.361 | 0.113 | 0.075 | 0.226 | – | 0.302 | 4.57 | 0.90 |
+| softmax | 1 | 0.361 | 0.113 | 0.075 | 0.226 | 0.053 | 0.302 | 4.57 | 0.90 |
+| out | 0 | 0.357 | 0.111 | 0.067 | 0.239 | 0.048 | 0.282 | 1.79 | 0.91 |
+| out | 1 | 0.358 | 0.112 | 0.075 | 0.299 | 0.049 | 0.342 | 1.90 | 0.89 |
 | null | 0 | 0.361 | 0.113 | 0.083 | 0.254 | 0.057 | 0.290 | 5.05 | 0.92 |
 | null | 1 | 0.358 | 0.113 | 0.077 | 0.234 | 0.057 | 0.240 | 5.38 | 0.93 |
 | null_open | 0 | 0.360 | 0.110 | 0.061 | 0.123 | 0.056 | 0.305 | 0.22 | 0.00 |
+| null_open | 1 | 0.358 | 0.110 | 0.057 | 0.102 | 0.049 | 0.278 | 0.16 | 0.00 |
 | gate | 0 | 0.357 | 0.111 | 0.084 | 0.251 | 0.050 | 0.256 | 2.53 | 0.87 |
-| gate | 1 | 0.360 | 0.114 | 0.080 | 0.352 | – | 0.265 | 3.17 | 0.79 |
+| gate | 1 | 0.360 | 0.114 | 0.080 | 0.352 | 0.053 | 0.265 | 3.17 | 0.79 |
 | sigmoid | 0 | 0.385 | 0.133 | 0.164 | 0.367 | 0.088 | 0.333 | 5.66 | 0.08 |
-| sigmoid | 1 | 0.360 | 0.110 | 0.069 | 0.097 | – | 0.276 | 0.22 | 0.00 |
+| sigmoid | 1 | 0.360 | 0.110 | 0.069 | 0.097 | 0.061 | 0.276 | 0.22 | 0.00 |
 | sigmoid | 2 | – | 0.134 | 0.161 | 0.424 | – | 0.373 | 5.28 | 0.11 |
 | delta | 0 | 0.353 | 0.109 | 0.055 | 0.246 | 0.048 | 0.262 | 0.16 | 0.86 |
 | delta | 1 | 0.354 | 0.109 | 0.055 | 0.207 | 0.052 | 0.250 | 0.21 | 0.80 |
@@ -1272,10 +1278,13 @@ level 3. *Prefix* is the share of those cells' attention on the prefix tokens.
   outside cells' attention on the prefix. Of the three sigmoid seeds, only seed 1 learned to write nothing outside
   (leak 0.22); it is stable (0.069 to 0.097). Seeds 0 and 2 leak as much as softmax, from the patches rather than the
   prefix (0.08–0.11 of the attention on it).
+- **An output projection does not help either.** It could map the prefix's values to zero, but the model does not
+  learn to: `out` leaks less (1.8–1.9) but drifts as much (0.067 to 0.239, 0.075 to 0.299), with 0.89–0.91 of the
+  outside attention on the prefix.
 - **A null key open by default helps:** it takes the outside cells' attention (0.00 on the prefix), the leak falls to
-  0.22, and C2F goes from 0.061 to 0.123: it still drifts, by a factor of 2.0 from t = 20 to t = 84, against 3.0–4.1
-  for softmax.
-- **Keeping the Writes in the crop repairs every model:** 0.050–0.057 at t = 84 (sigmoid seed 0: 0.088), below each
+  0.16–0.22, and C2F goes from 0.061 to 0.123 and from 0.057 to 0.102 (seeds 0 and 1): it still drifts, by a factor
+  of 1.8–2.0 from t = 20 to t = 84, against 3.0–4.1 for softmax.
+- **Keeping the Writes in the crop repairs every model:** 0.048–0.061 at t = 84 (sigmoid seed 0: 0.088), below each
   model's own t = 20.
 - **A delta Write does not drift by growth, but it erases.** Its canvas norm stays at 3, and it leaks 0.16–0.21. Yet
   C2F still goes from 0.055 to 0.207 and 0.246 at t = 84. Each level-3 glimpse moves every outside cell a few percent
@@ -1293,6 +1302,10 @@ their correlation.
 | model | visible share, outside | inside | cosine with previous | cosine with mean | canvas norm, t = 3 → 84 | slope, t = 4 / 20 / 40 / 84 | correlation, t = 4 / 84 |
 |---|---|---|---|---|---|---|---|
 | softmax seed 0 | 0.081 | 0.225 | 0.70 | 0.82 | 13 → 68 | 0.90 / 0.89 / 0.69 / 0.51 | 0.95 / 0.92 |
+| softmax seed 1 | 0.078 | 0.214 | 0.67 | 0.80 | 13 → 69 | 0.89 / 0.87 / 0.70 / 0.60 | 0.95 / 0.94 |
+| softmax, 16-glimpse rollouts seed 0 | 0.071 | 0.185 | 0.74 | 0.84 | 10 → 31 | 0.92 / 1.03 / 1.07 / 1.02 | 0.96 / 0.98 |
+| out seed 0 | 0.098 | 0.264 | 0.57 | 0.72 | 11 → 41 | 0.90 / 0.89 / 0.72 / 0.58 | 0.95 / 0.93 |
+| out seed 1 | 0.103 | 0.348 | 0.55 | 0.71 | 12 → 45 | 0.89 / 0.85 / 0.67 / 0.54 | 0.95 / 0.90 |
 | null seed 0 | 0.080 | 0.194 | 0.61 | 0.75 | 13 → 58 | 0.89 / 0.85 / 0.67 / 0.56 | 0.95 / 0.93 |
 | null seed 1 | 0.084 | 0.182 | 0.62 | 0.76 | 14 → 58 | 0.89 / 0.87 / 0.74 / 0.59 | 0.95 / 0.93 |
 | null_open seed 0 | 0.103 | 0.129 | 0.67 | 0.78 | 8 → 16 | 0.89 / 0.92 / 0.89 / 0.77 | 0.95 / 0.96 |
@@ -1310,7 +1323,7 @@ their correlation.
 
 - **The leak hides from the readout.** Outside the crop, 0.02–0.13 of its energy is visible to the readout, against
   0.375 at random, in every model but one (gate with the seen loss, 0.27).
-- **It repeats.** An outside cell's residual has cosine 0.57–0.86 with its residual from the previous glimpse, and
+- **It repeats.** An outside cell's residual has cosine 0.55–0.86 with its residual from the previous glimpse, and
   0.66–0.93 with its mean over level 3. Summed over the glimpses, it grows the cell: the canvas norm goes from 13 to
   68 for softmax and from 38 to 342 for sigmoid seed 0, against 8 to 16 for null_open.
 - **LayerNorm then shrinks the content's contrast.** In the models that drift, the slope falls from 0.86–0.91 at
@@ -1327,22 +1340,30 @@ projection on the complement. C2F at t = 84:
 | model | released | only what the readout sees | only what it does not see | Writes kept in the crop |
 |---|---|---|---|---|
 | softmax seed 0 | 0.306 | 0.095 | 0.491 | 0.056 |
+| softmax seed 1 | 0.226 | 0.125 | 0.414 | 0.053 |
+| out seed 0 | 0.239 | 0.082 | 0.414 | 0.048 |
 | null seed 0 | 0.254 | 0.094 | 0.442 | 0.057 |
 | null seed 1 | 0.234 | 0.096 | 0.383 | 0.057 |
 | gate seed 0 | 0.251 | 0.188 | 0.617 | 0.050 |
-| gate seed 1 | 0.352 | 0.118 | – | – |
-| sigmoid seed 0 | 0.367 | 1.243 | – | 0.088 |
+| gate seed 1 | 0.352 | 0.118 | 0.645 | 0.053 |
+| sigmoid seed 0 | 0.367 | 1.243 | 0.706 | 0.088 |
+| sigmoid seed 1 | 0.097 | 0.194 | 0.174 | 0.061 |
+| delta seed 1 | 0.207 | 0.345 | 0.059 | 0.052 |
+| softmax, seen loss seed 0 | 0.161 | 0.113 | 0.173 | 0.030 |
+| null, seen loss seed 0 | 0.126 | 0.104 | 0.174 | 0.038 |
 
-- For softmax, null and gate seed 1, keeping only what the readout sees removes most of the drift (0.094–0.118,
-  against 0.234–0.352 released). Gate seed 0, whose leak is more visible (0.125 of its energy, against 0.08), keeps
-  more of it (0.188, against 0.251).
-- Keeping only what the readout does not see makes every model worse than released (0.38–0.62): alone, the hidden
-  part does more harm than with the visible part.
-- Sigmoid seed 0 is the exception: keeping only the visible part makes it far worse (1.243, against 0.367). Its
-  canvas is hidden almost entirely, inside the crop too (0.025 of its residuals' energy is visible), so the hidden
-  part sets the scale LayerNorm divides by. Without it, the visible part of the leak, which also adds up (canvas norm
-  61 at t = 84, against 42 with Writes kept in the crop), is no longer diluted.
-- The visible part is not harmless in any model: each ends above its Writes kept in the crop (0.050–0.088).
+- For softmax, out, null and gate seed 1, keeping only what the readout sees removes most of the drift
+  (0.082–0.125, against 0.226–0.352 released). Gate seed 0, whose leak is more visible (0.125 of its energy, against
+  0.08), keeps more of it (0.188, against 0.251).
+- Keeping only what the readout does not see makes every additive Write worse than released (0.17–0.71): alone, the
+  hidden part does more harm than with the visible part.
+- Sigmoid is the exception: keeping only the visible part makes both seeds worse (1.243, against 0.367; 0.194,
+  against 0.097). Its canvas is hidden almost entirely, inside the crop too (0.025 and 0.089 of its residuals' energy
+  is visible), so the hidden part sets the scale LayerNorm divides by. Without it, the visible part of the leak, which
+  also adds up (canvas norm 61 at t = 84 for seed 0, against 42 with Writes kept in the crop), is no longer diluted.
+- For delta, the split reverses: the visible part does the harm (0.345 alone, against 0.207 released), and the hidden
+  part alone is nearly harmless (0.059, against 0.052 in the crop). Its Write erases visible content.
+- The visible part is not harmless in any model: each ends above its Writes kept in the crop.
 
 **In CanViT, the hidden part does most of the harm, but neither part alone is harmless.** The leak is hidden from
 the pretraining loss, which reads the canvas through the teacher-feature head (LayerNorm, then 1024 → 768): outside
@@ -1372,12 +1393,19 @@ All six start from 45.93 at t = 20.
   Splitting it by key gave the same picture ([above](#writes-outside-the-glimpse-cause-c2fs-level-3-drop): from
   glimpse 1, only the prefix's part ends at 19.62, only the patches' at 39.83, both at 43.65, neither at 45.63).
 - So the hidden part explains why the leak is free at the training horizon, not all of the damage past it: through
-  LayerNorm, the two parts set each other's scale.
+  LayerNorm, the two parts set each other's scale. With released Writes, the canvas's centered norm (what LayerNorm
+  divides by) grows by 1.96 from t = 21 to t = 84, against 1.12 with Writes kept in the crop.
+- Across the family (`leak_visibility.py` on each of the fourteen pretrainings), how hidden the leak is varies: the
+  share of its energy in the head's row space is 0.07–0.26 for the 1024-d canvases (random: 0.75), except 0.74
+  without the dense loss, and 0.28–1.00 for the 256- and 384-d canvases, whose head sees nearly every direction. That
+  share ranks the drift only weakly (ρ = 0.49, p = 0.07), and neither the share along the constant direction nor the
+  growth of the centered norm ranks it (ρ = −0.02 and −0.12). The leak's size does better (ρ = −0.67, below): in
+  CanViT the mechanism holds for the flagship, but what sets each pretraining's drift is how much it leaks.
 
 **The leak inside the training horizon predicts the drift past it.** No long rollout is needed to tell which model
-will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 18
-toy models with a growing Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.70, p = 0.001; with the
-two delta models, ρ = 0.56, p = 0.011). The same holds for the fourteen released CanViT-B: the outside-to-inside
+will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 26
+toy models with an additive Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.73, p = 3e-5; with the
+two delta models, ρ = 0.66, p = 1e-4). The same holds for the fourteen released CanViT-B: the outside-to-inside
 residual ratio at C2F's level 1 (glimpses 1–4, `write_leakage.py`, 128 scenes) ranks them by their mIoU change from
 t = 20 to t = 84 (ρ = −0.67, p = 0.009).
 
@@ -1388,8 +1416,11 @@ seen so far, so there is nothing to gain from writing into the others.
 |---|---|---|---|---|---|---|---|---|
 | softmax | 0 | 0.095 | 0.039 | 0.161 | 0.030 | 0.278 | 6.18 | 0.98 |
 | softmax | 1 | 0.096 | 0.041 | 0.146 | – | 0.350 | 5.54 | 0.98 |
+| out | 0 | 0.094 | 0.038 | 0.088 | – | 0.240 | 1.62 | 0.99 |
 | null | 0 | 0.095 | 0.039 | 0.126 | 0.038 | 0.235 | 6.07 | 0.98 |
-| null_open | 0 | 0.093 | 0.030 | 0.035 | – | 0.249 | 0.10 | 0.00 |
+| null_open | 0 | 0.093 | 0.030 | 0.035 | 0.025 | 0.249 | 0.10 | 0.00 |
+| null_open | 1 | 0.093 | 0.033 | 0.092 | 0.026 | 0.244 | 0.20 | 0.00 |
+| null_open | 2 | 0.093 | 0.036 | 0.049 | 0.030 | 0.247 | 0.11 | 0.00 |
 | gate | 0 | 0.093 | 0.064 | 0.578 | 0.031 | 0.262 | 2.50 | 0.79 |
 | sigmoid | 0 | 0.096 | 0.045 | 0.056 | 0.034 | 0.311 | 0.23 | 0.01 |
 | sigmoid | 1 | 0.096 | 0.041 | 0.046 | – | 0.246 | 0.15 | 0.00 |
@@ -1399,10 +1430,64 @@ seen so far, so there is nothing to gain from writing into the others.
   0.126–0.161. Gate drifts most of all (0.064 to 0.578).
 - Sigmoid stays stable in two seeds out of three (0.056 and 0.046 at t = 84, leaks 0.15–0.23). In the third, the leak
   starts small (0.42 at t = 5) but grows once the canvas drifts (1.36 at t = 84), and the error reaches 0.132.
-- **With the null key open by default, the seen loss gives the best model of the study:** 0.030 at t = 20 and 0.035
-  at t = 84, with a leak of 0.10. The seen loss gives the incentive not to write outside, the open null key the means.
-- The seen loss also halves the error at t = 20 (0.030–0.045 for softmax, null, sigmoid and null_open, against
-  0.061–0.084 with the scene loss, and 0.16 for sigmoid seeds 0 and 2).
+- **With the null key open by default, the seen loss gives the best model of the study, in two seeds of three:**
+  0.030 at t = 20 and 0.035 at t = 84 (seed 0), 0.036 and 0.049 (seed 2), with leaks of 0.10–0.11. The seen loss
+  gives the incentive not to write outside, the open null key the means. In seed 1, the leak starts as small (0.12 at
+  t = 21) but grows as the canvas drifts (0.37 at t = 84), as in sigmoid's third seed, and the error reaches 0.092.
+- An output projection with the seen loss drifts less than softmax (0.038 to 0.088) but still leaks 1.6, with 0.99
+  of the outside attention on the prefix.
+- The seen loss also halves the error at t = 20 (0.030–0.045 for softmax, out, null, sigmoid and null_open, against
+  0.057–0.083 with the scene loss, and 0.16 for sigmoid seeds 0 and 2).
+
+**Charging the hidden write does not train it away.** `--hidden-penalty λ` adds λ times the squared norm of the
+Writes' hidden part (outside the readout's row space) to the loss, over every cell:
+
+- With the absolute norm, the model meets the penalty by shrinking the whole canvas, which LayerNorm makes free (canvas
+  norm 1.8 at t = 3, against 13): the leak stays as large relative to the cells, and C2F drifts as much or more
+  (λ = 0.001, 0.01 and 0.1 end at 0.225, 0.258 and 0.466; seed 1 of λ = 0.01 at 0.359).
+- Relative to each cell's squared norm (`--hidden-relative`), it hobbles the model: λ = 1 ends at 0.209 from a worse
+  t = 20 (0.113), and λ = 10 starts at 0.287 at t = 1. The hidden directions also carry content the model needs.
+
+**Test-time scaling: 257 glimpses.** F-IID and R-IID run to 257 glimpses
+([`queues/sink_memory_scaling.txt`](queues/sink_memory_scaling.txt)), as for CanViT above:
+
+| Write | loss | training rollouts | F-IID t = 20 | F-IID best (t) | F-IID t = 256 | R-IID t = 20 | R-IID best (t) | R-IID t = 256 |
+|---|---|---|---|---|---|---|---|---|
+| softmax | scene | 4 | 0.126 | 0.122 (12) | 0.200 | 0.156 | 0.151 (34) | 0.189 |
+| null | scene | 4 | 0.131 | 0.125 (12) | 0.178 | 0.159 | 0.154 (34) | 0.177 |
+| gate | scene | 4 | 0.130 | 0.123 (11) | 0.185 | 0.160 | 0.156 (29) | 0.195 |
+| delta | scene | 4 | 0.115 | 0.113 (15) | 0.141 | 0.141 | 0.134 (34) | 0.141 |
+| sigmoid (seed 1) | scene | 4 | 0.106 | 0.101 (48) | 0.118 | 0.147 | 0.125 (71) | 0.134 |
+| null_open | scene | 4 | 0.101 | 0.094 (51) | 0.115 | 0.142 | 0.113 (76) | 0.126 |
+| softmax | seen | 4 | 0.092 | 0.092 (20) | 0.150 | 0.172 | 0.141 (51) | 0.153 |
+| sigmoid (seed 1) | seen | 4 | 0.088 | 0.076 (97) | 0.079 | 0.150 | 0.086 (197) | 0.086 |
+| null_open | seen | 4 | 0.080 | 0.061 (130) | 0.063 | 0.151 | 0.075 (226) | 0.075 |
+| softmax | scene | 16 | 0.077 | 0.053 (130) | 0.054 | 0.107 | 0.053 (202) | 0.053 |
+
+- Every Write trained on 4-glimpse rollouts with the scene loss that leaks stops improving early: softmax, null and
+  gate reach their best F-IID error at t = 11–12, and at t = 256 they are worse than at t = 3 (0.178–0.200, against
+  0.145–0.147). Delta stops at t = 15 and ends at 0.141.
+- The Writes that write little outside keep improving longer: sigmoid seed 1 to t = 48 and null_open to t = 51 on
+  F-IID. With the seen loss, null_open improves to t = 130 (0.061) and sigmoid seed 1 to t = 97, and both hold to
+  t = 256.
+- **Training on longer rollouts also works, without removing the leak.** Trained on 16-glimpse rollouts (four times the
+  compute per step), softmax improves to t = 130 on F-IID (0.053) and t = 202 on R-IID, and holds to t = 256 (0.054
+  and 0.053), though it leaks as much as before (4.93 per glimpse, 0.98 of the outside attention on the prefix). On
+  C2F it goes from 0.037 at t = 20 to 0.046 at t = 84.
+
+![From scratch, 257 glimpses](outputs/sink_memory_scaling.png)
+
+**What grows is what LayerNorm divides by.** Every reader of the canvas (the head, the Reads, the Writes) applies a
+LayerNorm first, which removes each cell's mean over its channels and divides by the norm of the rest. `analyze`
+reports that centered norm after every glimpse. From t = 21 to t = 84 it grows by a factor of 2.4–3.5 in the softmax,
+out, null and gate models, against 1.3 for the softmax model trained on 16-glimpse rollouts and for the two null_open
+models with the seen loss that do not drift (seeds 0 and 2). Over the 25 analyzed toy models with an additive Write, that growth ranks the drift from t = 20 to
+t = 84 (Spearman ρ = 0.74, p = 3e-5) and the slope at t = 84 (ρ = −0.80, p = 2e-6). The model
+trained on 16 glimpses leaks as much as the one trained on 4, as hidden (0.071 of its energy visible) and as coherent
+(cosine 0.74 with the previous glimpse's), but puts 0.43 of the leak's energy along the constant direction
+(1, …, 1), which every LayerNorm removes, against 0.16 for the one trained on 4. That share alone does not protect a
+model, though: sigmoid seed 0 puts 0.79 there and its centered norm still grows by 2.8 (across the toy models, the
+share does not rank the drift: ρ = −0.02).
 
 **The full view repeated degrades every Write.** RFS goes from 0.17–0.18 at t = 0 to 0.235–0.373 at t = 84 in every
 model, including the delta (0.250 and 0.262) and the stable ones (null_open with the seen loss 0.249, stable sigmoid
