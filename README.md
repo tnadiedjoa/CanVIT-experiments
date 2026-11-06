@@ -1207,8 +1207,9 @@ t = 27; the sum of the log-probabilities gives 84.51 at t = 84.
 The sections above point to one cause. A Write's softmax must put each cell's attention somewhere, so the cells a
 glimpse does not cover attend to a positionless prefix token and still receive a residual. CanViT's pretraining
 rollouts average about four glimpses, so nothing in its loss charges what that residual does after dozens of them.
-This section tests the account in two ways: small canvas models trained from scratch, where the Write can be changed,
-and a causal test in CanViT itself. The short version:
+This section tests the account in three ways: small canvas models trained from scratch, where the Write can be
+changed; a causal test in CanViT itself; and a memory with no geometry at all, slots written from a stream of tokens.
+The short version:
 
 - The forced write is mostly **hidden**: it lies in directions the training readout barely sees (87–98% of its energy
   in the toy, 89% in CanViT), so at the training horizon it costs nothing. Past it, the hidden part alone does most of
@@ -1227,6 +1228,10 @@ and a causal test in CanViT itself. The short version:
   plain softmax and 4-glimpse training, it removes 89–96% of the error's growth from t = 20 to t = 84 in two seeds,
   and test-time scaling comes back (F-IID still improves past t = 100). It does not carry over to fine-tuning
   CanViT's released Writes, which meet the penalty by writing less inside the crop too.
+- **None of this needs an image.** A slot memory trained on 4-chunk streams of facts forgets them after 24–38 noise
+  chunks with a softmax Write, with or without an output projection, an output gate or the delta rule. It recalls
+  them perfectly when its Writes are dropped during noise, and keeps them to 256 noise chunks with the same penalty
+  charged during noise.
 
 **Setup.** [`scripts/sink_memory.py`](scripts/sink_memory.py) trains small canvas models with CanViT's design and
 scale ratios.
@@ -1525,6 +1530,7 @@ the released Writes' own parameters (key and value maps, layer norms) with that 
 | softmax | seen | 4 | 0.092 | 0.092 (20) | 0.150 | 0.172 | 0.141 (51) | 0.153 |
 | sigmoid (seed 1) | seen | 4 | 0.088 | 0.076 (97) | 0.079 | 0.150 | 0.086 (197) | 0.086 |
 | null_open | seen | 4 | 0.080 | 0.061 (130) | 0.063 | 0.151 | 0.075 (226) | 0.075 |
+| softmax | scene | 8 | 0.088 | 0.080 (51) | 0.086 | 0.120 | 0.085 (136) | 0.086 |
 | softmax | scene | 16 | 0.077 | 0.053 (130) | 0.054 | 0.107 | 0.053 (202) | 0.053 |
 
 - Every Write trained on 4-glimpse rollouts with the scene loss that leaks stops improving early: softmax, null and
@@ -1544,13 +1550,13 @@ the released Writes' own parameters (key and value maps, layer norms) with that 
 LayerNorm first, which removes each cell's mean over its channels and divides by the norm of the rest. `analyze`
 reports that centered norm after every glimpse. From t = 21 to t = 84 it grows by a factor of 2.4–3.5 in the softmax,
 out, null and gate models, against 1.3 for the softmax model trained on 16-glimpse rollouts and for the two null_open
-models with the seen loss that do not drift (seeds 0 and 2). Over the 25 analyzed toy models with an additive Write, that growth ranks the drift from t = 20 to
-t = 84 (Spearman ρ = 0.74, p = 3e-5) and the slope at t = 84 (ρ = −0.80, p = 2e-6). The model
+models with the seen loss that do not drift (seeds 0 and 2). Over the 26 analyzed toy models with an additive Write, that growth ranks the drift from t = 20 to
+t = 84 (Spearman ρ = 0.76, p = 8e-6) and the slope at t = 84 (ρ = −0.80, p = 7e-7). The model
 trained on 16 glimpses leaks as much as the one trained on 4, as hidden (0.071 of its energy visible) and as coherent
 (cosine 0.74 with the previous glimpse's), but puts 0.43 of the leak's energy along the constant direction
 (1, …, 1), which every LayerNorm removes, against 0.16 for the one trained on 4. That share alone does not protect a
 model, though: sigmoid seed 0 puts 0.79 there and its centered norm still grows by 2.8 (across the toy models, the
-share does not rank the drift: ρ = −0.02).
+share does not rank the drift: ρ = −0.06).
 
 **The full view repeated degrades every Write.** RFS goes from 0.17–0.18 at t = 0 to 0.235–0.373 at t = 84 in every
 model, including the delta (0.250 and 0.262) and the stable ones (null_open with the seen loss 0.249, stable sigmoid
@@ -1560,6 +1566,60 @@ CanViT.
 ![The from-scratch canvas models](outputs/sink_memory.png)
 
 ![Hidden writes: the short-horizon diagnostic and the causal test](outputs/hidden_writes.png)
+
+**A memory with no geometry: slots written from a stream.** Nothing above needs the canvas to be an image.
+[`scripts/stream_memory.py`](scripts/stream_memory.py) keeps the toy's blocks, Reads and Writes but drops positions:
+
+- Memory: 32 slots of 128 dimensions, each with its own learned initial value.
+- Input: a stream of chunks of 8 tokens, each processed with two positionless registers by four transformer blocks.
+  An informative chunk holds 8 facts (a token embedding a key plus its value; 64 keys, 64 values). A noise chunk holds
+  8 tokens of a separate noise vocabulary, so any single token tells the two apart.
+- Readout: after every chunk, a query embedding of each stored key reads the slots (cross-attention, MLP, linear map
+  to the 64 values). The loss is the cross-entropy on the keys stored so far, so nothing rewards writing what was not
+  shown.
+- Training: 10,000 steps on 4-chunk streams, the first chunk informative, each other one informative with
+  probability 1/2. Every model reaches 99–100% recall on them.
+- Test: one informative chunk, then 256 noise chunks; t counts the noise chunks seen. A memory that can ignore noise
+  keeps its accuracy at 1. *No Write in noise* drops every Write during noise chunks (the analogue of keeping the
+  Writes in the crop); *repeated facts* shows the informative chunk again at every step (the analogue of RFS).
+- The penalties are the toy's (centered residual over the slot's centered norm), charged during noise chunks only
+  (which uses the labels, as the crop does) or during every chunk (which needs no labels)
+  ([`queues/stream_memory.txt`](queues/stream_memory.txt)).
+
+| Write | penalty | seed | t = 3 | t = 32 | t = 64 | t = 128 | t = 256 | below 90% from t = | no Write in noise, t = 256 | repeated facts, t = 256 | centered residual per noise chunk | slot centered norm, t = 3 → 256 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| softmax | – | 0 | 1.000 | 0.867 | 0.093 | 0.021 | 0.018 | 31 | 1.000 | 0.277 | 0.56 | 8.9 → 113.0 |
+| out | – | 0 | 1.000 | 0.966 | 0.464 | 0.079 | 0.025 | 38 | 1.000 | 0.233 | 0.45 | 9.1 → 89.6 |
+| null_open | – | 0 | 1.000 | 0.992 | 0.987 | 0.971 | 0.811 | 198 | 1.000 | 0.397 | 0.35 | 10.8 → 88.4 |
+| sigmoid | – | 0 | 1.000 | 1.000 | 1.000 | 0.985 | 0.814 | 197 | 1.000 | 0.803 | 0.08 | 9.8 → 16.8 |
+| gate | – | 0 | 1.000 | 0.773 | 0.164 | 0.029 | 0.017 | 27 | 1.000 | 0.325 | 0.64 | 9.5 → 159.1 |
+| delta | – | 0 | 1.000 | 0.480 | 0.017 | 0.015 | 0.015 | 24 | 1.000 | 0.150 | 0.11 | 4.7 → 4.0 |
+| softmax | noise chunks | 0 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | – | 1.000 | 0.280 | 0.05 | 8.8 → 8.8 |
+| softmax | every chunk | 0 | 1.000 | 1.000 | 1.000 | 0.906 | 0.325 | 130 | 1.000 | 0.612 | 0.07 | 8.0 → 9.0 |
+
+- **The failure carries over.** Softmax recalls every fact for 16 noise chunks, five times its training horizon,
+  then falls below 90% at t = 31 and near chance (0.021 against 1/64) at t = 128. With no Write during noise it still
+  recalls 100% at t = 256, so neither capacity nor the readout loses the facts: the writes the noise forces do. A
+  standard cross-attention (with an output projection), an output gate and the delta rule fail the same way (below
+  90% from t = 38, 27 and 24).
+- **Mostly the same dilution.** Each noise chunk adds 0.56 to a softmax slot after removing its mean, and the slots'
+  centered norm grows from 8.9 at t = 3 to 113 at t = 256 (8–17-fold for softmax, the output projection, the gate and
+  null_open): LayerNorm then shrinks the facts. The delta rule moves a slot toward what it reads instead of adding it,
+  so its norm stays put (4.7 → 4.0) and the facts are overwritten instead. Small writes also wear the facts down
+  without diluting them: sigmoid and the penalty on every chunk (below) add only 0.07–0.08 per noise chunk, their
+  slots barely grow (9.8 → 16.8 and 8.0 → 9.0), and recall still falls late (0.814 and 0.325 at t = 256).
+- **Being able to abstain is not enough here either.** The null key open by default and the sigmoid Write write less
+  (0.35 per noise chunk for null_open) and hold 90% until t = 198 and 197, but what they still write accumulates
+  (null_open 10.8 → 88.4) and recall falls to 0.811 and 0.814 at t = 256.
+- **The penalty during noise keeps a plain softmax exact to t = 256.** The model still writes 0.36 per noise chunk,
+  but only 0.05 of it is left after removing the mean: it learned to write along the one direction LayerNorm
+  removes, and the slots' centered norm stays at 8.8, as in the toy.
+- **Without labels, the penalty on every chunk delays the failure fourfold** (90% until t = 130 instead of 31) but
+  does not stop it (0.325 at t = 256): it makes every write small, including the useless ones, but not zero.
+- **Repetition is again a separate failure.** Showing the facts again at every step degrades every model (0.150 to
+  0.803 at t = 256), the penalized ones included.
+
+![Slot memory over a stream](outputs/stream_memory.png)
 
 ### Limits
 
@@ -1619,6 +1679,8 @@ subdirectory per class) wherever `IMAGENET_VAL` points; the queue runners and sc
 | `scripts/sink_memory.py` | Small canvas models trained from scratch with CanViT's design, with seven kinds of Write (softmax, with an output projection, a zero-value null key closed or open by default, sigmoid, output gate, delta), the scene or the seen loss, and optional penalties on the residual the readout cannot see or on what LayerNorm sees of the residual outside the crop (or in every cell); their pixel error after every glimpse under the paper's policies and test-time rules (Writes kept in the crop, object Writes, only the part of the outside residual the readout sees or does not see); and the analysis of their Write residuals (readout visibility, coherence across glimpses, contrast of the predictions). |
 | `scripts/plot_sink_memory.py` | The from-scratch figures `outputs/sink_memory.png` and `outputs/hidden_writes.png` (with the CanViT family's short-horizon diagnostic and CanViT's projection test). |
 | `scripts/leak_visibility.py` | How visible the Writes' leak outside the crop is to CanViT's readouts (the pretraining head and the ADE20K probe), its coherence across glimpses, and the canvas's visibility after every glimpse, with the released Writes or a learned change to them (`--write-gate`). |
+| `scripts/stream_memory.py` | A slot memory written by the same Write kinds from a stream of token chunks (facts, then noise), trained on 4-chunk streams; its recall after every chunk up to 257, with Writes dropped during noise or the facts repeated, and optional penalties on the writes during noise chunks or every chunk. |
+| `scripts/plot_stream_memory.py` | The slot-memory figure `outputs/stream_memory.png`. |
 | `scripts/plot_family.py` | The family and outside-cell figures in `outputs/family_*.png`, `outputs/write_which_cells.png`, `outputs/policies.png`, `outputs/scaling.png` and `outputs/imagenet_glimpses.png`. |
 | `scripts/train_retina.py` | Learns a retina, a canvas shape or RoPE wavelengths, with CanViT frozen or fine-tuned, on the paper's objective and short rollouts of ADE20K or Cityscapes scenes (with or without zoom, with gaze biased to the center, optionally with microsaccade rollouts); or saves the gradient on the canvas cells at the starting grid. |
 | `scripts/growing_canvas.py` | ADE20K mIoU of a 32×32 canvas that recruits 64×64-density cells in the crops of the first level-2 glimpses. |

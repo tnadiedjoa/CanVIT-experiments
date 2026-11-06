@@ -1,0 +1,70 @@
+# Memory slots written from a stream of chunks (scripts/stream_memory.py): an informative chunk, then noise.
+probes/stream_memory/softmax_s0.pt scripts/stream_memory.py train --write softmax --seed 0
+results/stream_memory/softmax_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_s0.pt
+results/stream_memory/softmax_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_s0.pt --test-writes abstain
+results/stream_memory/softmax_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_s0.pt --policy repeat
+probes/stream_memory/null_open_s0.pt scripts/stream_memory.py train --write null_open --seed 0
+results/stream_memory/null_open_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_s0.pt
+results/stream_memory/null_open_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_s0.pt --test-writes abstain
+results/stream_memory/null_open_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_s0.pt --policy repeat
+probes/stream_memory/softmax_pnoise1_s0.pt scripts/stream_memory.py train --write softmax --penalty 1 --penalty-on noise --seed 0
+results/stream_memory/softmax_pnoise1_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s0.pt
+results/stream_memory/softmax_pnoise1_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s0.pt --test-writes abstain
+results/stream_memory/softmax_pnoise1_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pnoise1_s0.pt --policy repeat
+probes/stream_memory/softmax_pall1_s0.pt scripts/stream_memory.py train --write softmax --penalty 1 --penalty-on all --seed 0
+results/stream_memory/softmax_pall1_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall1_s0.pt
+results/stream_memory/softmax_pall1_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall1_s0.pt --test-writes abstain
+results/stream_memory/softmax_pall1_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall1_s0.pt --policy repeat
+probes/stream_memory/out_s0.pt scripts/stream_memory.py train --write out --seed 0
+results/stream_memory/out_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/out_s0.pt
+results/stream_memory/out_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/out_s0.pt --test-writes abstain
+results/stream_memory/out_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/out_s0.pt --policy repeat
+probes/stream_memory/sigmoid_s0.pt scripts/stream_memory.py train --write sigmoid --seed 0
+results/stream_memory/sigmoid_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s0.pt
+results/stream_memory/sigmoid_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s0.pt --test-writes abstain
+results/stream_memory/sigmoid_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/sigmoid_s0.pt --policy repeat
+probes/stream_memory/gate_s0.pt scripts/stream_memory.py train --write gate --seed 0
+results/stream_memory/gate_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/gate_s0.pt
+results/stream_memory/gate_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/gate_s0.pt --test-writes abstain
+results/stream_memory/gate_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/gate_s0.pt --policy repeat
+probes/stream_memory/delta_s0.pt scripts/stream_memory.py train --write delta --seed 0
+results/stream_memory/delta_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/delta_s0.pt
+results/stream_memory/delta_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/delta_s0.pt --test-writes abstain
+results/stream_memory/delta_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/delta_s0.pt --policy repeat
+probes/stream_memory/null_s0.pt scripts/stream_memory.py train --write null --seed 0
+results/stream_memory/null_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s0.pt
+results/stream_memory/null_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s0.pt --test-writes abstain
+results/stream_memory/null_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_s0.pt --policy repeat
+probes/stream_memory/softmax_s1.pt scripts/stream_memory.py train --write softmax --seed 1
+results/stream_memory/softmax_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_s1.pt
+results/stream_memory/softmax_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_s1.pt --test-writes abstain
+results/stream_memory/softmax_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_s1.pt --policy repeat
+probes/stream_memory/null_open_s1.pt scripts/stream_memory.py train --write null_open --seed 1
+results/stream_memory/null_open_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_s1.pt
+results/stream_memory/null_open_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_s1.pt --test-writes abstain
+results/stream_memory/null_open_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_s1.pt --policy repeat
+probes/stream_memory/softmax_pall1_s1.pt scripts/stream_memory.py train --write softmax --penalty 1 --penalty-on all --seed 1
+results/stream_memory/softmax_pall1_s1_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall1_s1.pt
+results/stream_memory/softmax_pall1_s1_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall1_s1.pt --test-writes abstain
+results/stream_memory/softmax_pall1_s1_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall1_s1.pt --policy repeat
+# Longer training streams, the label-free penalty's strength, and both fixes together.
+probes/stream_memory/softmax_c8_s0.pt scripts/stream_memory.py train --write softmax --chunks 8 --seed 0
+results/stream_memory/softmax_c8_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_c8_s0.pt
+results/stream_memory/softmax_c8_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_c8_s0.pt --test-writes abstain
+results/stream_memory/softmax_c8_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_c8_s0.pt --policy repeat
+probes/stream_memory/softmax_c16_s0.pt scripts/stream_memory.py train --write softmax --chunks 16 --seed 0 --steps 5000
+results/stream_memory/softmax_c16_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_c16_s0.pt
+results/stream_memory/softmax_c16_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_c16_s0.pt --test-writes abstain
+results/stream_memory/softmax_c16_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_c16_s0.pt --policy repeat
+probes/stream_memory/softmax_pall0.1_s0.pt scripts/stream_memory.py train --write softmax --penalty 0.1 --penalty-on all --seed 0
+results/stream_memory/softmax_pall0.1_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall0.1_s0.pt
+results/stream_memory/softmax_pall0.1_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall0.1_s0.pt --test-writes abstain
+results/stream_memory/softmax_pall0.1_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall0.1_s0.pt --policy repeat
+probes/stream_memory/softmax_pall10_s0.pt scripts/stream_memory.py train --write softmax --penalty 10 --penalty-on all --seed 0
+results/stream_memory/softmax_pall10_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall10_s0.pt
+results/stream_memory/softmax_pall10_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall10_s0.pt --test-writes abstain
+results/stream_memory/softmax_pall10_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/softmax_pall10_s0.pt --policy repeat
+probes/stream_memory/null_open_pall1_s0.pt scripts/stream_memory.py train --write null_open --penalty 1 --penalty-on all --seed 0
+results/stream_memory/null_open_pall1_s0_noise.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_pall1_s0.pt
+results/stream_memory/null_open_pall1_s0_noise_abstain.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_pall1_s0.pt --test-writes abstain
+results/stream_memory/null_open_pall1_s0_repeat.json scripts/stream_memory.py evaluate --checkpoint probes/stream_memory/null_open_pall1_s0.pt --policy repeat
