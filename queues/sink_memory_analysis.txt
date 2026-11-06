@@ -1,0 +1,23 @@
+# scripts/sink_memory.py analyze on every trained model: what the readout sees of the Writes, and the contrast of
+# the predictions along C2F.
+results/sink_memory/softmax_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_s0.pt
+results/sink_memory/softmax_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_s1.pt
+results/sink_memory/null_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_s0.pt
+results/sink_memory/null_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_s1.pt
+results/sink_memory/sigmoid_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/sigmoid_s0.pt
+results/sink_memory/sigmoid_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/sigmoid_s1.pt
+results/sink_memory/gate_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/gate_s0.pt
+results/sink_memory/gate_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/gate_s1.pt
+results/sink_memory/delta_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/delta_s1.pt
+results/sink_memory/delta_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/delta_s0.pt
+results/sink_memory/softmax_seen_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_seen_s0.pt
+results/sink_memory/null_seen_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_seen_s0.pt
+results/sink_memory/sigmoid_seen_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/sigmoid_seen_s0.pt
+results/sink_memory/gate_seen_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/gate_seen_s0.pt
+results/sink_memory/null_open_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_open_s0.pt
+results/sink_memory/null_open_seen_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_open_seen_s0.pt
+results/sink_memory/sigmoid_seen_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/sigmoid_seen_s1.pt
+results/sink_memory/sigmoid_seen_s2_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/sigmoid_seen_s2.pt
+results/sink_memory/sigmoid_s2_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/sigmoid_s2.pt
+results/sink_memory/softmax_seen_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_seen_s1.pt
+results/sink_memory/softmax_g16_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_g16_s0.pt

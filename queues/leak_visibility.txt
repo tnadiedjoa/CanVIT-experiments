@@ -1,0 +1,3 @@
+# Is the Writes' leak visible to CanViT's readouts? (scripts/leak_visibility.py; C2F on the 32×32 canvas, 128 scenes)
+results/leak_visibility/in21k_released.json scripts/leak_visibility.py
+results/leak_visibility/in21k_local21.json scripts/leak_visibility.py --local-writes-from 21

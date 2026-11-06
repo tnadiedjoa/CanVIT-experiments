@@ -1,0 +1,34 @@
+# Seeds of the null key opened by default (null_open), with the scene and the seen loss, and their other evaluations.
+results/sink_memory/null_open_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s0.pt --policy coarse_to_fine
+results/sink_memory/null_open_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s0.pt --policy random --num-glimpses 85
+results/sink_memory/null_open_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/null_open_s0_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s0.pt --policy fine_to_coarse
+results/sink_memory/null_open_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/null_open_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_open_s0.pt
+results/sink_memory/null_open_seen_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s0.pt --policy coarse_to_fine
+results/sink_memory/null_open_seen_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s0.pt --policy random --num-glimpses 85
+results/sink_memory/null_open_seen_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/null_open_seen_s0_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s0.pt --policy fine_to_coarse
+results/sink_memory/null_open_seen_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/null_open_seen_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_open_seen_s0.pt
+probes/sink_memory/null_open_seen_s1.pt scripts/sink_memory.py train --write null_open --loss seen --seed 1 --steps 12000
+results/sink_memory/null_open_seen_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s1.pt --policy coarse_to_fine
+results/sink_memory/null_open_seen_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s1.pt --policy random --num-glimpses 85
+results/sink_memory/null_open_seen_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/null_open_seen_s1_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s1.pt --policy fine_to_coarse
+results/sink_memory/null_open_seen_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/null_open_seen_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_open_seen_s1.pt
+probes/sink_memory/null_open_seen_s2.pt scripts/sink_memory.py train --write null_open --loss seen --seed 2 --steps 12000
+results/sink_memory/null_open_seen_s2_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s2.pt --policy coarse_to_fine
+results/sink_memory/null_open_seen_s2_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s2.pt --policy random --num-glimpses 85
+results/sink_memory/null_open_seen_s2_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s2.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/null_open_seen_s2_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s2.pt --policy fine_to_coarse
+results/sink_memory/null_open_seen_s2_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s2.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/null_open_seen_s2_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_open_seen_s2.pt
+probes/sink_memory/null_open_s1.pt scripts/sink_memory.py train --write null_open --loss scene --seed 1 --steps 12000
+results/sink_memory/null_open_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s1.pt --policy coarse_to_fine
+results/sink_memory/null_open_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s1.pt --policy random --num-glimpses 85
+results/sink_memory/null_open_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/null_open_s1_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s1.pt --policy fine_to_coarse
+results/sink_memory/null_open_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/null_open_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_open_s1.pt

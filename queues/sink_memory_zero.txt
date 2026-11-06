@@ -1,0 +1,20 @@
+# Which Writes learn to write nothing outside the crop (scripts/sink_memory.py): the null key biased open at
+# initialization (null_open), and more seeds of the sigmoid Write (the only one that did) and of the softmax one.
+probes/sink_memory/null_open_s0.pt scripts/sink_memory.py train --write null_open --steps 12000
+results/sink_memory/null_open_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s0.pt --policy coarse_to_fine
+results/sink_memory/null_open_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_s0.pt --policy repeated_full_scene --num-glimpses 85
+probes/sink_memory/null_open_seen_s0.pt scripts/sink_memory.py train --write null_open --loss seen --steps 12000
+results/sink_memory/null_open_seen_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s0.pt --policy coarse_to_fine
+results/sink_memory/null_open_seen_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_open_seen_s0.pt --policy repeated_full_scene --num-glimpses 85
+probes/sink_memory/sigmoid_seen_s1.pt scripts/sink_memory.py train --write sigmoid --loss seen --seed 1 --steps 12000
+results/sink_memory/sigmoid_seen_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_seen_s1.pt --policy coarse_to_fine
+results/sink_memory/sigmoid_seen_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_seen_s1.pt --policy repeated_full_scene --num-glimpses 85
+probes/sink_memory/sigmoid_seen_s2.pt scripts/sink_memory.py train --write sigmoid --loss seen --seed 2 --steps 12000
+results/sink_memory/sigmoid_seen_s2_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_seen_s2.pt --policy coarse_to_fine
+results/sink_memory/sigmoid_seen_s2_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_seen_s2.pt --policy repeated_full_scene --num-glimpses 85
+probes/sink_memory/sigmoid_s2.pt scripts/sink_memory.py train --write sigmoid --seed 2 --steps 12000
+results/sink_memory/sigmoid_s2_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s2.pt --policy coarse_to_fine
+results/sink_memory/sigmoid_s2_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s2.pt --policy repeated_full_scene --num-glimpses 85
+probes/sink_memory/softmax_seen_s1.pt scripts/sink_memory.py train --write softmax --loss seen --seed 1 --steps 12000
+results/sink_memory/softmax_seen_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_seen_s1.pt --policy coarse_to_fine
+results/sink_memory/softmax_seen_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_seen_s1.pt --policy repeated_full_scene --num-glimpses 85

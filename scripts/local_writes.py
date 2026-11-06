@@ -23,15 +23,36 @@ from canvit_pytorch.model.multihead import from_multihead, to_multihead
 from canvit_pytorch.model.rope import RoPE, apply_2d_rope
 from canvit_pytorch.viewpoint import grid_coords
 
-OutsideWrites = Literal["drop", "center", "keep_prefix", "keep_patches"]
+OutsideWrites = Literal["drop", "center", "keep_prefix", "keep_patches", "project"]
 """What local Writes do with the residual into a canvas cell outside the glimpse's crop:
 
 - drop: remove it;
 - center: subtract its mean over those cells, which removes the one vector the glimpse adds to every cell it did not
   see and keeps how the residual varies across them;
 - keep_prefix: keep only the part from the glimpse's prefix tokens, whose keys carry no position;
-- keep_patches: keep only the part from the glimpse's patch tokens.
+- keep_patches: keep only the part from the glimpse's patch tokens;
+- project: keep only its projection by LocalWrites.projection, a [D, D] matrix, such as the projection on the
+  directions a probe sees (probe_subspace) or on their complement.
 """
+
+
+def readout_subspace(scale: Tensor, weight: Tensor) -> Tensor:
+    """[D, rank] orthonormal basis of the canvas directions a linear readout W·(scale ⊙ LN(x)) + b sees: up to
+    LayerNorm's scale, a change r of the cell moves the readout by A·r with A = W · diag(scale) · centering, so a
+    residual orthogonal to A's row space changes it only through LayerNorm's rescaling of the cell."""
+    D = weight.shape[1]
+    centering = torch.eye(D, device=weight.device) - 1 / D
+    A = (weight.float() * scale.float()[None]) @ centering
+    U, S, _ = torch.linalg.svd(A.T, full_matrices=False)
+    return U[:, S > S[0] * 1e-4]
+
+
+def probe_subspace(probe) -> Tensor:
+    """The readout_subspace of a SegmentationProbe, which decodes a cell x as W·BN(LN(x)) + b (in eval mode, BN is
+    a scale and a shift): at most one dimension per class."""
+    scale = probe.ln.weight.float() * probe.bn.weight.float() / (probe.bn.running_var.float() + probe.bn.eps).sqrt()
+    return readout_subspace(scale, probe.conv.weight[:, :, 0, 0])
+
 
 
 def write_parts(write: CanvasAttention, *, query: Tensor, kv: Tensor, query_rope: RoPE,
@@ -78,8 +99,10 @@ class LocalWrites:
 
     def __init__(self, canvit: CanViT, *, canvas_grid_size: int, device: torch.device, start: int,
                  outside: OutsideWrites = "drop", max_scale: float | None = None, margin: float = 0.0,
-                 unseen_writes: bool = False) -> None:
+                 unseen_writes: bool = False, projection: Tensor | None = None) -> None:
+        assert (outside == "project") == (projection is not None), "project needs a projection, and only it"
         self.start, self.outside, self.max_scale, self.margin = start, outside, max_scale, margin
+        self.projection = projection
         self.unseen_writes = unseen_writes
         self.num_registers = canvit.config.num_canvas_registers
         self.cell_centers = grid_coords(size=canvas_grid_size, device=device)  # [G, G, 2]
@@ -123,6 +146,9 @@ class LocalWrites:
                 prefix, patches = write_parts(module, **kwargs)[:2]
                 kept = prefix if self.outside == "keep_prefix" else patches
                 return (output * self.mask + outside * kept).to(output.dtype)
+            case "project":
+                kept = output.float() @ self.projection
+                return (output.float() * self.mask + outside * kept).to(output.dtype)
 
     def remove(self) -> None:
         for handle in self.handles:

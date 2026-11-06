@@ -1,0 +1,26 @@
+# From-scratch study (scripts/sink_memory.py): a small canvas model trained on 4-glimpse rollouts with four kinds of
+# Write, then evaluated on 85-glimpse rollouts (C2F, F2C, R-IID) and repeated full views; the softmax model also with
+# the training-free rules at test time.
+probes/sink_memory/softmax_s0.pt scripts/sink_memory.py train --write softmax --steps 12000
+results/sink_memory/softmax_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_s0_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy fine_to_coarse
+results/sink_memory/softmax_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_s0_c2f_local21.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy coarse_to_fine --test-writes local --test-from 21
+results/sink_memory/softmax_s0_c2f_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy coarse_to_fine --test-writes object --test-from 5
+results/sink_memory/softmax_s0_f2c_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy fine_to_coarse --test-writes object --test-from 5
+probes/sink_memory/null_s0.pt scripts/sink_memory.py train --write null --steps 12000
+results/sink_memory/null_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy coarse_to_fine
+results/sink_memory/null_s0_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy fine_to_coarse
+results/sink_memory/null_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy random --num-glimpses 85
+results/sink_memory/null_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy repeated_full_scene --num-glimpses 85
+probes/sink_memory/sigmoid_s0.pt scripts/sink_memory.py train --write sigmoid --steps 12000
+results/sink_memory/sigmoid_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy coarse_to_fine
+results/sink_memory/sigmoid_s0_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy fine_to_coarse
+results/sink_memory/sigmoid_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy random --num-glimpses 85
+results/sink_memory/sigmoid_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy repeated_full_scene --num-glimpses 85
+probes/sink_memory/gate_s0.pt scripts/sink_memory.py train --write gate --steps 12000
+results/sink_memory/gate_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy coarse_to_fine
+results/sink_memory/gate_s0_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy fine_to_coarse
+results/sink_memory/gate_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy random --num-glimpses 85
+results/sink_memory/gate_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy repeated_full_scene --num-glimpses 85

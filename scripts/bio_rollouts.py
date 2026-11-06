@@ -24,7 +24,7 @@ from canvit_pytorch.evaluate.tasks.ade20k_segmentation import predicted_labels
 from canvit_pytorch.benchmarks.ade20k.metrics import per_image_confusion
 from canvit_pytorch.hub.repos import (PRETRAINED, RELEASED_GLIMPSE_SIZE_PX, RELEASED_PROBE_STEPS, RELEASED_SCENE_SIZE_PX,
                                       ade20k_probe_name, hub_repo)
-from canvit_pytorch.model import CanViT, CanViTForSemanticSegmentation
+from canvit_pytorch.model import CanViT, CanViTForPretraining, CanViTForSemanticSegmentation
 from canvit_pytorch.model.canvit import RecurrentState
 from canvit_pytorch.policies import PolicyName, make_policy
 from canvit_pytorch.policies.entropy import predictive_entropy
@@ -33,7 +33,7 @@ from canvit_pytorch.viewpoint import grid_coords
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
 from ade20k_rollouts import load_validation_scenes, normalize  # noqa: E402
-from local_writes import LocalWrites, SinkGatedWrites  # noqa: E402
+from local_writes import LocalWrites, SinkGatedWrites, probe_subspace, readout_subspace  # noqa: E402
 from bio_vision import (AdaptiveCanvas, FoveatedRetina, FreePositions, GaussianCanvas, LearnedPeriods,  # noqa: E402
                         MaskedWrites, NoveltyWrites, ObjectWrites, PatchRetina, Patchwork, UniformRetina, WriteFootprint,
                         boundary_density, c2f_then_jittered_level2, image_edge_density, microsaccades,
@@ -97,6 +97,10 @@ class Experiment:
     local_writes_from: int | None = None
     """When set, from this glimpse on, the Writes are kept in the glimpse's crop (local_writes.LocalWrites, the README's
     fix for C2F's level 3); with a patchwork, in its patches."""
+    local_writes_outside: Literal["drop", "probe_visible", "probe_invisible", "head_visible", "head_invisible"] = "drop"
+    """With local_writes_from, what the Writes keep outside the crop: nothing, or only the part of the residual that the
+    ADE20K probe sees (its projection on local_writes.probe_subspace), or only the part it does not see; or the same
+    for the pretraining head (the teacher-feature readout that the pretraining loss sees the canvas through)."""
     masked_writes: Literal["random", "oracle", "predicted"] | None = None
     """The controls of the object Writes (bio_vision.MaskedWrites), from glimpse masked_writes_from on: outside the
     crop, random cells in the share that the object Writes of masked_writes_reach (a result file) reached at each
@@ -223,7 +227,18 @@ def main(exp: Experiment) -> None:
                             late_top_fraction=exp.object_writes_late_top_fraction,
                             connected=exp.object_writes_connected)
                if exp.object_writes_threshold is not None else None)
-    local_writes = (LocalWrites(seg.canvit, canvas_grid_size=G, device=device, start=exp.local_writes_from)
+    projection = None
+    if exp.local_writes_outside != "drop":
+        if exp.local_writes_outside.startswith("probe"):
+            U = probe_subspace(seg.probe)
+        else:
+            head = CanViTForPretraining.from_pretrained(pretrained_repo).teacher_patch_readout
+            U = readout_subspace(head.norm.weight.detach(), head.proj.weight.detach()).to(device)
+        projection = U @ U.T
+        if exp.local_writes_outside.endswith("invisible"):
+            projection = torch.eye(U.shape[0], device=device) - projection
+    local_writes = (LocalWrites(seg.canvit, canvas_grid_size=G, device=device, start=exp.local_writes_from,
+                                outside="drop" if projection is None else "project", projection=projection)
                     if exp.local_writes_from is not None else None)
     masked = None
     if exp.masked_writes is not None:

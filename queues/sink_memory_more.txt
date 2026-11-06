@@ -1,0 +1,26 @@
+# Follow-ups to queues/sink_memory.txt: a second seed of every Write, and the softmax Write trained on 16-glimpse
+# rollouts (does a longer training horizon remove the drift, or only delay it?).
+probes/sink_memory/softmax_s1.pt scripts/sink_memory.py train --write softmax --steps 12000 --seed 1
+results/sink_memory/softmax_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s1.pt --policy coarse_to_fine
+results/sink_memory/softmax_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s1.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_s1_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s1.pt --policy fine_to_coarse
+probes/sink_memory/null_s1.pt scripts/sink_memory.py train --write null --steps 12000 --seed 1
+results/sink_memory/null_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s1.pt --policy coarse_to_fine
+results/sink_memory/null_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s1.pt --policy random --num-glimpses 85
+results/sink_memory/null_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/null_s1_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s1.pt --policy fine_to_coarse
+probes/sink_memory/sigmoid_s1.pt scripts/sink_memory.py train --write sigmoid --steps 12000 --seed 1
+results/sink_memory/sigmoid_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s1.pt --policy coarse_to_fine
+results/sink_memory/sigmoid_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s1.pt --policy random --num-glimpses 85
+results/sink_memory/sigmoid_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/sigmoid_s1_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s1.pt --policy fine_to_coarse
+probes/sink_memory/gate_s1.pt scripts/sink_memory.py train --write gate --steps 12000 --seed 1
+results/sink_memory/gate_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s1.pt --policy coarse_to_fine
+results/sink_memory/gate_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s1.pt --policy random --num-glimpses 85
+results/sink_memory/gate_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/gate_s1_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s1.pt --policy fine_to_coarse
+probes/sink_memory/softmax_g16_s0.pt scripts/sink_memory.py train --write softmax --steps 12000 --glimpses 16
+results/sink_memory/softmax_g16_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_g16_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_g16_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_g16_s0.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_g16_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_g16_s0.pt --policy repeated_full_scene --num-glimpses 85

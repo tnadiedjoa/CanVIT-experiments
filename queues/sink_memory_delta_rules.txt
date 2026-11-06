@@ -1,0 +1,6 @@
+# The test-time rules on the delta Write (scripts/sink_memory.py): Writes kept in the crop from glimpse 0 and object
+# Writes from 5, C2F.
+results/sink_memory/delta_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/delta_s1_c2f_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s1.pt --policy coarse_to_fine --test-writes object --test-from 5
+results/sink_memory/delta_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/delta_s0_c2f_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s0.pt --policy coarse_to_fine --test-writes object --test-from 5

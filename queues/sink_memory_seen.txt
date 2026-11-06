@@ -1,0 +1,18 @@
+# The Writes trained with the loss on the seen cells only (scripts/sink_memory.py --loss seen): nothing to gain from
+# writing into unseen cells. Does the softmax Write still write there (the forced leak) and drift, and the others not?
+probes/sink_memory/softmax_seen_s0.pt scripts/sink_memory.py train --write softmax --loss seen --steps 12000
+results/sink_memory/softmax_seen_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_seen_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_seen_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_seen_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_seen_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_seen_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+probes/sink_memory/null_seen_s0.pt scripts/sink_memory.py train --write null --loss seen --steps 12000
+results/sink_memory/null_seen_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_seen_s0.pt --policy coarse_to_fine
+results/sink_memory/null_seen_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_seen_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/null_seen_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_seen_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+probes/sink_memory/sigmoid_seen_s0.pt scripts/sink_memory.py train --write sigmoid --loss seen --steps 12000
+results/sink_memory/sigmoid_seen_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_seen_s0.pt --policy coarse_to_fine
+results/sink_memory/sigmoid_seen_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_seen_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/sigmoid_seen_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_seen_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+probes/sink_memory/gate_seen_s0.pt scripts/sink_memory.py train --write gate --loss seen --steps 12000
+results/sink_memory/gate_seen_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_seen_s0.pt --policy coarse_to_fine
+results/sink_memory/gate_seen_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_seen_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/gate_seen_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_seen_s0.pt --policy coarse_to_fine --test-writes local --test-from 0

@@ -1,0 +1,11 @@
+# Which part of the leak makes CanViT drift: from C2F's level 3 (glimpse 21), keep outside the crop only the part of
+# each Write residual that the ADE20K probe sees (probe_visible) or only the part it does not see (probe_invisible).
+# Flagship, 64x64 canvas, ADE20K val, against released and local Writes.
+results/hidden_leak/c2f_c64_t85_released.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4
+results/hidden_leak/c2f_c64_t85_local21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --local-writes-from 21
+results/hidden_leak/c2f_c64_t85_probe_visible21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --local-writes-from 21 --local-writes-outside probe_visible
+results/hidden_leak/c2f_c64_t85_probe_invisible21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --local-writes-from 21 --local-writes-outside probe_invisible
+# The same with the pretraining head (the teacher-feature readout the pretraining loss sees the canvas through): keep
+# outside the crop only the part in its row space (768 of 1024 dimensions) or only the part in its null space.
+results/hidden_leak/c2f_c64_t85_head_visible21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --local-writes-from 21 --local-writes-outside head_visible
+results/hidden_leak/c2f_c64_t85_head_invisible21.json scripts/bio_rollouts.py --policy coarse_to_fine --num-glimpses 85 --per-image-at 20 84 --eval-stride-after-20 4 --local-writes-from 21 --local-writes-outside head_invisible

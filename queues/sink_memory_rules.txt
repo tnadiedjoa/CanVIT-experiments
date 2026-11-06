@@ -1,0 +1,19 @@
+# The test-time rules on every Write kind (scripts/sink_memory.py): local Writes from glimpse 0, 5 and 21, object
+# Writes from 5, on C2F; and object Writes on F2C.
+results/sink_memory/null_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/null_s0_c2f_local5.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy coarse_to_fine --test-writes local --test-from 5
+results/sink_memory/null_s0_c2f_local21.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy coarse_to_fine --test-writes local --test-from 21
+results/sink_memory/null_s0_c2f_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy coarse_to_fine --test-writes object --test-from 5
+results/sink_memory/null_s0_f2c_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_s0.pt --policy fine_to_coarse --test-writes object --test-from 5
+results/sink_memory/sigmoid_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/sigmoid_s0_c2f_local5.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy coarse_to_fine --test-writes local --test-from 5
+results/sink_memory/sigmoid_s0_c2f_local21.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy coarse_to_fine --test-writes local --test-from 21
+results/sink_memory/sigmoid_s0_c2f_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy coarse_to_fine --test-writes object --test-from 5
+results/sink_memory/sigmoid_s0_f2c_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/sigmoid_s0.pt --policy fine_to_coarse --test-writes object --test-from 5
+results/sink_memory/gate_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/gate_s0_c2f_local5.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy coarse_to_fine --test-writes local --test-from 5
+results/sink_memory/gate_s0_c2f_local21.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy coarse_to_fine --test-writes local --test-from 21
+results/sink_memory/gate_s0_c2f_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy coarse_to_fine --test-writes object --test-from 5
+results/sink_memory/gate_s0_f2c_object.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy fine_to_coarse --test-writes object --test-from 5
+results/sink_memory/softmax_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_s0_c2f_local5.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt --policy coarse_to_fine --test-writes local --test-from 5

@@ -1,0 +1,31 @@
+# The hidden-write penalty (--hidden-penalty): softmax and null Writes trained with a cost on the part of their residuals the pixel readout cannot see.
+probes/sink_memory/softmax_hp0.001_s0.pt scripts/sink_memory.py train --write softmax --hidden-penalty 0.001 --seed 0 --steps 12000
+results/sink_memory/softmax_hp0.001_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.001_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_hp0.001_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.001_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_hp0.001_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.001_s0.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_hp0.001_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.001_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_hp0.001_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_hp0.001_s0.pt
+probes/sink_memory/softmax_hp0.01_s0.pt scripts/sink_memory.py train --write softmax --hidden-penalty 0.01 --seed 0 --steps 12000
+results/sink_memory/softmax_hp0.01_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.01_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_hp0.01_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.01_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_hp0.01_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.01_s0.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_hp0.01_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.01_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_hp0.01_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_hp0.01_s0.pt
+probes/sink_memory/softmax_hp0.1_s0.pt scripts/sink_memory.py train --write softmax --hidden-penalty 0.1 --seed 0 --steps 12000
+results/sink_memory/softmax_hp0.1_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.1_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_hp0.1_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.1_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_hp0.1_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.1_s0.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_hp0.1_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.1_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_hp0.1_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_hp0.1_s0.pt
+probes/sink_memory/softmax_hp0.01_s1.pt scripts/sink_memory.py train --write softmax --hidden-penalty 0.01 --seed 1 --steps 12000
+results/sink_memory/softmax_hp0.01_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.01_s1.pt --policy coarse_to_fine
+results/sink_memory/softmax_hp0.01_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.01_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_hp0.01_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.01_s1.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_hp0.01_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hp0.01_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_hp0.01_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_hp0.01_s1.pt
+probes/sink_memory/null_hp0.01_s0.pt scripts/sink_memory.py train --write null --hidden-penalty 0.01 --seed 0 --steps 12000
+results/sink_memory/null_hp0.01_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_hp0.01_s0.pt --policy coarse_to_fine
+results/sink_memory/null_hp0.01_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_hp0.01_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/null_hp0.01_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_hp0.01_s0.pt --policy random --num-glimpses 85
+results/sink_memory/null_hp0.01_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/null_hp0.01_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/null_hp0.01_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/null_hp0.01_s0.pt

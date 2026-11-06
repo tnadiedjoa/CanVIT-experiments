@@ -1,0 +1,19 @@
+# The Write with an output projection (standard cross-attention), two seeds, scene loss, and one with the seen loss.
+probes/sink_memory/out_s0.pt scripts/sink_memory.py train --write out --seed 0 --steps 12000
+results/sink_memory/out_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s0.pt --policy coarse_to_fine
+results/sink_memory/out_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s0.pt --policy random --num-glimpses 85
+results/sink_memory/out_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/out_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/out_s0_c2f_visible0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s0.pt --policy coarse_to_fine --test-writes visible --test-from 0
+results/sink_memory/out_s0_c2f_invisible0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s0.pt --policy coarse_to_fine --test-writes invisible --test-from 0
+results/sink_memory/out_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/out_s0.pt
+probes/sink_memory/out_s1.pt scripts/sink_memory.py train --write out --seed 1 --steps 12000
+results/sink_memory/out_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s1.pt --policy coarse_to_fine
+results/sink_memory/out_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s1.pt --policy random --num-glimpses 85
+results/sink_memory/out_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/out_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/out_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/out_s1.pt
+probes/sink_memory/out_seen_s0.pt scripts/sink_memory.py train --write out --loss seen --seed 0 --steps 12000
+results/sink_memory/out_seen_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_seen_s0.pt --policy coarse_to_fine
+results/sink_memory/out_seen_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/out_seen_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/out_seen_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/out_seen_s0.pt

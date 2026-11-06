@@ -1,0 +1,12 @@
+# The delta Write (scripts/sink_memory.py): the cell moves toward the attention output, so rewriting the same
+# information changes it less and less. Two seeds, the same evaluations as queues/sink_memory.txt.
+probes/sink_memory/delta_s0.pt scripts/sink_memory.py train --write delta --steps 12000 --seed 0
+results/sink_memory/delta_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s0.pt --policy coarse_to_fine
+results/sink_memory/delta_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s0.pt --policy random --num-glimpses 85
+results/sink_memory/delta_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/delta_s0_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s0.pt --policy fine_to_coarse
+probes/sink_memory/delta_s1.pt scripts/sink_memory.py train --write delta --steps 12000 --seed 1
+results/sink_memory/delta_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s1.pt --policy coarse_to_fine
+results/sink_memory/delta_s1_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s1.pt --policy random --num-glimpses 85
+results/sink_memory/delta_s1_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s1.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/delta_s1_f2c.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s1.pt --policy fine_to_coarse
