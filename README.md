@@ -1223,6 +1223,10 @@ and a causal test in CanViT itself. The short version:
   but the rest can still grow (one seed in three drifts). Training on 16-glimpse rollouts works another way: the
   model keeps writing, but its cells' centered norm, which LayerNorm divides by, barely grows. Keeping the Writes in
   the crop works for every model.
+- A training fix follows from the mechanism: **charge what LayerNorm sees of the write outside the crop**. With a
+  plain softmax and 4-glimpse training, it removes 89–96% of the error's growth from t = 20 to t = 84 in two seeds,
+  and test-time scaling comes back (F-IID still improves past t = 100). It does not carry over to fine-tuning
+  CanViT's released Writes, which meet the penalty by writing less inside the crop too.
 
 **Setup.** [`scripts/sink_memory.py`](scripts/sink_memory.py) trains small canvas models with CanViT's design and
 scale ratios.
@@ -1403,9 +1407,9 @@ All six start from 45.93 at t = 20.
   CanViT the mechanism holds for the flagship, but what sets each pretraining's drift is how much it leaks.
 
 **The leak inside the training horizon predicts the drift past it.** No long rollout is needed to tell which model
-will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 26
-toy models with an additive Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.73, p = 3e-5; with the
-two delta models, ρ = 0.66, p = 1e-4). The same holds for the fourteen released CanViT-B: the outside-to-inside
+will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 24
+toy models with an additive Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.68, p = 2e-4; with the
+two delta models, ρ = 0.60, p = 0.001). The same holds for the fourteen released CanViT-B: the outside-to-inside
 residual ratio at C2F's level 1 (glimpses 1–4, `write_leakage.py`, 128 scenes) ranks them by their mIoU change from
 t = 20 to t = 84 (ρ = −0.67, p = 0.009).
 
@@ -1447,6 +1451,65 @@ Writes' hidden part (outside the readout's row space) to the loss, over every ce
   (λ = 0.001, 0.01 and 0.1 end at 0.225, 0.258 and 0.466; seed 1 of λ = 0.01 at 0.359).
 - Relative to each cell's squared norm (`--hidden-relative`), it hobbles the model: λ = 1 ends at 0.209 from a worse
   t = 20 (0.113), and λ = 10 starts at 0.287 at t = 1. The hidden directions also carry content the model needs.
+
+**Charging what LayerNorm sees of the write outside the crop does train the drift away, from scratch.**
+`--outside-penalty λ` adds λ times, over the cells outside the crop, the squared norm of the Writes' residual after
+removing its mean over the channels, divided by the cell's own (centered, not differentiated). This is what the
+mechanism above says matters: LayerNorm removes the mean exactly, and the centered norm is what it divides by. The
+Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/sink_memory_outside_penalty.txt`](queues/sink_memory_outside_penalty.txt),
+[`queues/sink_memory_write_penalty.txt`](queues/sink_memory_write_penalty.txt)):
+
+| penalty on | λ | loss | seed | C2F t = 20 | C2F t = 84 | C2F t = 84, Writes kept in the crop | F-IID best (t) | F-IID t = 256 | leak | prefix |
+|---|---|---|---|---|---|---|---|---|---|---|
+| – | – | scene | 0 | 0.075 | 0.306 | 0.056 | 0.122 (12) | 0.200 | 5.48 | 0.92 |
+| – | – | scene | 1 | 0.075 | 0.226 | 0.053 | – | – | 4.57 | 0.90 |
+| outside the crop | 0.1 | scene | 0 | 0.070 | 0.115 | 0.056 | 0.105 (34) | 0.136 | 0.53 | 0.94 |
+| outside the crop | 1 | scene | 0 | 0.078 | 0.087 | 0.065 | 0.104 (153) | 0.105 | 0.10 | 0.97 |
+| outside the crop | 1 | scene | 1 | 0.072 | 0.089 | 0.060 | 0.095 (111) | 0.097 | 0.35 | 0.98 |
+| outside the crop | 10 | scene | 0 | 0.080 | 0.094 | 0.075 | 0.109 (41) | 0.143 | 0.18 | 0.99 |
+| – | – | seen | 0 | 0.039 | 0.161 | 0.030 | 0.092 (20) | 0.150 | 6.18 | 0.98 |
+| outside the crop | 1 | seen | 0 | 0.051 | 0.088 | 0.044 | 0.090 (46) | 0.094 | 0.14 | 1.00 |
+
+- With λ = 1, in two seeds, C2F ends at 0.087 and 0.089 at t = 84, against 0.306 and 0.226 without the penalty. The
+  leak falls from 4.6–5.5 to 0.10–0.35 per glimpse, while 0.97–0.98 of the outside attention still goes to the prefix:
+  the cells still attend to the sink, but what it writes no longer reaches LayerNorm.
+- Test-time scaling comes back with a plain softmax and 4-glimpse training. F-IID's best error comes at t = 153 and
+  t = 111 (0.104 and 0.095), and the error is 0.105 and 0.097 at t = 256. Without the penalty, the best is at t = 12
+  (0.122) and the error reaches 0.200.
+- The cost is small. The error at t = 20 is 0.078 and 0.072 (0.075 without), and with the Writes kept in the crop
+  0.065 and 0.060 at t = 84 (0.056 and 0.053 without).
+- λ = 0.1 removes only part of the drift (0.115 at t = 84; F-IID best at t = 34). λ = 10 charges the model itself: 0.075 with
+  the Writes kept in the crop, and F-IID turns back up after t = 41 (0.109, then 0.143 at t = 256).
+- With the seen loss, the penalty cuts the drift from 0.161 to 0.088 at t = 84, and F-IID ends at 0.094 instead of
+  0.150.
+
+**The same penalty does not repair CanViT after the fact.** `train_write_gate.py --outside-penalty λ` fine-tunes only
+the released Writes' own parameters (key and value maps, layer norms) with that penalty, on pretraining-length rollouts
+(400 steps, as the plain fine-tune of the Writes above), and C2F runs to 85 glimpses on a 64² canvas
+([`queues/canvit_outside_penalty.txt`](queues/canvit_outside_penalty.txt); residuals from `leak_visibility.py
+--write-gate`, 64 scenes, glimpses 21–84):
+
+| Writes | t = 0 | t = 5 | t = 20 | t = 40 | t = 84 | penalized ratio, t = 1 | residual outside / inside the crop, t = 21–84 |
+|---|---|---|---|---|---|---|---|
+| released | 39.59 | 44.70 | 45.93 | 45.36 | 43.65 | 0.055 | 649 / 4105 |
+| fine-tuned, no penalty | 39.53 | 44.65 | 45.66 | 44.80 | 42.31 | 0.056 | 667 / 4234 |
+| fine-tuned, λ = 1 | 39.28 | 43.72 | 40.03 | 26.69 | 5.75 | 0.024 | 633 / 1180 |
+| fine-tuned, λ = 10 | 38.34 | 40.40 | 23.78 | 7.26 | 1.46 | 0.021 | 733 / 1193 |
+| Writes kept in the crop from t = 21 | 39.59 | 44.70 | 45.93 | 46.06 | 46.40 | – | – |
+
+- λ = 1 halves the penalized ratio on the first glimpses (0.024 against 0.055 at t = 1). By level 3, though, the
+  residual outside the crop is as large as before (633 against 649), while the one inside is 3.5× smaller (1,180
+  against 4,105). Fine-tuning the Writes' maps alone meets the penalty by writing less everywhere, so the leak is now
+  half the size of the write it competes with, against a sixth with the released Writes. C2F peaks at t = 5 (43.72),
+  then collapses: 40.03 at t = 20, 5.75 at t = 84.
+- λ = 10 does the same, sooner: at level 3 the residual inside the crop falls to 1,193 (outside 733), and C2F peaks
+  at t = 4 (40.93), then falls to 23.78 at t = 20 and 1.46 at t = 84. On a 32² canvas, the grid the fine-tuning
+  used, λ = 1 collapses as well (4.84 at t = 84, against 41.05 with the released Writes), so the canvas size is not
+  the cause.
+- So the penalty works when the model is trained from scratch, but it does not repair a trained model. In the toy,
+  the whole model learns both to write nothing outside the crop and to keep writing inside it. Here, the tokens the
+  Writes read come from the frozen backbone, and 400 steps on short rollouts found the cheaper way out. Keeping the
+  Writes in the crop remains the repair for the released model.
 
 **Test-time scaling: 257 glimpses.** F-IID and R-IID run to 257 glimpses
 ([`queues/sink_memory_scaling.txt`](queues/sink_memory_scaling.txt)), as for CanViT above:
@@ -1545,7 +1608,7 @@ subdirectory per class) wherever `IMAGENET_VAL` points; the queue runners and sc
 | `scripts/write_leak_map.py` | Where one glimpse's Writes land on one scene: residual norm and attention on the sink register, per canvas cell. |
 | `scripts/write_leakage.py` | How much of each Write lands outside the glimpse's crop, per C2F level, and how much of it comes from the glimpse's prefix tokens. |
 | `scripts/local_writes.py` | The training-free restrictions of the Writes to the glimpse's crop that the rollout scripts share, and the learned changes: a distance gate on the Writes, output gates that see no viewpoint (from the cell's content or from its attention share on the glimpse's patches), a zero-value key, the Writes' own parameters, the Reads' too, or all of CanViT's. |
-| `scripts/train_write_gate.py` | Trains one of those learned changes, the rest of CanViT frozen, on the pretraining objective with long rollouts, optionally with local Writes applied during training. |
+| `scripts/train_write_gate.py` | Trains one of those learned changes, the rest of CanViT frozen, on the pretraining objective with long rollouts, optionally with local Writes applied during training, or with a penalty on what LayerNorm sees of the Writes outside the crop (`--outside-penalty`). |
 | `scripts/reconstruction_rollouts.py` | The paper's reconstruction metric (no task probe) after every glimpse, with released or local Writes. |
 | `scripts/nyu_depth.py` | NYU Depth v2: linear depth probes on frozen features (CanViT's canvas, DINOv3's patch features), then test depth errors after every glimpse of CanViT (with released, local or object Writes) and for DINOv3 at several input sizes. |
 | `scripts/cityscapes.py` | Cityscapes at its native 1024 px: linear probes trained on frozen features (CanViT's canvas, DINOv3's patch features), then validation mIoU of C2F rollouts down to glimpses finer than the 512 px scenes of pretraining (with released, local or object Writes), of microsaccades, and of DINOv3 at several input sizes. |
@@ -1553,9 +1616,9 @@ subdirectory per class) wherever `IMAGENET_VAL` points; the queue runners and sc
 | `scripts/bio_rollouts.py`, `scripts/bio_reconstruction.py` | ADE20K mIoU and the paper's reconstruction metric after every glimpse with those mechanisms, or with a training of `train_retina.py`, for any released pretraining (`--model`); object Writes with a fixed reach or kept to regions connected to the crop, and their controls (random cells in their share, the ground-truth oracle and its halves, grouping by the probe), sink-gated Writes, rollouts past C2F, the probe's probabilities averaged over the glimpses (`--readout mean_probs`), local Writes that keep outside the crop only the part of the residual a readout sees or does not see (`--local-writes-outside`); per-image counts for paired bootstraps. |
 | `scripts/imagenet_rollouts.py` | ImageNet-1k top-1 after every glimpse from the released fine-tuned classifier's recurrent CLS, with released, local or object Writes, and with its evidence accumulated over the glimpses. |
 | `scripts/paired_bootstrap.py` | Paired bootstrap interval of the difference between two runs on the same images (ADE20K mIoU or ImageNet top-1). |
-| `scripts/sink_memory.py` | Small canvas models trained from scratch with CanViT's design, with seven kinds of Write (softmax, with an output projection, a zero-value null key closed or open by default, sigmoid, output gate, delta), the scene or the seen loss, and an optional penalty on the residual the readout cannot see; their pixel error after every glimpse under the paper's policies and test-time rules (Writes kept in the crop, object Writes, only the part of the outside residual the readout sees or does not see); and the analysis of their Write residuals (readout visibility, coherence across glimpses, contrast of the predictions). |
+| `scripts/sink_memory.py` | Small canvas models trained from scratch with CanViT's design, with seven kinds of Write (softmax, with an output projection, a zero-value null key closed or open by default, sigmoid, output gate, delta), the scene or the seen loss, and optional penalties on the residual the readout cannot see or on what LayerNorm sees of the residual outside the crop (or in every cell); their pixel error after every glimpse under the paper's policies and test-time rules (Writes kept in the crop, object Writes, only the part of the outside residual the readout sees or does not see); and the analysis of their Write residuals (readout visibility, coherence across glimpses, contrast of the predictions). |
 | `scripts/plot_sink_memory.py` | The from-scratch figures `outputs/sink_memory.png` and `outputs/hidden_writes.png` (with the CanViT family's short-horizon diagnostic and CanViT's projection test). |
-| `scripts/leak_visibility.py` | How visible the Writes' leak outside the crop is to CanViT's readouts (the pretraining head and the ADE20K probe), its coherence across glimpses, and the canvas's visibility after every glimpse. |
+| `scripts/leak_visibility.py` | How visible the Writes' leak outside the crop is to CanViT's readouts (the pretraining head and the ADE20K probe), its coherence across glimpses, and the canvas's visibility after every glimpse, with the released Writes or a learned change to them (`--write-gate`). |
 | `scripts/plot_family.py` | The family and outside-cell figures in `outputs/family_*.png`, `outputs/write_which_cells.png`, `outputs/policies.png`, `outputs/scaling.png` and `outputs/imagenet_glimpses.png`. |
 | `scripts/train_retina.py` | Learns a retina, a canvas shape or RoPE wavelengths, with CanViT frozen or fine-tuned, on the paper's objective and short rollouts of ADE20K or Cityscapes scenes (with or without zoom, with gaze biased to the center, optionally with microsaccade rollouts); or saves the gradient on the canvas cells at the starting grid. |
 | `scripts/growing_canvas.py` | ADE20K mIoU of a 32×32 canvas that recruits 64×64-density cells in the crops of the first level-2 glimpses. |

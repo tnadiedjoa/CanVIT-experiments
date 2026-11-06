@@ -12,7 +12,10 @@ canvas itself (centered) and its norm, with released Writes or, with `--local-wr
 It also reports, unweighted, the share of the residuals' energy in each readout's row space
 (local_writes.readout_subspace; `random_share_*` is that of a random direction, the rank over D), the share along
 the constant direction (1, ..., 1), which every LayerNorm reading the canvas removes exactly, and per glimpse the norm
-of the cells after removing their mean (what LayerNorm divides by).
+of the cells after removing their mean (what LayerNorm divides by). With `--write-gate` (flagship only), the Writes
+are a learned change saved by scripts/train_write_gate.py. `outside_ratio` / `inside_ratio` are, per glimpse,
+the quantity its `--outside-penalty` charges: a cell's summed residual after removing its mean, squared, over the
+cell's own squared norm after removing its mean, averaged over the cells outside (inside) the crop.
 
     .venv/bin/python -P scripts/leak_visibility.py --output results/leak_visibility/in21k_released.json
 """
@@ -39,7 +42,7 @@ from canvit_pytorch.viewpoint import grid_coords
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
 from bio_rollouts import pretrained_repo_of  # noqa: E402
-from local_writes import LocalWrites, readout_subspace  # noqa: E402
+from local_writes import LocalWrites, load_learned_writes, readout_subspace  # noqa: E402
 
 log = logging.getLogger(__name__)
 LEVEL3 = 21
@@ -52,6 +55,7 @@ class Measurement:
     num_scenes: int = 128
     canvas_grid_size: int = 32
     local_writes_from: int | None = None
+    write_gate: Path | None = None
     batch_size: int = 16
     seed: int = 0
     cache: Path = Path("/tmp/canvit-nadiedjoa-24/data/ade20k_val_s512.pt")
@@ -93,12 +97,17 @@ def main(m: Measurement) -> None:
     cell_centers = grid_coords(size=G, device=device)
     local = (LocalWrites(canvit, canvas_grid_size=G, device=device, start=m.local_writes_from)
              if m.local_writes_from is not None else None)
+    gate = (load_learned_writes(canvit, m.write_gate, canvas_grid_size=G, device=device)
+            if m.write_gate is not None else None)
+    assert gate is None or m.model == "in21k", "learned Writes are trained on the flagship"
     residuals: list[Tensor] = []
     handles = [w.register_forward_hook(lambda mod, args, out: residuals.append(out[:, num_registers:].float()))
                for w in canvit.canvas_writes]
     T = 85
     sums = {k: torch.zeros(T, dtype=torch.float64) for k in
-            [f"canvas_visibility_{n}" for n in readouts] + ["canvas_norm", "canvas_centered_norm"]}
+            [f"canvas_visibility_{n}" for n in readouts]
+            + ["canvas_norm", "canvas_centered_norm", "outside_ratio", "inside_ratio"]}
+    ratio_count = torch.zeros(T, dtype=torch.float64)
     level3 = {k: 0.0 for k in [f"{w}_visibility_{n}" for w in ("outside", "inside") for n in readouts]
               + [f"{w}_share_{n}" for w in ("outside", "inside") for n in readouts]
               + ["outside_cos_previous", "outside_norm", "inside_norm", "outside_mean_share", "inside_mean_share"]}
@@ -114,6 +123,8 @@ def main(m: Measurement) -> None:
                 viewpoint = policy.step(t, state)
                 if local is not None:
                     local.before_glimpse(t, viewpoint)
+                if gate is not None:
+                    gate.before_glimpse(t, viewpoint)
                 glimpse = sample_at_viewpoint(spatial=images, viewpoint=viewpoint,
                                               glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
                 residuals.clear()
@@ -123,11 +134,17 @@ def main(m: Measurement) -> None:
                 sums["canvas_centered_norm"][t] += (cells - cells.mean(-1, keepdim=True)).norm(dim=-1).mean(1).sum().item()
                 for n, A in readouts.items():
                     sums[f"canvas_visibility_{n}"][t] += visibility(A, cells).mean(1).sum().item()
-                if t < LEVEL3:
-                    continue
                 r = sum(residuals)  # [B, G*G, D]
                 offsets = (cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
                 inside = (offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)
+                ratio = ((r - r.mean(-1, keepdim=True)).square().sum(-1)
+                         / (cells - cells.mean(-1, keepdim=True)).square().sum(-1).clamp(min=1e-6))
+                if t > 0:  # the first glimpse is the full view: no cell is outside
+                    sums["outside_ratio"][t] += ratio[~inside].mean().item() * B
+                    ratio_count[t] += B
+                sums["inside_ratio"][t] += ratio[inside].mean().item() * B
+                if t < LEVEL3:
+                    continue
                 for where, mask in (("outside", ~inside), ("inside", inside)):
                     level3[f"{where}_norm"] += r.norm(dim=-1)[mask].mean().item() * B
                     mean_share = r.mean(-1).square() * r.shape[-1] / r.square().sum(-1).clamp(min=1e-12)
@@ -151,7 +168,8 @@ def main(m: Measurement) -> None:
         "pretrained_repo": pretrained_repo, "probe_repo": probe_repo,
         "level3": {**{k: v / (n_prev if k == "outside_cos_previous" else count3) for k, v in level3.items()},
                    **{f"random_share_{n}": U.shape[1] / U.shape[0] for n, U in bases.items()}},
-        **{k: (v / m.num_scenes).tolist() for k, v in sums.items()},
+        **{k: (v / (ratio_count.clamp(min=1) if k == "outside_ratio" else m.num_scenes)).tolist()
+           for k, v in sums.items()},
     }
     m.output.parent.mkdir(parents=True, exist_ok=True)
     m.output.write_text(json.dumps(result, indent=1))

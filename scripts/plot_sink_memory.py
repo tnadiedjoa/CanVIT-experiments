@@ -8,6 +8,7 @@ Seed 0 is drawn; a kind or rule is skipped while its results are missing.
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -104,9 +105,9 @@ def main() -> None:
 
 
 def toy_models() -> list[str]:
-    """Every toy model with a C2F result, as <kind>[_seen]_s<seed> (the hidden-penalty and 16-glimpse runs aside)."""
+    """Every toy model with a C2F result, as <kind>[_seen]_s<seed> (the penalized and longer-horizon runs aside)."""
     names = sorted(p.name.removesuffix("_c2f.json") for p in RESULTS.glob("*_c2f.json"))
-    return [n for n in names if "_hp" not in n and "_g16" not in n]
+    return [n for n in names if re.fullmatch(r"[a-z_]+_s\d", n)]
 
 
 def kind_of(name: str) -> str:

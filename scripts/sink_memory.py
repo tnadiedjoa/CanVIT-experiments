@@ -29,7 +29,8 @@ With `--hidden-penalty λ` the loss also charges λ times the squared norm of th
 pixel readout cannot see (defined below): the part of a write that the pixel loss alone leaves free. Since LayerNorm
 makes the canvas's scale free, a model can meet that penalty by shrinking the whole canvas; `--hidden-relative`
 divides it by each cell's squared norm. `--outside-penalty λ` charges instead, outside the glimpse's crop only, the
-part of the Writes' residual that a LayerNorm would see (all but its mean over the channels), relative to the cell's.
+part of the Writes' residual that a LayerNorm would see (all but its mean over the channels), relative to the cell's;
+with `--penalty-cells all` it charges every cell, a cost on writing at all that needs no knowledge of the crop.
 
 With `--loss seen` the training loss covers only the cells seen so far (the union of the glimpses' crops), so the
 model has nothing to gain from writing into the others; with the default `--loss scene` it is trained, as CanViT is,
@@ -355,6 +356,9 @@ class Train:
     residual after removing its mean over the channels, divided by the cell's own (centered, not differentiated):
     everything a LayerNorm reading the canvas would see of the forced write. Writing along the constant direction,
     which every LayerNorm removes, stays free."""
+    penalty_cells: Literal["outside", "all"] = "outside"
+    """Where `--outside-penalty` charges: outside the crop, or in every cell (a cost on writing at all, which needs no
+    knowledge of where the glimpse is)."""
     hidden_relative: bool = False
     """Divides that squared norm, per cell, by the cell's squared norm after the glimpse (not differentiated), so the
     penalty cannot be met by shrinking the whole canvas, which LayerNorm makes free."""
@@ -412,6 +416,8 @@ def train(cfg: Train) -> None:
                         hidden = hidden + ((r - (r @ U) @ U.T).square().sum(-1) / scale).mean() / len(residuals)
                 if cfg.outside_penalty > 0:
                     outside = (cells - vp[:, None, :2]).abs().amax(-1) > vp[:, None, 2]  # [B, N]
+                    if cfg.penalty_cells == "all":
+                        outside = torch.ones_like(outside)
                     c = canvas.detach().float()
                     own = (c - c.mean(-1, keepdim=True)).square().sum(-1).clamp(min=1e-6)
                     for r in residuals:

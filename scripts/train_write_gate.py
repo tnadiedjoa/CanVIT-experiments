@@ -12,6 +12,11 @@ through chunks of consecutive glimpses (truncated BPTT, as in pretraining).
 Scenes are ADE20K or Cityscapes training images (labels unused) at 512 px with the 32×32 canvas of pretraining; the
 validation scenes are never seen.
 
+With `--outside-penalty λ`, the loss also charges, after every glimpse, λ times what a LayerNorm reading the canvas
+would see of the Writes outside the glimpse's crop: over those cells and the three Writes, the squared norm of the
+residual after removing its mean over the channels, divided by the cell's own (centered, not differentiated). It is
+the penalty of scripts/sink_memory.py (`--outside-penalty`), which stops the from-scratch models' drift.
+
     .venv/bin/python -P scripts/train_write_gate.py --output probes/write_gate_c2f_riid.pt
 """
 
@@ -40,6 +45,7 @@ from canvit_pytorch.preprocess import preprocess
 from canvit_pytorch.pretrain.loss import DistillationTargets, distillation_losses
 from canvit_pytorch.pretrain.step import sample_rollout_length
 from canvit_pytorch.teacher import TEACHER_REPO, load_teacher
+from canvit_pytorch.viewpoint import grid_coords
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # the scripts run with python -P
 from local_writes import LEARNED_WRITES, LocalWrites  # noqa: E402
@@ -100,6 +106,8 @@ class Training:
     local_writes_from: int | None = None
     """When set, the Writes are kept in the glimpse's crop from this glimpse on during training
     (local_writes.LocalWrites), so that the learned change adapts to the rule; evaluate with the same rule."""
+    outside_penalty: float = 0.0
+    """When > 0, the weight of the penalty on the Writes outside the crop (module docstring)."""
     local_writes_margin: float = 0.0
     local_writes_max_scale: float | None = None
     seed: int = 0
@@ -126,6 +134,11 @@ def main(cfg: Training) -> None:
     loader = DataLoader(scenes, batch_size=cfg.batch_size, shuffle=True, num_workers=4, drop_last=True,
                         generator=torch.Generator().manual_seed(cfg.seed))
     batches = iter(loader)
+    num_registers = model.canvit.config.num_canvas_registers
+    residuals: list[Tensor] = []
+    hooks = ([write.register_forward_hook(lambda module, args, out: residuals.append(out[:, num_registers:]))
+              for write in model.canvit.canvas_writes] if cfg.outside_penalty > 0 else [])
+    cell_centers = grid_coords(size=grid, device=device)
     history: list[dict] = []
     start = time.monotonic()
     for step in range(cfg.num_steps):
@@ -147,7 +160,7 @@ def main(cfg: Training) -> None:
                              canvas_grid_size=grid)
         state = model.init_state(batch_size=images.shape[0], canvas_grid_size=grid)
         optimizer.zero_grad()
-        chunk_loss, total = torch.zeros((), device=device), 0.0
+        chunk_loss, total, total_outside = torch.zeros((), device=device), 0.0, 0.0
         for t in range(num_glimpses):
             with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
                 viewpoint = policy.step(t, state)
@@ -155,12 +168,22 @@ def main(cfg: Training) -> None:
                 if local_writes is not None:
                     local_writes.before_glimpse(t, viewpoint)
                 glimpse = sample_at_viewpoint(spatial=images, viewpoint=viewpoint, glimpse_size_px=RELEASED_GLIMPSE_SIZE_PX)
+                residuals.clear()
                 state = model(glimpse=glimpse, state=state, viewpoint=viewpoint).state
                 losses = distillation_losses(model, state, targets, enable_teacher_patch_loss=True,
                                              enable_teacher_cls_loss=cfg.cls_loss)
             loss = torch.stack(list(losses.values())).sum().float()
+            total += loss.item()  # the distillation loss alone
+            if cfg.outside_penalty > 0:
+                offsets = (cell_centers.unsqueeze(0) - viewpoint.centers.view(-1, 1, 1, 2)).abs()
+                outside = ~(offsets <= viewpoint.scales.view(-1, 1, 1, 1)).all(dim=-1).flatten(1)  # [B, G*G]
+                cells = state.canvas[:, num_registers:].detach().float()
+                own = (cells - cells.mean(-1, keepdim=True)).square().sum(-1).clamp(min=1e-6)
+                cost = sum(((r.float() - r.float().mean(-1, keepdim=True)).square().sum(-1) / own * outside).sum()
+                           / outside.sum().clamp(min=1) for r in residuals) / len(residuals)
+                loss = loss + cfg.outside_penalty * cost
+                total_outside += cost.item()
             chunk_loss = chunk_loss + loss
-            total += loss.item()
             if (t + 1) % cfg.tbptt_chunk_glimpses == 0 or t + 1 == num_glimpses:
                 (chunk_loss / num_glimpses).backward()
                 chunk_loss = torch.zeros((), device=device)
@@ -170,13 +193,15 @@ def main(cfg: Training) -> None:
         optimizer.step()
         schedule.step()
         history.append({"step": step, "policy": policy_name, "num_glimpses": num_glimpses,
-                        "loss": total / num_glimpses})
+                        "loss": total / num_glimpses, "outside": total_outside / num_glimpses})
         if step % cfg.log_every == 0 or step == cfg.num_steps - 1:
             described = gate.describe()
-            log.info("step %d (%s, %d glimpses): loss %.4f, %s, %.0f s", step, policy_name, num_glimpses,
-                     total / num_glimpses,
+            log.info("step %d (%s, %d glimpses): loss %.4f, outside %.4f, %s, %.0f s", step, policy_name, num_glimpses,
+                     total / num_glimpses, total_outside / num_glimpses,
                      ", ".join(f"{name} {[round(sum(row) / len(row), 4) for row in values]}"
                                for name, values in described.items()), time.monotonic() - start)
+    for hook in hooks:
+        hook.remove()
     cfg.output.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"kind": cfg.kind, "config": {k: str(v) if isinstance(v, Path) else v for k, v in asdict(cfg).items()},
                 "state_dict": {k: v.detach().cpu() for k, v in gate.state_dict().items()},

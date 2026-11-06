@@ -1,0 +1,16 @@
+# The same penalty on every cell (--penalty-cells all): a cost on writing at all, which needs no knowledge of the crop.
+probes/sink_memory/softmax_wp1_s0.pt scripts/sink_memory.py train --write softmax --outside-penalty 1 --penalty-cells all --seed 0 --steps 12000
+results/sink_memory/softmax_wp1_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp1_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_wp1_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp1_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_wp1_s0_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp1_s0.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_wp1_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_wp1_s0.pt
+probes/sink_memory/softmax_wp0.1_s0.pt scripts/sink_memory.py train --write softmax --outside-penalty 0.1 --penalty-cells all --seed 0 --steps 12000
+results/sink_memory/softmax_wp0.1_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp0.1_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_wp0.1_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp0.1_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_wp0.1_s0_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp0.1_s0.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_wp0.1_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_wp0.1_s0.pt
+probes/sink_memory/softmax_wp1_s1.pt scripts/sink_memory.py train --write softmax --outside-penalty 1 --penalty-cells all --seed 1 --steps 12000
+results/sink_memory/softmax_wp1_s1_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp1_s1.pt --policy coarse_to_fine
+results/sink_memory/softmax_wp1_s1_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp1_s1.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_wp1_s1_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_wp1_s1.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_wp1_s1_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_wp1_s1.pt
