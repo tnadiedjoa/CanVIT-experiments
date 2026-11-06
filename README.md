@@ -1225,9 +1225,9 @@ The short version:
   model keeps writing, but its cells' centered norm, which LayerNorm divides by, barely grows. Keeping the Writes in
   the crop works for every model.
 - A training fix follows from the mechanism: **charge what LayerNorm sees of the write outside the crop**. With a
-  plain softmax and 4-glimpse training, it removes 89–96% of the error's growth from t = 20 to t = 84 in three seeds,
-  and test-time scaling comes back on F-IID (still improving at t = 76–153); R-IID is mixed (one seed of three gets
-  worse). Without the crop, no label-free variant tried is reliable. It does not carry over to fine-tuning CanViT
+  plain softmax and 4-glimpse training, it removes 88–96% of the error's growth from t = 20 to t = 84 (five seeds),
+  and test-time scaling comes back on F-IID (still improving at t = 76–153 in every seed); on R-IID one seed of five
+  gets worse. Without the crop, no label-free variant tried is reliable. It does not carry over to fine-tuning CanViT
   either (its Writes or the whole model), which meets the penalty by writing less inside the crop too.
 - **None of this needs an image.** A slot memory trained on 4-chunk streams of facts forgets them after 15–38 noise
   chunks with a softmax Write, with or without an output projection, an output gate or the delta rule. It recalls
@@ -1414,8 +1414,8 @@ All six start from 45.93 at t = 20.
   CanViT the mechanism holds for the flagship, but what sets each pretraining's drift is how much it leaks.
 
 **The leak inside the training horizon predicts the drift past it.** No long rollout is needed to tell which model
-will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 25
-toy models with an additive Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.66, p = 3e-4; with the
+will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 26
+toy models with an additive Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.66, p = 2e-4; with the
 two delta models, ρ = 0.57, p = 0.002). The same holds for the fourteen released CanViT-B: the outside-to-inside
 residual ratio at C2F's level 1 (glimpses 1–4, `write_leakage.py`, 128 scenes) ranks them by their mIoU change from
 t = 20 to t = 84 (ρ = −0.67, p = 0.009).
@@ -1471,10 +1471,13 @@ Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/
 | – | – | scene | 0 | 0.075 | 0.306 | 0.056 | 0.122 (12) | 0.200 | 0.151 (34) | 0.189 | 5.48 | 0.92 |
 | – | – | scene | 1 | 0.075 | 0.226 | 0.053 | 0.119 (13) | 0.143 | 0.143 (83) | 0.145 | 4.57 | 0.90 |
 | – | – | scene | 2 | 0.076 | 0.209 | 0.053 | 0.120 (15) | 0.143 | 0.137 (60) | 0.144 | 5.39 | 0.93 |
+| – | – | scene | 3 | 0.082 | 0.257 | 0.056 | 0.121 (13) | 0.195 | 0.150 (34) | 0.189 | 5.16 | 0.95 |
 | outside the crop | 0.1 | scene | 0 | 0.070 | 0.115 | 0.056 | 0.105 (34) | 0.136 | 0.139 (46) | 0.152 | 0.53 | 0.94 |
 | outside the crop | 1 | scene | 0 | 0.078 | 0.087 | 0.065 | 0.104 (153) | 0.105 | 0.155 (256) | 0.155 | 0.10 | 0.97 |
 | outside the crop | 1 | scene | 1 | 0.072 | 0.089 | 0.060 | 0.095 (111) | 0.097 | 0.133 (256) | 0.133 | 0.35 | 0.98 |
 | outside the crop | 1 | scene | 2 | 0.073 | 0.088 | 0.064 | 0.101 (76) | 0.106 | 0.217 (21) | 0.260 | 0.14 | 0.91 |
+| outside the crop | 1 | scene | 3 | 0.071 | 0.092 | 0.060 | 0.100 (117) | 0.103 | 0.160 (256) | 0.160 | 0.07 | 0.94 |
+| outside the crop | 1 | scene | 4 | 0.072 | 0.090 | 0.062 | 0.101 (122) | 0.102 | 0.147 (255) | 0.147 | 0.17 | 0.96 |
 | outside the crop | 10 | scene | 0 | 0.080 | 0.094 | 0.075 | 0.109 (41) | 0.143 | 0.336 (256) | 0.336 | 0.18 | 0.99 |
 | – | – | seen | 0 | 0.039 | 0.161 | 0.030 | 0.092 (20) | 0.150 | 0.141 (51) | 0.153 | 6.18 | 0.98 |
 | outside the crop | 1 | seen | 0 | 0.051 | 0.088 | 0.044 | 0.090 (46) | 0.094 | 0.094 (255) | 0.094 | 0.14 | 1.00 |
@@ -1487,18 +1490,18 @@ Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/
 | every cell, part read from the prefix | 10 | scene | 1 | 0.066 | 0.148 | 0.059 | 0.104 (41) | 0.126 | – | – | 0.54 | 0.93 |
 | every cell, part read from the prefix | 10 | scene | 2 | 0.068 | 0.211 | 0.056 | 0.108 (36) | 0.158 | – | – | 1.18 | 0.85 |
 
-- With λ = 1, in three seeds, C2F ends at 0.087–0.089 at t = 84, against 0.209–0.306 without the penalty: 89–96% of
-  the error's growth from t = 20 is gone. The leak falls from 4.6–5.5 to 0.10–0.35 per glimpse, while 0.91–0.98 of
-  the outside attention still goes to the prefix: the cells still attend to the sink, but what it writes no longer
-  reaches LayerNorm.
-- Test-time scaling comes back with a plain softmax and 4-glimpse training. F-IID's best error comes at t = 153, 111
-  and 76 (0.104, 0.095 and 0.101), and the error is 0.097–0.106 at t = 256. Without the penalty, the best comes at
+- With λ = 1, in five seeds, C2F ends at 0.087–0.092 at t = 84, against 0.209–0.306 without the penalty (four
+  seeds): 88–96% of the error's growth from t = 20 is gone in the four seeds that have both. The leak falls from
+  4.6–5.5 to 0.07–0.35 per glimpse, while 0.91–0.98 of the outside attention still goes to the prefix: the cells
+  still attend to the sink, but what it writes no longer reaches LayerNorm.
+- Test-time scaling comes back with a plain softmax and 4-glimpse training. In all five seeds, F-IID's best error
+  comes at t = 76–153 (0.095–0.104), and the error is 0.097–0.106 at t = 256. Without the penalty, the best comes at
   t = 12–15 (0.119–0.122) and the error reaches 0.143–0.200.
 - R-IID, which starts from a random glimpse instead of the full view, is mixed. The penalized models start worse
-  (0.188–0.218 at t = 20, against 0.152–0.156 without), as a cell no glimpse has covered can no longer be filled in by
-  a write from elsewhere. Seeds 0 and 1 then improve up to t = 256 (0.155 and 0.133, against 0.189 and 0.145
+  (0.185–0.218 at t = 20, against 0.152–0.156 without), as a cell no glimpse has covered can no longer be filled in by
+  a write from elsewhere. Four seeds of five then improve up to t = 256 (0.133–0.160 there, against 0.144–0.189
   without), but seed 2 gets worse after t = 21 (0.217 to 0.260), and λ = 10 stays at 0.336.
-- The cost is small. The error at t = 20 is 0.072–0.078 (0.075–0.076 without), and with the Writes kept in the crop
+- The cost is small. The error at t = 20 is 0.071–0.078 (0.075–0.082 without), and with the Writes kept in the crop
   0.060–0.065 at t = 84 (0.053–0.056 without).
 - λ = 0.1 removes only part of the drift (0.115 at t = 84; F-IID best at t = 34). λ = 10 charges the model itself: 0.075 with
   the Writes kept in the crop, and F-IID turns back up after t = 41 (0.109, then 0.143 at t = 256).
