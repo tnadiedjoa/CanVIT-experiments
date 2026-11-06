@@ -17,3 +17,8 @@ results/sink_memory/delta_s1_fiid257.json scripts/sink_memory.py evaluate --chec
 results/sink_memory/delta_s1_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/delta_s1.pt --policy random --num-glimpses 257
 results/sink_memory/gate_s0_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy full_then_random --num-glimpses 257
 results/sink_memory/gate_s0_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/gate_s0.pt --policy random --num-glimpses 257
+# The softmax model trained on 16-glimpse rollouts: does its drift only move later?
+results/sink_memory/softmax_g16_s0_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_g16_s0.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_g16_s0_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_g16_s0.pt --policy random --num-glimpses 257
+results/sink_memory/softmax_g16_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_g16_s0.pt
+results/sink_memory/softmax_g16_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_g16_s0.pt --policy coarse_to_fine --test-writes local --test-from 0

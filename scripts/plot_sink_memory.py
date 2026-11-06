@@ -100,6 +100,7 @@ def main() -> None:
     fig.savefig(FIGURES / "sink_memory.png", dpi=150)
     print("wrote", FIGURES / "sink_memory.png")
     hidden_writes()
+    scaling()
 
 
 def toy_models() -> list[str]:
@@ -195,12 +196,15 @@ def toy_projection(ax: plt.Axes) -> None:
                     markeredgewidth=0.8)
     ax.set_yticks(range(len(names)), [n.replace("_seen", ", seen loss").replace("_s", " seed ") for n in names],
                   fontsize=7)
-    ax.invert_yaxis()
+    ax.set_ylim(len(names) + 1.2, -0.6)  # inverted, with room for the legend below the rows
+    ax.set_xscale("log")
+    ax.set_xticks([0.05, 0.1, 0.2, 0.5, 1], ["0.05", "0.1", "0.2", "0.5", "1"])
+    ax.set_xticks([], minor=True)
     ax.grid(axis="x", color=GRID, linewidth=0.8)
-    ax.set_xlabel("pixel MSE at t = 84 of C2F")
-    ax.set_title("From scratch: the hidden part of the leak makes the drift", loc="left", fontsize=9)
+    ax.set_xlabel("pixel MSE at t = 84 of C2F (log scale)")
+    ax.set_title("From scratch: the hidden part of the leak makes most of the drift", loc="left", fontsize=9)
     ax.legend(handles=[plt.Line2D([], [], linestyle="none", marker=m, color=MUTED, markersize=6, label=label)
-                       for label, m in PROJECTIONS.values()], fontsize=7, frameon=False, loc="lower right")
+                       for label, m in PROJECTIONS.values()], fontsize=7, frameon=False, loc="lower center", ncol=2)
 
 
 def canvit_projection(ax: plt.Axes) -> bool:
@@ -242,6 +246,45 @@ def hidden_writes() -> None:
     fig.tight_layout()
     fig.savefig(FIGURES / "hidden_writes.png", dpi=150)
     print("wrote", FIGURES / "hidden_writes.png")
+
+
+SCALING = [("softmax_s0", "softmax, scene loss", "-"), ("null_s0", "zero-value null key, scene loss", "-"),
+           ("gate_s0", "output gate, scene loss", "-"), ("delta_s1", "delta, scene loss", "-"),
+           ("sigmoid_s1", "sigmoid seed 1, scene loss", "-"), ("null_open_s0", "null key open, scene loss", "--"),
+           ("softmax_seen_s0", "softmax, seen loss", "--"), ("sigmoid_seen_s1", "sigmoid seed 1, seen loss", ":"),
+           ("null_open_seen_s0", "null key open, seen loss", ":")]
+
+
+def scaling() -> None:
+    """outputs/sink_memory_scaling.png: 257 glimpses of F-IID and R-IID (test-time scaling), per model."""
+    panels = {"F-IID (full view, then random)": "fiid257", "R-IID": "riid257"}
+    if load(f"{SCALING[0][0]}_fiid257") is None:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
+    for ax, (title, suffix) in zip(axes, panels.items()):
+        for name, label, style in SCALING:
+            run = load(f"{name}_{suffix}")
+            if run is None:
+                continue
+            _, color = KINDS[kind_of(name)]
+            ax.plot(range(1, len(run["mse"]) + 1), run["mse"], color=color, linestyle=style, linewidth=1.8,
+                    label=label)
+        ax.axvline(4.5, color=MUTED, linewidth=1, linestyle=":")
+        ax.set_xscale("log")
+        ax.set_xticks([1, 4, 16, 64, 256], ["1", "4", "16", "64", "256"])
+        ax.set_xticks([], minor=True)
+        ax.set_ylim(0.04, 0.3)
+        ax.grid(axis="y", color=GRID, linewidth=0.8)
+        ax.set_xlabel("glimpses seen (log scale; training rollouts: 4)")
+        ax.set_title(title, loc="left", fontsize=9)
+    axes[0].set_ylabel("pixel MSE (normalized pixels)")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, fontsize=7, frameon=False, loc="lower left", ncol=3, bbox_to_anchor=(0.01, 0.0))
+    fig.suptitle("From scratch, 257 glimpses: only the Writes that learned to write nothing keep improving",
+                 fontsize=10, color=INK, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0.14, 1, 1))
+    fig.savefig(FIGURES / "sink_memory_scaling.png", dpi=150)
+    print("wrote", FIGURES / "sink_memory_scaling.png")
 
 
 if __name__ == "__main__":

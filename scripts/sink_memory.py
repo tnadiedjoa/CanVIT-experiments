@@ -26,7 +26,9 @@ The Writes differ in how a cell may decline a glimpse:
   GRU-like convex update), so writing the same output again changes the cell less and less.
 
 With `--hidden-penalty λ` the loss also charges λ times the squared norm of the Writes' residuals in the directions the
-pixel readout cannot see (defined below): the part of a write that the pixel loss alone leaves free.
+pixel readout cannot see (defined below): the part of a write that the pixel loss alone leaves free. Since LayerNorm
+makes the canvas's scale free, a model can meet that penalty by shrinking the whole canvas; `--hidden-relative`
+divides it by each cell's squared norm.
 
 With `--loss seen` the training loss covers only the cells seen so far (the union of the glimpses' crops), so the
 model has nothing to gain from writing into the others; with the default `--loss scene` it is trained, as CanViT is,
@@ -42,9 +44,11 @@ drift.
 (both Writes), inside and outside the crop: the share of its energy that the readout can see (the readout decodes
 head(LN(cell)), so up to LN's scale a residual r moves it by A·r with A = head.weight · diag(LN gain) · centering; the
 share is that of r in A's row space, 48 of 128 dimensions, so 0.375 for a random direction), and, outside, the cosine
-with the same cell's residual from the previous glimpse and with its mean over level 3. After every glimpse: the
-regression slope of the predicted on the true pixels (after removing each image's mean; 1 is the right contrast),
-their correlation, and the predictions' standard deviation.
+with the same cell's residual from the previous glimpse and with its mean over level 3; the same cosine for the
+visible and hidden parts separately; and, per part, how much the outside residuals add up over level 3: the norm of
+their sum over the sum of their norms (1 when every glimpse adds the same direction, about 1/8 for 64 random ones).
+After every glimpse: the regression slope of the predicted on the true pixels (after removing each image's mean; 1 is
+the right contrast), their correlation, and the predictions' standard deviation.
 
     .venv/bin/python -P scripts/sink_memory.py train --write softmax --output probes/sink_memory/softmax_s0.pt
     .venv/bin/python -P scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s0.pt \
@@ -342,6 +346,9 @@ class Train:
     hidden_penalty: float = 0.0
     """When > 0, adds this times the mean squared norm of the part of the Writes' residuals that the readout cannot see
     (orthogonal to visible_basis), over every cell and both Writes: a cost on what the pixel loss is blind to."""
+    hidden_relative: bool = False
+    """Divides that squared norm, per cell, by the cell's squared norm after the glimpse (not differentiated), so the
+    penalty cannot be met by shrinking the whole canvas, which LayerNorm makes free."""
     lr: float = 1e-3
     warmup: int = 500
     seed: int = 0
@@ -388,9 +395,11 @@ def train(cfg: Train) -> None:
                 vp = random_viewpoints(cfg.batch_size, dev, full_first, t)
                 canvas, residuals, _ = model.step(canvas, x, vp, rope, cells)
                 if cfg.hidden_penalty > 0:
+                    scale = (canvas.detach().float().square().sum(-1).clamp(min=1e-6) if cfg.hidden_relative
+                             else torch.ones((), device=dev))
                     for r in residuals:
                         r = r.float()
-                        hidden = hidden + (r - (r @ U) @ U.T).square().sum(-1).mean() / len(residuals)
+                        hidden = hidden + ((r - (r @ U) @ U.T).square().sum(-1) / scale).mean() / len(residuals)
                 if cfg.loss == "scene":
                     loss = loss + F.mse_loss(model.decode(canvas).float(), x)
                 else:
@@ -514,7 +523,9 @@ def analyze(cfg: Analyze) -> None:
     B = x.shape[0]
     vps = c2f_viewpoints(B, dev, torch.Generator().manual_seed(cfg.seed))
     canvas = model.init_canvas(B)
-    level3 = {k: [] for k in ("visible_share_outside", "visible_share_inside", "cos_previous_outside")}
+    P = U @ U.T
+    level3 = {k: [] for k in ("visible_share_outside", "visible_share_inside", "cos_previous_outside",
+                              "cos_previous_outside_visible", "cos_previous_outside_hidden")}
     curves = {k: [] for k in ("mse", "slope", "correlation", "prediction_std")}
     outside_residuals, previous = [], None
     for t, vp in enumerate(vps):
@@ -536,13 +547,22 @@ def analyze(cfg: Analyze) -> None:
         if previous is not None:
             both = ~inside & previous[1]
             level3["cos_previous_outside"].append(F.cosine_similarity(r, previous[0], dim=-1)[both].mean().item())
+            for part, project in (("visible", lambda v: v @ P), ("hidden", lambda v: v - v @ P)):
+                cos = F.cosine_similarity(project(r), project(previous[0]), dim=-1)[both].mean().item()
+                level3[f"cos_previous_outside_{part}"].append(cos)
         previous = (r, ~inside)
         outside_residuals.append((r.cpu(), (~inside).cpu()))
     total = sum(r * o[..., None] for r, o in outside_residuals)
     mean = total / sum(o[..., None].float() for _, o in outside_residuals).clamp(min=1)
     cos_mean = [F.cosine_similarity(r, mean, dim=-1)[o].mean().item() for r, o in outside_residuals]
+    accumulation = {}  # per cell, norm of the summed outside residuals over the sum of their norms (1: all aligned)
+    for part, project in (("visible", lambda v: v @ P.cpu()), ("hidden", lambda v: v - v @ P.cpu())):
+        summed = sum(project(r) * o[..., None] for r, o in outside_residuals)
+        norms = sum(project(r).norm(dim=-1) * o for r, o in outside_residuals)
+        accumulation[f"accumulation_outside_{part}"] = (summed.norm(dim=-1) / norms.clamp(min=1e-12)).mean().item()
     result = {"level3": {k: sum(v) / len(v) for k, v in level3.items()}
-              | {"cos_mean_outside": sum(cos_mean) / len(cos_mean), "visible_share_random": U.shape[1] / D},
+              | {"cos_mean_outside": sum(cos_mean) / len(cos_mean), "visible_share_random": U.shape[1] / D}
+              | accumulation,
               **curves, "config": {k: str(v) for k, v in asdict(cfg).items()}, "train_config": saved["config"]}
     cfg.output.parent.mkdir(parents=True, exist_ok=True)
     cfg.output.write_text(json.dumps(result, indent=1))

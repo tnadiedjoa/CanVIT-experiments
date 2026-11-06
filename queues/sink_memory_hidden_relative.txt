@@ -1,0 +1,13 @@
+# The hidden penalty divided by each cell's squared norm (--hidden-relative), which shrinking the canvas cannot meet.
+probes/sink_memory/softmax_hpr1_s0.pt scripts/sink_memory.py train --write softmax --hidden-penalty 1 --hidden-relative --seed 0 --steps 12000
+results/sink_memory/softmax_hpr1_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hpr1_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_hpr1_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hpr1_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_hpr1_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hpr1_s0.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_hpr1_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hpr1_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_hpr1_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_hpr1_s0.pt
+probes/sink_memory/softmax_hpr10_s0.pt scripts/sink_memory.py train --write softmax --hidden-penalty 10 --hidden-relative --seed 0 --steps 12000
+results/sink_memory/softmax_hpr10_s0_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hpr10_s0.pt --policy coarse_to_fine
+results/sink_memory/softmax_hpr10_s0_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hpr10_s0.pt --policy coarse_to_fine --test-writes local --test-from 0
+results/sink_memory/softmax_hpr10_s0_riid.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hpr10_s0.pt --policy random --num-glimpses 85
+results/sink_memory/softmax_hpr10_s0_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_hpr10_s0.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_hpr10_s0_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_hpr10_s0.pt

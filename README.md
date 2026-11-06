@@ -1210,8 +1210,9 @@ rollouts average about four glimpses, so nothing in its loss charges what that r
 This section tests the account in two ways: small canvas models trained from scratch, where the Write can be changed,
 and a causal test in CanViT itself. The short version:
 
-- The forced write is mostly **hidden**: it lies in directions the readout barely sees, so at the training horizon
-  it costs nothing. In the toy, the hidden part is what drifts; in CanViT, neither part alone is harmless.
+- The forced write is mostly **hidden**: it lies in directions the training readout barely sees (87–98% of its energy
+  in the toy, 89% in CanViT), so at the training horizon it costs nothing. Past it, the hidden part alone does most of
+  the harm, but neither part alone is harmless: through LayerNorm, each sets the other's scale.
 - It is **coherent**: an outside cell receives nearly the same vector glimpse after glimpse, so it accumulates and the
   cell's norm grows, and LayerNorm then shrinks the visible content (the predictions lose contrast, not
   correlation).
@@ -1252,13 +1253,13 @@ level 3. *Prefix* is the share of those cells' attention on the prefix tokens.
 | softmax | 1 | 0.361 | 0.113 | 0.075 | 0.226 | – | 0.302 | 4.57 | 0.90 |
 | null | 0 | 0.361 | 0.113 | 0.083 | 0.254 | 0.057 | 0.290 | 5.05 | 0.92 |
 | null | 1 | 0.358 | 0.113 | 0.077 | 0.234 | 0.057 | 0.240 | 5.38 | 0.93 |
-| null_open | 0 | 0.360 | 0.110 | 0.061 | 0.123 | – | 0.305 | 0.22 | 0.00 |
+| null_open | 0 | 0.360 | 0.110 | 0.061 | 0.123 | 0.056 | 0.305 | 0.22 | 0.00 |
 | gate | 0 | 0.357 | 0.111 | 0.084 | 0.251 | 0.050 | 0.256 | 2.53 | 0.87 |
 | gate | 1 | 0.360 | 0.114 | 0.080 | 0.352 | – | 0.265 | 3.17 | 0.79 |
 | sigmoid | 0 | 0.385 | 0.133 | 0.164 | 0.367 | 0.088 | 0.333 | 5.66 | 0.08 |
 | sigmoid | 1 | 0.360 | 0.110 | 0.069 | 0.097 | – | 0.276 | 0.22 | 0.00 |
 | sigmoid | 2 | – | 0.134 | 0.161 | 0.424 | – | 0.373 | 5.28 | 0.11 |
-| delta | 0 | 0.353 | 0.109 | 0.055 | 0.246 | – | 0.262 | 0.16 | 0.86 |
+| delta | 0 | 0.353 | 0.109 | 0.055 | 0.246 | 0.048 | 0.262 | 0.16 | 0.86 |
 | delta | 1 | 0.354 | 0.109 | 0.055 | 0.207 | 0.052 | 0.250 | 0.21 | 0.80 |
 
 - **At the training horizon, the leak is free.** At t = 3 of R-IID, every model but one scores 0.353–0.361; the
@@ -1319,7 +1320,7 @@ their correlation.
 - The exception fails differently: gate with the seen loss writes visibly outside (0.27), its correlation falls to
   0.67, and it is the worst model at t = 84 (0.578).
 
-**In the toy, the hidden part makes the drift.** At test time, outside the crop and from t = 0,
+**In the toy, the hidden part makes most of the drift.** At test time, outside the crop and from t = 0,
 `--test-writes visible` keeps only each residual's projection on the readout's row space, and `invisible` only its
 projection on the complement. C2F at t = 84:
 
@@ -1329,34 +1330,49 @@ projection on the complement. C2F at t = 84:
 | null seed 0 | 0.254 | 0.094 | 0.442 | 0.057 |
 | null seed 1 | 0.234 | 0.096 | 0.383 | 0.057 |
 | gate seed 0 | 0.251 | 0.188 | 0.617 | 0.050 |
+| gate seed 1 | 0.352 | 0.118 | – | – |
+| sigmoid seed 0 | 0.367 | 1.243 | – | 0.088 |
 
-- For softmax and null, keeping only what the readout sees removes most of the drift (0.094–0.096, against
-  0.234–0.306 released). Gate's leak is more visible (0.125 of its energy, against 0.08), and its visible part alone
-  still drifts (0.188, against 0.251).
-- Keeping only what the readout does not see makes every model worse than released (0.38–0.62): the hidden part does
-  more harm alone than with the visible part, which partly offsets it.
-- The visible part is not harmless either: every model ends above its Writes kept in the crop (0.050–0.057).
+- For softmax, null and gate seed 1, keeping only what the readout sees removes most of the drift (0.094–0.118,
+  against 0.234–0.352 released). Gate seed 0, whose leak is more visible (0.125 of its energy, against 0.08), keeps
+  more of it (0.188, against 0.251).
+- Keeping only what the readout does not see makes every model worse than released (0.38–0.62): alone, the hidden
+  part does more harm than with the visible part.
+- Sigmoid seed 0 is the exception: keeping only the visible part makes it far worse (1.243, against 0.367). Its
+  canvas is hidden almost entirely, inside the crop too (0.025 of its residuals' energy is visible), so the hidden
+  part sets the scale LayerNorm divides by. Without it, the visible part of the leak, which also adds up (canvas norm
+  61 at t = 84, against 42 with Writes kept in the crop), is no longer diluted.
+- The visible part is not harmless in any model: each ends above its Writes kept in the crop (0.050–0.088).
 
-**In CanViT, neither part alone is harmless.** The same test from level 3 (`bio_rollouts.py --local-writes-outside`,
-flagship, 64×64 canvas, 2,000 scenes), with the ADE20K probe as the readout: its row space has at most 150 of the
-canvas's 1024 dimensions.
+**In CanViT, the hidden part does most of the harm, but neither part alone is harmless.** The leak is hidden from
+the pretraining loss, which reads the canvas through the teacher-feature head (LayerNorm, then 1024 → 768): outside
+the crop, 0.11 of its energy lies in the head's row space, against 0.75 for a random direction and 0.15 for the
+residuals inside the crop ([`scripts/leak_visibility.py`](scripts/leak_visibility.py), 128 scenes, 32×32 canvas). It
+also repeats: cosine 0.81 between an outside cell's residuals at consecutive glimpses. The same test as in the toy, from
+level 3 (`bio_rollouts.py --local-writes-outside`, flagship, 64×64 canvas, 2,000 scenes), with the pretraining head
+or the ADE20K probe as the readout (the probe's row space has at most 150 of the 1024 dimensions; the leak puts 0.04
+of its energy there, against 0.15 at random):
 
 | Writes outside the crop from t = 21 | t = 40 | t = 84 | t = 84 − released | canvas norm at t = 84 |
 |---|---|---|---|---|
 | released | 45.36 | 43.65 | | 58,184 |
 | none (Writes kept in the crop) | 46.06 | 46.40 | +2.76 [+2.31, +3.24] | 30,676 |
+| only what the pretraining head sees | 45.72 | 42.58 | −1.07 [−1.91, −0.34] | 42,294 |
+| only what the pretraining head does not see | 44.34 | 36.88 | −6.77 [−7.32, −5.55] | 55,898 |
 | only what the probe sees | 42.73 | 28.87 | −14.78 [−15.62, −13.37] | 37,092 |
 | only what the probe does not see | 40.72 | 20.79 | −22.85 [−23.76, −21.28] | 56,230 |
 
-All four start from 45.93 at t = 20.
+All six start from 45.93 at t = 20.
 
-- The part the probe does not see is the one that grows the canvas (56,230 alone, 58,184 with both), and alone it is
-  the worse of the two, as in the toy.
-- Unlike the toy, the part the probe sees is far from harmless alone: it accumulates (37,092 against 30,676 for
-  local Writes) and costs 14.8 points. With both parts, the growth of the hidden part dilutes it.
-- So CanViT's leak cannot be split into a harmful and a harmless part along the probe's directions; only removing it
-  whole helps. The probe is not what CanViT was trained through, though: the pretraining loss reads the canvas
-  through the teacher-feature head (768 of 1024 dimensions).
+- Through the pretraining head, the picture is the toy's: the hidden part alone grows the canvas as much as the whole
+  leak and does most of the harm. The visible part alone stays above released Writes until t = 40 (46.05 at t = 28),
+  but it too adds up, and ends 3.82 points [3.14, 4.62] below Writes kept in the crop.
+- Through the probe, which CanViT was not trained through, either part alone is far worse.
+- In both cases, each part does more harm alone than with the other, and only removing the leak whole helps.
+  Splitting it by key gave the same picture ([above](#writes-outside-the-glimpse-cause-c2fs-level-3-drop): from
+  glimpse 1, only the prefix's part ends at 19.62, only the patches' at 39.83, both at 43.65, neither at 45.63).
+- So the hidden part explains why the leak is free at the training horizon, not all of the damage past it: through
+  LayerNorm, the two parts set each other's scale.
 
 **The leak inside the training horizon predicts the drift past it.** No long rollout is needed to tell which model
 will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 18
