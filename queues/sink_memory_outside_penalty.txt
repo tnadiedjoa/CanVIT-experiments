@@ -71,3 +71,9 @@ results/sink_memory/softmax_s3_c2f.json scripts/sink_memory.py evaluate --checkp
 results/sink_memory/softmax_s3_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s3.pt --policy random --num-glimpses 257
 results/sink_memory/softmax_s3_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s3.pt --policy full_then_random --num-glimpses 257
 results/sink_memory/softmax_s3_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s3.pt --policy coarse_to_fine --test-writes local --test-from 0
+# A softmax baseline for seed 4.
+probes/sink_memory/softmax_s4.pt scripts/sink_memory.py train --write softmax --seed 4 --steps 12000
+results/sink_memory/softmax_s4_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s4.pt --policy coarse_to_fine
+results/sink_memory/softmax_s4_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s4.pt --policy random --num-glimpses 257
+results/sink_memory/softmax_s4_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s4.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_s4_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s4.pt --policy coarse_to_fine --test-writes local --test-from 0

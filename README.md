@@ -1414,9 +1414,9 @@ All six start from 45.93 at t = 20.
   CanViT the mechanism holds for the flagship, but what sets each pretraining's drift is how much it leaks.
 
 **The leak inside the training horizon predicts the drift past it.** No long rollout is needed to tell which model
-will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 26
+will drift: the mean outside residual over C2F's glimpses 1–3, relative to the canvas norm at t = 3, ranks the 27
 toy models with an additive Write by their error ratio from t = 20 to t = 84 (Spearman ρ = 0.66, p = 2e-4; with the
-two delta models, ρ = 0.57, p = 0.002). The same holds for the fourteen released CanViT-B: the outside-to-inside
+two delta models, ρ = 0.56, p = 0.002). The same holds for the fourteen released CanViT-B: the outside-to-inside
 residual ratio at C2F's level 1 (glimpses 1–4, `write_leakage.py`, 128 scenes) ranks them by their mIoU change from
 t = 20 to t = 84 (ρ = −0.67, p = 0.009).
 
@@ -1472,6 +1472,7 @@ Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/
 | – | – | scene | 1 | 0.075 | 0.226 | 0.053 | 0.119 (13) | 0.143 | 0.143 (83) | 0.145 | 4.57 | 0.90 |
 | – | – | scene | 2 | 0.076 | 0.209 | 0.053 | 0.120 (15) | 0.143 | 0.137 (60) | 0.144 | 5.39 | 0.93 |
 | – | – | scene | 3 | 0.082 | 0.257 | 0.056 | 0.121 (13) | 0.195 | 0.150 (34) | 0.189 | 5.16 | 0.95 |
+| – | – | scene | 4 | 0.082 | 0.265 | 0.055 | 0.124 (12) | 0.194 | 0.154 (34) | 0.192 | 5.49 | 0.92 |
 | outside the crop | 0.1 | scene | 0 | 0.070 | 0.115 | 0.056 | 0.105 (34) | 0.136 | 0.139 (46) | 0.152 | 0.53 | 0.94 |
 | outside the crop | 1 | scene | 0 | 0.078 | 0.087 | 0.065 | 0.104 (153) | 0.105 | 0.155 (256) | 0.155 | 0.10 | 0.97 |
 | outside the crop | 1 | scene | 1 | 0.072 | 0.089 | 0.060 | 0.095 (111) | 0.097 | 0.133 (256) | 0.133 | 0.35 | 0.98 |
@@ -1490,16 +1491,15 @@ Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/
 | every cell, part read from the prefix | 10 | scene | 1 | 0.066 | 0.148 | 0.059 | 0.104 (41) | 0.126 | – | – | 0.54 | 0.93 |
 | every cell, part read from the prefix | 10 | scene | 2 | 0.068 | 0.211 | 0.056 | 0.108 (36) | 0.158 | – | – | 1.18 | 0.85 |
 
-- With λ = 1, in five seeds, C2F ends at 0.087–0.092 at t = 84, against 0.209–0.306 without the penalty (four
-  seeds): 88–96% of the error's growth from t = 20 is gone in the four seeds that have both. The leak falls from
-  4.6–5.5 to 0.07–0.35 per glimpse, while 0.91–0.98 of the outside attention still goes to the prefix: the cells
+- With λ = 1, in five seeds, C2F ends at 0.087–0.092 at t = 84, against 0.209–0.306 without the penalty: seed by
+  seed, 88–96% of the error's growth from t = 20 is gone. The leak falls from 4.6–5.5 to 0.07–0.35 per glimpse, while 0.91–0.98 of the outside attention still goes to the prefix: the cells
   still attend to the sink, but what it writes no longer reaches LayerNorm.
 - Test-time scaling comes back with a plain softmax and 4-glimpse training. In all five seeds, F-IID's best error
   comes at t = 76–153 (0.095–0.104), and the error is 0.097–0.106 at t = 256. Without the penalty, the best comes at
-  t = 12–15 (0.119–0.122) and the error reaches 0.143–0.200.
+  t = 12–15 (0.119–0.124) and the error reaches 0.143–0.200.
 - R-IID, which starts from a random glimpse instead of the full view, is mixed. The penalized models start worse
-  (0.185–0.218 at t = 20, against 0.152–0.156 without), as a cell no glimpse has covered can no longer be filled in by
-  a write from elsewhere. Four seeds of five then improve up to t = 256 (0.133–0.160 there, against 0.144–0.189
+  (0.185–0.218 at t = 20, against 0.152–0.160 without), as a cell no glimpse has covered can no longer be filled in by
+  a write from elsewhere. Four seeds of five then improve up to t = 256 (0.133–0.160 there, against 0.144–0.192
   without), but seed 2 gets worse after t = 21 (0.217 to 0.260), and λ = 10 stays at 0.336.
 - The cost is small. The error at t = 20 is 0.071–0.078 (0.075–0.082 without), and with the Writes kept in the crop
   0.060–0.065 at t = 84 (0.053–0.056 without).
