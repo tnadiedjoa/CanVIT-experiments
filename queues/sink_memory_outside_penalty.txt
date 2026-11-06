@@ -42,3 +42,16 @@ probes/sink_memory/softmax_op1_s2.pt scripts/sink_memory.py train --write softma
 results/sink_memory/softmax_op1_s2_c2f.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s2.pt --policy coarse_to_fine
 results/sink_memory/softmax_op1_s2_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s2.pt --policy full_then_random --num-glimpses 257
 results/sink_memory/softmax_op1_s2_c2f_local0.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s2.pt --policy coarse_to_fine --test-writes local --test-from 0
+# Fill-ins for the tables: softmax seed 1 F-IID 257, seed-2 analyses.
+results/sink_memory/softmax_s1_fiid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s1.pt --policy full_then_random --num-glimpses 257
+results/sink_memory/softmax_s2_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_s2.pt
+results/sink_memory/softmax_op1_s2_analysis.json scripts/sink_memory.py analyze --checkpoint probes/sink_memory/softmax_op1_s2.pt
+results/sink_memory/softmax_s2_rfs.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s2.pt --policy repeated_full_scene --num-glimpses 85
+results/sink_memory/softmax_op1_s2_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s2.pt --policy random --num-glimpses 257
+# R-IID 257 for the penalty table.
+results/sink_memory/softmax_op1_s0_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op1_s0.pt --policy random --num-glimpses 257
+results/sink_memory/softmax_s1_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s1.pt --policy random --num-glimpses 257
+results/sink_memory/softmax_s2_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_s2.pt --policy random --num-glimpses 257
+results/sink_memory/softmax_op10_s0_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_op10_s0.pt --policy random --num-glimpses 257
+results/sink_memory/softmax_pp1_s0_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp1_s0.pt --policy random --num-glimpses 257
+results/sink_memory/softmax_pp10_s0_riid257.json scripts/sink_memory.py evaluate --checkpoint probes/sink_memory/softmax_pp10_s0.pt --policy random --num-glimpses 257

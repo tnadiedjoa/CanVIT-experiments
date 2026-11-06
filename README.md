@@ -1226,9 +1226,9 @@ The short version:
   the crop works for every model.
 - A training fix follows from the mechanism: **charge what LayerNorm sees of the write outside the crop**. With a
   plain softmax and 4-glimpse training, it removes 89–96% of the error's growth from t = 20 to t = 84 in three seeds,
-  and test-time scaling comes back (F-IID still improves past t = 100). Without the crop, no label-free variant tried
-  is reliable. It does not carry over to fine-tuning CanViT either (its Writes or the whole model), which meets the
-  penalty by writing less inside the crop too.
+  and test-time scaling comes back on F-IID (still improving at t = 76–153); R-IID is mixed (one seed of three gets
+  worse). Without the crop, no label-free variant tried is reliable. It does not carry over to fine-tuning CanViT
+  either (its Writes or the whole model), which meets the penalty by writing less inside the crop too.
 - **None of this needs an image.** A slot memory trained on 4-chunk streams of facts forgets them after 15–38 noise
   chunks with a softmax Write, with or without an output projection, an output gate or the delta rule. It recalls
   them perfectly when its Writes are dropped during noise, and keeps them to 256 noise chunks with the same penalty
@@ -1264,7 +1264,7 @@ level 3. *Prefix* is the share of those cells' attention on the prefix tokens.
 |---|---|---|---|---|---|---|---|---|---|
 | softmax | 0 | 0.359 | 0.111 | 0.075 | 0.306 | 0.056 | 0.264 | 5.48 | 0.92 |
 | softmax | 1 | 0.361 | 0.113 | 0.075 | 0.226 | 0.053 | 0.302 | 4.57 | 0.90 |
-| softmax | 2 | – | 0.113 | 0.076 | 0.209 | 0.053 | – | 5.39 | 0.93 |
+| softmax | 2 | – | 0.113 | 0.076 | 0.209 | 0.053 | 0.306 | 5.39 | 0.93 |
 | out | 0 | 0.357 | 0.111 | 0.067 | 0.239 | 0.048 | 0.282 | 1.79 | 0.91 |
 | out | 1 | 0.358 | 0.112 | 0.075 | 0.299 | 0.049 | 0.342 | 1.90 | 0.89 |
 | null | 0 | 0.361 | 0.113 | 0.083 | 0.254 | 0.057 | 0.290 | 5.05 | 0.92 |
@@ -1466,26 +1466,26 @@ mechanism above says matters: LayerNorm removes the mean exactly, and the center
 Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/sink_memory_outside_penalty.txt`](queues/sink_memory_outside_penalty.txt),
 [`queues/sink_memory_write_penalty.txt`](queues/sink_memory_write_penalty.txt)):
 
-| penalty on | λ | loss | seed | C2F t = 20 | C2F t = 84 | C2F t = 84, Writes kept in the crop | F-IID best (t) | F-IID t = 256 | leak | prefix |
-|---|---|---|---|---|---|---|---|---|---|---|
-| – | – | scene | 0 | 0.075 | 0.306 | 0.056 | 0.122 (12) | 0.200 | 5.48 | 0.92 |
-| – | – | scene | 1 | 0.075 | 0.226 | 0.053 | – | – | 4.57 | 0.90 |
-| – | – | scene | 2 | 0.076 | 0.209 | 0.053 | 0.120 (15) | 0.143 | 5.39 | 0.93 |
-| outside the crop | 0.1 | scene | 0 | 0.070 | 0.115 | 0.056 | 0.105 (34) | 0.136 | 0.53 | 0.94 |
-| outside the crop | 1 | scene | 0 | 0.078 | 0.087 | 0.065 | 0.104 (153) | 0.105 | 0.10 | 0.97 |
-| outside the crop | 1 | scene | 1 | 0.072 | 0.089 | 0.060 | 0.095 (111) | 0.097 | 0.35 | 0.98 |
-| outside the crop | 1 | scene | 2 | 0.073 | 0.088 | 0.064 | 0.101 (76) | 0.106 | 0.14 | 0.91 |
-| outside the crop | 10 | scene | 0 | 0.080 | 0.094 | 0.075 | 0.109 (41) | 0.143 | 0.18 | 0.99 |
-| – | – | seen | 0 | 0.039 | 0.161 | 0.030 | 0.092 (20) | 0.150 | 6.18 | 0.98 |
-| outside the crop | 1 | seen | 0 | 0.051 | 0.088 | 0.044 | 0.090 (46) | 0.094 | 0.14 | 1.00 |
-| every cell | 0.1 | scene | 0 | 0.098 | 0.227 | 0.072 | 0.126 (17) | 0.155 | 0.12 | 0.93 |
-| every cell | 1 | scene | 0 | 0.380 | 1.171 | 0.162 | 0.207 (3) | 1.138 | 0.14 | 0.90 |
-| every cell | 1 | scene | 1 | 0.258 | 1.423 | 0.160 | 0.205 (6) | 2.129 | 0.07 | 0.94 |
-| every cell, part read from the prefix | 1 | scene | 0 | 0.064 | 0.094 | 0.052 | 0.102 (46) | 0.107 | 0.34 | 0.97 |
-| every cell, part read from the prefix | 1 | scene | 1 | 0.066 | 0.120 | 0.060 | 0.105 (34) | 0.130 | 0.50 | 0.95 |
-| every cell, part read from the prefix | 10 | scene | 0 | 0.068 | 0.081 | 0.055 | 0.102 (52) | 0.121 | 0.24 | 0.98 |
-| every cell, part read from the prefix | 10 | scene | 1 | 0.066 | 0.148 | 0.059 | 0.104 (41) | 0.126 | 0.54 | 0.93 |
-| every cell, part read from the prefix | 10 | scene | 2 | 0.068 | 0.211 | 0.056 | 0.108 (36) | 0.158 | 1.18 | 0.85 |
+| penalty on | λ | loss | seed | C2F t = 20 | C2F t = 84 | C2F t = 84, Writes kept in the crop | F-IID best (t) | F-IID t = 256 | R-IID best (t) | R-IID t = 256 | leak | prefix |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| – | – | scene | 0 | 0.075 | 0.306 | 0.056 | 0.122 (12) | 0.200 | 0.151 (34) | 0.189 | 5.48 | 0.92 |
+| – | – | scene | 1 | 0.075 | 0.226 | 0.053 | 0.119 (13) | 0.143 | 0.143 (83) | 0.145 | 4.57 | 0.90 |
+| – | – | scene | 2 | 0.076 | 0.209 | 0.053 | 0.120 (15) | 0.143 | 0.137 (60) | 0.144 | 5.39 | 0.93 |
+| outside the crop | 0.1 | scene | 0 | 0.070 | 0.115 | 0.056 | 0.105 (34) | 0.136 | 0.139 (46) | 0.152 | 0.53 | 0.94 |
+| outside the crop | 1 | scene | 0 | 0.078 | 0.087 | 0.065 | 0.104 (153) | 0.105 | 0.155 (256) | 0.155 | 0.10 | 0.97 |
+| outside the crop | 1 | scene | 1 | 0.072 | 0.089 | 0.060 | 0.095 (111) | 0.097 | 0.133 (256) | 0.133 | 0.35 | 0.98 |
+| outside the crop | 1 | scene | 2 | 0.073 | 0.088 | 0.064 | 0.101 (76) | 0.106 | 0.217 (21) | 0.260 | 0.14 | 0.91 |
+| outside the crop | 10 | scene | 0 | 0.080 | 0.094 | 0.075 | 0.109 (41) | 0.143 | 0.336 (256) | 0.336 | 0.18 | 0.99 |
+| – | – | seen | 0 | 0.039 | 0.161 | 0.030 | 0.092 (20) | 0.150 | 0.141 (51) | 0.153 | 6.18 | 0.98 |
+| outside the crop | 1 | seen | 0 | 0.051 | 0.088 | 0.044 | 0.090 (46) | 0.094 | 0.094 (255) | 0.094 | 0.14 | 1.00 |
+| every cell | 0.1 | scene | 0 | 0.098 | 0.227 | 0.072 | 0.126 (17) | 0.155 | – | – | 0.12 | 0.93 |
+| every cell | 1 | scene | 0 | 0.380 | 1.171 | 0.162 | 0.207 (3) | 1.138 | – | – | 0.14 | 0.90 |
+| every cell | 1 | scene | 1 | 0.258 | 1.423 | 0.160 | 0.205 (6) | 2.129 | – | – | 0.07 | 0.94 |
+| every cell, part read from the prefix | 1 | scene | 0 | 0.064 | 0.094 | 0.052 | 0.102 (46) | 0.107 | 0.107 (187) | 0.107 | 0.34 | 0.97 |
+| every cell, part read from the prefix | 1 | scene | 1 | 0.066 | 0.120 | 0.060 | 0.105 (34) | 0.130 | – | – | 0.50 | 0.95 |
+| every cell, part read from the prefix | 10 | scene | 0 | 0.068 | 0.081 | 0.055 | 0.102 (52) | 0.121 | 0.113 (119) | 0.116 | 0.24 | 0.98 |
+| every cell, part read from the prefix | 10 | scene | 1 | 0.066 | 0.148 | 0.059 | 0.104 (41) | 0.126 | – | – | 0.54 | 0.93 |
+| every cell, part read from the prefix | 10 | scene | 2 | 0.068 | 0.211 | 0.056 | 0.108 (36) | 0.158 | – | – | 1.18 | 0.85 |
 
 - With λ = 1, in three seeds, C2F ends at 0.087–0.089 at t = 84, against 0.209–0.306 without the penalty: 89–96% of
   the error's growth from t = 20 is gone. The leak falls from 4.6–5.5 to 0.10–0.35 per glimpse, while 0.91–0.98 of
@@ -1493,7 +1493,11 @@ Write stays a plain softmax, and training stays on 4-glimpse rollouts ([`queues/
   reaches LayerNorm.
 - Test-time scaling comes back with a plain softmax and 4-glimpse training. F-IID's best error comes at t = 153, 111
   and 76 (0.104, 0.095 and 0.101), and the error is 0.097–0.106 at t = 256. Without the penalty, the best comes at
-  t = 12 and 15 (0.122 and 0.120) and the error reaches 0.200 and 0.143.
+  t = 12–15 (0.119–0.122) and the error reaches 0.143–0.200.
+- R-IID, which starts from a random glimpse instead of the full view, is mixed. The penalized models start worse
+  (0.188–0.218 at t = 20, against 0.152–0.156 without), as a cell no glimpse has covered can no longer be filled in by
+  a write from elsewhere. Seeds 0 and 1 then improve up to t = 256 (0.155 and 0.133, against 0.189 and 0.145
+  without), but seed 2 gets worse after t = 21 (0.217 to 0.260), and λ = 10 stays at 0.336.
 - The cost is small. The error at t = 20 is 0.072–0.078 (0.075–0.076 without), and with the Writes kept in the crop
   0.060–0.065 at t = 84 (0.053–0.056 without).
 - λ = 0.1 removes only part of the drift (0.115 at t = 84; F-IID best at t = 34). λ = 10 charges the model itself: 0.075 with
@@ -1578,13 +1582,13 @@ that penalty, on pretraining-length rollouts (400 steps, as the plain fine-tune 
 LayerNorm first, which removes each cell's mean over its channels and divides by the norm of the rest. `analyze`
 reports that centered norm after every glimpse. From t = 21 to t = 84 it grows by a factor of 2.4–3.5 in the softmax,
 out, null and gate models, against 1.3 for the softmax model trained on 16-glimpse rollouts and for the two null_open
-models with the seen loss that do not drift (seeds 0 and 2). Over the 27 analyzed toy models with an additive Write, that growth ranks the drift from t = 20 to
-t = 84 (Spearman ρ = 0.77, p = 3e-6) and the slope at t = 84 (ρ = −0.81, p = 3e-7). The model
+models with the seen loss that do not drift (seeds 0 and 2). Over the 28 analyzed toy models with an additive Write, that growth ranks the drift from t = 20 to
+t = 84 (Spearman ρ = 0.76, p = 3e-6) and the slope at t = 84 (ρ = −0.82, p = 1e-7). The model
 trained on 16 glimpses leaks as much as the one trained on 4, as hidden (0.071 of its energy visible) and as coherent
 (cosine 0.74 with the previous glimpse's), but puts 0.43 of the leak's energy along the constant direction
 (1, …, 1), which every LayerNorm removes, against 0.16 for the one trained on 4. That share alone does not protect a
 model, though: sigmoid seed 0 puts 0.79 there and its centered norm still grows by 2.8 (across the toy models, the
-share does not rank the drift: ρ = −0.08).
+share does not rank the drift: ρ = −0.09).
 
 **The full view repeated degrades every Write.** RFS goes from 0.17–0.18 at t = 0 to 0.235–0.373 at t = 84 in every
 model, including the delta (0.250 and 0.262) and the stable ones (null_open with the seen loss 0.249, stable sigmoid
